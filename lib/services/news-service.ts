@@ -17,7 +17,8 @@ class NewsService {
   private agentOrchestrator: AgentOrchestrator;
 
   constructor() {
-    this.agentOrchestrator = new AgentOrchestrator();
+    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    this.agentOrchestrator = new AgentOrchestrator(apiKey);
   }
 
   async getDailyBattleTopic(): Promise<DebateTopic> {

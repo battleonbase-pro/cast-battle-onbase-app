@@ -59,7 +59,7 @@ console.log('');
 console.log('🚀 Next Steps:');
 console.log('1. Add your API keys to .env.local');
 console.log('2. Run: npm run dev');
-console.log('3. Connect your Base wallet');
+console.log('3. Sign in with Base');
 console.log('4. Create and join battles!');
 console.log('');
 

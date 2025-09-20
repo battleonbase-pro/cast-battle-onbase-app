@@ -1,9 +1,5 @@
 import dotenv from 'dotenv';
-<<<<<<< HEAD
-import AgentOrchestrator from '../lib/agents/agent-orchestrator.js';
-=======
-import AgentOrchestrator from '../lib/agents/agent-orchestrator.ts';
->>>>>>> 2d0e25e (fix: scalability improvements)
+import AgentOrchestrator from '../lib/agents/agent-orchestrator';
 
 // Load environment variables
 dotenv.config();

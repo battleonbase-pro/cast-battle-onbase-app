@@ -20,11 +20,11 @@ const DebateTopicSchema = z.object({
 });
 
 const ModerationResultSchema = z.object({
-  appropriateness: z.number().min(1).max(10).describe('Appropriateness score'),
-  quality: z.number().min(1).max(10).describe('Content quality score'),
-  relevance: z.number().min(1).max(10).describe('Relevance score'),
-  recommendation: z.enum(['approve', 'reject', 'modify']).describe('Overall recommendation'),
-  reasoning: z.string().describe('Explanation for the recommendation')
+  appropriateness: z.number().min(1).max(10).describe('Appropriateness score (1-10)'),
+  quality: z.number().min(1).max(10).describe('Content quality score (1-10)'),
+  relevance: z.number().min(1).max(10).describe('Relevance score (1-10)'),
+  recommendation: z.enum(['approve', 'reject', 'modify']).describe('Overall recommendation: approve, reject, or modify'),
+  reasoning: z.string().describe('Brief explanation for the recommendation')
 });
 
 async function testVercelAI() {
@@ -72,10 +72,11 @@ async function testVercelAI() {
     const moderationResult = await generateObject({
       model: google('gemini-2.0-flash'),
       schema: ModerationResultSchema,
-      prompt: `Moderate this user comment for appropriateness, quality, and relevance:
-      "I think renewable energy is the future and we should invest more in solar and wind power. The technology is improving rapidly and costs are coming down."
+      prompt: `Rate this user comment on a scale of 1-10 for appropriateness, quality, and relevance. Provide a recommendation (approve/reject/modify) and brief reasoning.
+
+      Comment: "I think renewable energy is the future and we should invest more in solar and wind power. The technology is improving rapidly and costs are coming down."
       
-      Consider this is for a debate about energy policy.`,
+      Context: This is for a debate about energy policy.`,
     });
 
     console.log('   ✅ Content moderation successful');
