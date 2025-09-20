@@ -172,7 +172,7 @@ export class BattleManagerDB {
       return true;
     } catch (error) {
       console.error('Error joining battle:', error);
-      return false;
+      throw error; // Re-throw the error to preserve the original message
     }
   }
 

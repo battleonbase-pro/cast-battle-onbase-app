@@ -39,10 +39,58 @@
   font-weight: 400;
 }
 
+.baseText {
+  color: #0000ff;
+  font-weight: 600;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  letter-spacing: -0.01em;
+}
+
 .content {
   max-width: 1200px;
   margin: 0 auto;
   padding: 40px 20px;
+}
+
+/* Sign In Section - Following Base Brand Guidelines */
+.signInSection {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.signInTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 4px 0;
+}
+
+.signInDescription {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0 0 12px 0;
+  max-width: 300px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.signInButtonContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px; /* Reduced gap for more compact design */
+}
+
+.signInStatus {
+  font-size: 11px;
+  color: #6b7280;
+  text-align: center;
+  max-width: 250px;
 }
 
 /* Token Balance Section */
@@ -129,6 +177,428 @@
   background-color: #f3f4f6;
   color: #374151;
   border: 1px solid #d1d5db;
+}
+
+/* Countdown Timer Styles */
+.countdownTimer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+}
+
+.timerLabel {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.timerValue {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0000ff; /* Base official blue */
+  text-align: center;
+  min-width: 80px;
+  padding: 4px 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Cast Submission Form Styles */
+.castSubmissionForm {
+  margin-top: 24px;
+  padding: 20px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.castSubmissionForm h4 {
+  margin: 0 0 16px 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.sideSelection {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.sideSelection label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.sideSelection input[type="radio"] {
+  accent-color: #0000ff; /* Base blue */
+}
+
+.sideOption {
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.sideSelection input[type="radio"]:checked + .sideOption {
+  background: #0000ff;
+  color: #ffffff;
+  border-color: #0000ff;
+}
+
+.castTextarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 100px;
+  margin-bottom: 12px;
+}
+
+.castTextarea:focus {
+  outline: none;
+  border-color: #0000ff;
+  box-shadow: 0 0 0 3px rgba(0, 0, 255, 0.1);
+}
+
+.castActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.charCount {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.submitCastBtn {
+  background: #0000ff;
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.submitCastBtn:hover:not(:disabled) {
+  background: #0000cc;
+  transform: translateY(-1px);
+}
+
+.submitCastBtn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.castSubmitted {
+  background: #f0f9ff;
+  border: 1px solid #0ea5e9;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  margin-top: 16px;
+}
+
+.castSubmitted p {
+  margin: 0 0 8px 0;
+  color: #0369a1;
+  font-weight: 500;
+}
+
+.castSubmittedNote {
+  font-size: 0.875rem;
+  color: #64748b;
+  font-style: italic;
+}
+
+.thankYouMessage {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #0ea5e9;
+  border-radius: 16px;
+  padding: 32px;
+  text-align: center;
+  margin-top: 16px;
+}
+
+.thankYouMessage h3 {
+  margin: 0 0 16px 0;
+  color: #0369a1;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.thankYouText {
+  margin: 0 0 12px 0;
+  color: #0c4a6e;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.thankYouNote {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #64748b;
+  font-style: italic;
+}
+
+/* Cast Display Styles */
+.castsSection {
+  margin-bottom: 32px;
+}
+
+.castsList {
+  display: grid;
+  gap: 16px;
+}
+
+.castCard {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.castCard.support {
+  border-left: 4px solid #10b981; /* Green for support */
+}
+
+.castCard.oppose {
+  border-left: 4px solid #ef4444; /* Red for oppose */
+}
+
+.castHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 0.75rem;
+}
+
+.castSide {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.castCard.support .castSide {
+  color: #10b981;
+}
+
+.castCard.oppose .castSide {
+  color: #ef4444;
+}
+
+.castUser {
+  color: #6b7280;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+}
+
+.castTime {
+  color: #9ca3af;
+}
+
+.castContent {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: #1a1a1a;
+}
+
+.noCastsMessage {
+  text-align: center;
+  padding: 32px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Navigation Menu */
+.navigation {
+  display: flex;
+  gap: 8px;
+  margin: 24px 0;
+  padding: 0 0 16px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.navButton {
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  color: #6b7280;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.navButton:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #374151;
+}
+
+.navButton.active {
+  background: #0000ff;
+  border-color: #0000ff;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.navButton.active:hover {
+  background: #0000cc;
+  border-color: #0000cc;
+}
+
+/* History Tab Styles */
+.historySection {
+  margin-bottom: 32px;
+}
+
+.historyStats {
+  display: flex;
+  gap: 16px;
+  margin: 12px 0;
+}
+
+.statItem {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.winnersSection {
+  margin-top: 16px;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.winnersTitle {
+  margin: 0 0 12px 0;
+  color: #1a1a1a;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.winnersList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.winnerCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.winnerRank {
+  font-weight: 600;
+  color: #0000ff;
+  font-size: 0.875rem;
+}
+
+.winnerAddress {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.winnerScore {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-left: auto;
+}
+
+.noWinners {
+  text-align: center;
+  padding: 16px;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.noHistoryMessage {
+  text-align: center;
+  padding: 32px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Pagination Styles */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 16px 0;
+}
+
+.paginationBtn {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  color: #374151;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.paginationBtn:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.paginationBtn:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.paginationInfo {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
 }
 
 /* Loading States */
@@ -379,15 +849,35 @@
   cursor: pointer;
   font-size: 0.75rem;
   font-weight: 500;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  position: relative;
+  overflow: hidden;
+}
+
+.signOutBtn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: #0000ff; /* Base official blue */
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: -1;
 }
 
 .signOutBtn:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
-  color: #374151;
+  background: #0000ff; /* Base official blue */
+  border-color: #0000ff;
+  color: #ffffff; /* White text */
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 255, 0.3);
+}
+
+.signOutBtn:hover::before {
+  left: 0;
 }
 
 /* Battle History Styles */

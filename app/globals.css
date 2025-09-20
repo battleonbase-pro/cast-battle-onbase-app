@@ -6,7 +6,7 @@
     --muted-foreground: #64748b;
     --border: #e5e7eb;
     --input: #ffffff;
-    --primary: #0052ff;
+    --primary: #0000ff; /* Base official blue as per brand guidelines */
     --primary-foreground: #ffffff;
     --secondary: #f8fafc;
     --secondary-foreground: #1a1a1a;
@@ -14,7 +14,7 @@
     --accent-foreground: #1a1a1a;
     --destructive: #dc2626;
     --destructive-foreground: #ffffff;
-    --ring: #0052ff;
+    --ring: #0000ff; /* Base official blue for focus rings */
     --radius: 0.5rem;
   }
 
@@ -55,7 +55,7 @@
   }
 
   a:hover {
-    color: #0041cc;
+    color: #0000cc; /* Darker shade of Base blue for hover */
   }
 
   button {

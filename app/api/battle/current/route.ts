@@ -47,14 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     const battleManager = BattleManagerDB.getInstance();
-    const success = await battleManager.joinBattle(userAddress);
-
-    if (!success) {
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to join battle'
-      }, { status: 400 });
-    }
+    await battleManager.joinBattle(userAddress);
 
     return NextResponse.json({
       success: true,
@@ -63,6 +56,15 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error joining battle:', error);
+    
+    // Handle "already joined" case gracefully
+    if (error.message && error.message.includes('already joined')) {
+      return NextResponse.json({
+        success: false,
+        error: error.message
+      }, { status: 400 });
+    }
+    
     return NextResponse.json({
       success: false,
       error: error.message || 'Failed to join battle'

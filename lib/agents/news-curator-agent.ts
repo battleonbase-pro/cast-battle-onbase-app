@@ -142,6 +142,14 @@ class NewsCuratorAgent extends BaseAgent {
   // Filter articles for relevance (high-impact global politics and crypto focus)
   filterRelevantArticles(articles) {
     const highImpactKeywords = [
+      // US President's global impact (highest priority)
+      'us president', 'american president', 'president of the united states', 'potus',
+      'presidential decision', 'presidential policy', 'presidential administration',
+      'president foreign policy', 'president trade', 'president china', 'president russia', 'president nato',
+      'president immigration', 'president border', 'president sanctions', 'president tariffs',
+      'president election', 'president campaign', 'president speech', 'president rally',
+      'white house', 'oval office', 'presidential order', 'executive order',
+      
       // High-impact global politics
       'election', 'president', 'congress', 'senate', 'house', 'democrat', 'republican',
       'policy', 'regulation', 'government', 'federal', 'state', 'local',
@@ -205,9 +213,17 @@ class NewsCuratorAgent extends BaseAgent {
       if (content.includes(keyword)) score += points;
     });
 
-    // Topic relevance (30 points max) - Prioritize high-impact global politics and crypto
+    // Topic relevance (30 points max) - Prioritize US President's global impact and high-impact global politics
     const topicKeywords = {
-      // High-impact global politics (highest priority)
+      // US President's global impact (highest priority)
+      'us president': 60, 'american president': 60, 'president of the united states': 60, 'potus': 60,
+      'presidential decision': 55, 'presidential policy': 55, 'presidential administration': 55,
+      'president foreign policy': 50, 'president trade': 50, 'president china': 50, 'president russia': 50, 'president nato': 50,
+      'president immigration': 45, 'president border': 45, 'president sanctions': 45, 'president tariffs': 45,
+      'president election': 50, 'president campaign': 45, 'president speech': 45, 'president rally': 45,
+      'white house': 50, 'oval office': 50, 'presidential order': 50, 'executive order': 50,
+      
+      // High-impact global politics (high priority)
       'election': 50, 'president': 45, 'war': 45, 'conflict': 40,
       'sanctions': 35, 'trade war': 35, 'diplomacy': 30,
       'nato': 30, 'china': 30, 'russia': 30, 'iran': 25,
@@ -243,9 +259,24 @@ class NewsCuratorAgent extends BaseAgent {
     return Math.min(score, 100); // Cap at 100
   }
 
-  // Categorize article based on content (prioritize high-impact global politics and crypto)
+  // Categorize article based on content (prioritize US President's global impact and high-impact global politics)
   categorizeArticle(article) {
     const content = `${article.title} ${article.description || ''}`.toLowerCase();
+    
+    // US President's global impact (highest priority)
+    if (content.includes('us president') || content.includes('american president') || 
+        content.includes('president of the united states') || content.includes('potus') ||
+        content.includes('presidential decision') || content.includes('presidential policy') ||
+        content.includes('presidential administration') || content.includes('president foreign policy') ||
+        content.includes('president trade') || content.includes('president china') ||
+        content.includes('president russia') || content.includes('president nato') ||
+        content.includes('president immigration') || content.includes('president border') ||
+        content.includes('president sanctions') || content.includes('president tariffs') ||
+        content.includes('president election') || content.includes('president campaign') ||
+        content.includes('white house') || content.includes('oval office') ||
+        content.includes('presidential order') || content.includes('executive order')) {
+      return 'politics';
+    }
     
     // High-impact cryptocurrency news
     if (content.includes('crypto') || content.includes('bitcoin') || content.includes('ethereum') || 
@@ -277,7 +308,7 @@ class NewsCuratorAgent extends BaseAgent {
     return 'general';
   }
 
-  // Extract relevance factors for transparency (high-impact global politics and crypto focus)
+  // Extract relevance factors for transparency (prioritize US President's global impact and high-impact global politics)
   extractRelevanceFactors(article) {
     const content = `${article.title} ${article.description || ''}`.toLowerCase();
     const factors = [];
@@ -286,6 +317,21 @@ class NewsCuratorAgent extends BaseAgent {
     if (content.includes('breaking')) factors.push('breaking_news');
     if (content.includes('urgent')) factors.push('urgent_news');
     if (content.includes('major')) factors.push('major_news');
+    
+    // US President's global impact (highest priority)
+    if (content.includes('us president') || content.includes('american president') || 
+        content.includes('president of the united states') || content.includes('potus')) factors.push('us_president_global_impact');
+    if (content.includes('presidential administration')) factors.push('presidential_administration');
+    if (content.includes('presidential policy') || content.includes('presidential decision')) factors.push('presidential_policy_impact');
+    if (content.includes('president foreign policy')) factors.push('president_foreign_policy');
+    if (content.includes('president trade') || content.includes('president tariffs')) factors.push('president_trade_policy');
+    if (content.includes('president china') || content.includes('president russia')) factors.push('president_international_relations');
+    if (content.includes('president nato')) factors.push('president_nato_policy');
+    if (content.includes('president immigration') || content.includes('president border')) factors.push('president_immigration_policy');
+    if (content.includes('president sanctions')) factors.push('president_sanctions_policy');
+    if (content.includes('president election') || content.includes('president campaign')) factors.push('president_election_impact');
+    if (content.includes('white house') || content.includes('oval office')) factors.push('presidential_institution');
+    if (content.includes('presidential order') || content.includes('executive order')) factors.push('presidential_executive_action');
     
     // High-impact global politics
     if (content.includes('election')) factors.push('political_relevance');
