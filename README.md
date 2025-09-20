@@ -1,150 +1,205 @@
-# 🥊 Cast Battle OnchainKit
+# Cast Battle OnBase
 
-A modern, onchain battle platform built with [OnchainKit](https://docs.base.org/onchainkit/getting-started) for Base network. Join daily debates on trending topics and earn $BATTLE tokens!
+<div align="center">
+  <img src="https://base.org/images/base-logo.svg" alt="Base Logo" width="200"/>
+  
+  **AI-Powered Debate Battles on Base Network**
+  
+  [![Base Network](https://img.shields.io/badge/Network-Base-blue)](https://base.org)
+  [![Next.js](https://img.shields.io/badge/Framework-Next.js-black)](https://nextjs.org)
+  [![OnchainKit](https://img.shields.io/badge/SDK-OnchainKit-green)](https://docs.base.org/onchainkit)
+  [![AI Powered](https://img.shields.io/badge/AI-Gemini-orange)](https://ai.google.dev)
+</div>
 
-## 🚀 Features
+## Overview
 
-### **OnchainKit Integration**
-- **Official Base Support** - Native integration with Base wallet
-- **Multi-Wallet Support** - MetaMask, Coinbase Wallet, WalletConnect
-- **Professional UI** - Pre-built wallet connection components
-- **Real-time Updates** - Live balance and connection status
+Cast Battle OnBase transforms trending global news into engaging debate battles on the Base network. Users participate through Farcaster Frames, submit their arguments, and compete for $BATTLE tokens. Our multi-agent AI system curates high-impact news, generates balanced debate topics, and moderates content quality.
 
-### **Battle System**
-- **Daily Topics** - AI-generated debate topics from trending news
-- **Token Rewards** - Earn $BATTLE tokens for participation
-- **Fair Selection** - Multiple winner selection methods
-- **Transparent** - All transactions on-chain
+## Architecture
 
-### **AI-Powered**
-- **Smart Topics** - AI curates relevant debate topics
-- **Quality Moderation** - AI evaluates content quality
-- **Dynamic Generation** - Topics generated from real news
+### Core Components
 
-## 🎯 Quick Start
+- **Frontend**: Next.js 15 with OnchainKit integration
+- **AI System**: Multi-agent architecture using Google Gemini
+- **Blockchain**: Base network with ERC-20 $BATTLE token
+- **Frames**: Interactive Farcaster Frame endpoints
+- **Data**: Real-time news from NewsAPI
 
-1. **Clone and setup**
+### AI Agent System
+
+Our sophisticated AI system consists of specialized agents:
+
+1. **News Curator Agent** - Discovers and filters high-impact global politics and crypto news
+2. **Debate Generator Agent** - Transforms news into balanced debate topics with compelling arguments
+3. **Moderator Agent** - Evaluates content quality and appropriateness
+4. **Judge Agent** - Determines battle winners using hybrid scoring algorithms
+
+## Features
+
+### 🎯 Battle System
+- **Daily Battles**: Fresh topics generated every 12 hours
+- **Real-time Participation**: Join battles via Farcaster Frames
+- **Token Rewards**: Win $BATTLE tokens for quality arguments
+- **AI Moderation**: Automated content quality assessment
+
+### 🔗 OnchainKit Integration
+- **Wallet Connection**: Seamless Base wallet integration
+- **Token Operations**: Native $BATTLE token handling
+- **Transaction Management**: Built-in transaction processing
+- **Multi-wallet Support**: MetaMask, Coinbase Wallet, WalletConnect
+
+### 📱 Farcaster Frames
+- **Interactive Cards**: Rich Frame experiences
+- **Battle Participation**: Join battles directly from Farcaster
+- **Cast Submission**: Submit arguments through Frames
+- **Real-time Updates**: Live battle status and results
+
+## Tokenomics
+
+**$BATTLE Token (ERC-20 on Base)**
+- **Total Supply**: 1,000,000,000 tokens
+- **Distribution**:
+  - 40% Battle rewards (400M tokens)
+  - 25% Community treasury (250M tokens)
+  - 20% Team allocation (200M tokens)
+  - 15% Project treasury (150M tokens)
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 18+
+- Base network access
+- NewsAPI key (free tier available)
+- Google Gemini API key
+- Alchemy API key
+
+### Installation
+
 ```bash
-git clone <repository-url>
-cd cast-battle-onbase
+# Clone the repository
+git clone https://github.com/battleonbase-pro/cast-battle-onbase-app.git
+cd cast-battle-onbase-app
+
+# Install dependencies
 npm install
-npm run setup
+
+# Set up environment variables
+cp .env.sample .env
+# Edit .env with your API keys
 ```
 
-2. **Configure API keys**
-Edit `.env.local` with your API keys:
-- Get Alchemy API key: https://www.alchemy.com/
-- Get News API key: https://newsapi.org/
-- Get Google AI API key: https://makersuite.google.com/app/apikey
+### Environment Setup
 
-3. **Start development**
-```bash
-npm run dev
-```
+Required API keys in `.env`:
 
-4. **Open your browser**
-Visit `http://localhost:3000`
-
-5. **Connect your wallet**
-- Click "Connect Wallet"
-- Choose your preferred wallet
-- Start participating in battles!
-
-## 🏗️ Architecture
-
-### **Frontend**
-- **Next.js 15** - React framework with App Router
-- **OnchainKit** - Base's official SDK
-- **TypeScript** - Type-safe development
-- **Tailwind CSS** - Utility-first styling
-
-### **Backend**
-- **API Routes** - Next.js API endpoints
-- **News Service** - Trending topic fetching
-- **Battle Service** - Battle management
-- **AI Integration** - Smart content generation
-
-### **Smart Contracts**
-- **$BATTLE Token** - ERC-20 token for rewards
-- **Battle Contract** - Battle participation logic
-- **Base Network** - Ethereum L2 for low fees
-
-## 🔧 Development
-
-### **Project Structure**
-```
-cast-battle-onbase/
-├── app/                    # Next.js App Router
-│   ├── api/               # API routes
-│   ├── page.tsx           # Main page
-│   └── layout.tsx         # App layout
-├── components/            # React components
-├── lib/                   # Services and utilities
-│   └── services/          # Business logic
-├── contracts/             # Smart contracts
-└── scripts/               # Deployment scripts
-```
-
-### **Key Components**
-- **BattleTopicCard** - Display battle topics
-- **BattleDetails** - Battle information modal
-- **Wallet** - OnchainKit wallet connection
-- **Token** - Token balance display
-- **Transaction** - Transaction handling
-
-## 🎮 How It Works
-
-1. **Topic Generation** - AI fetches trending news and creates debate topics
-2. **Battle Creation** - Users create battles from topics
-3. **Participation** - Users join battles by paying entry fee
-4. **Casting** - Users submit their opinions
-5. **Voting** - Users vote on other casts
-6. **Winner Selection** - AI or algorithm selects winner
-7. **Rewards** - Winner receives $BATTLE tokens
-
-## 🔑 Environment Variables
-
-```bash
+```env
 # OnchainKit Configuration
 NEXT_PUBLIC_ONCHAINKIT_API_KEY=your_alchemy_api_key
 
-# News API Configuration
+# News API Configuration  
 NEWS_API_KEY=your_news_api_key
 
 # AI Configuration
-GOOGLE_GENERATIVE_AI_API_KEY=your_google_api_key
+GOOGLE_GENERATIVE_AI_API_KEY=your_google_gemini_api_key
 
-# Battle Token Contract
-NEXT_PUBLIC_BATTLE_TOKEN_ADDRESS=0x...
+# Contract Address (set after deployment)
+NEXT_PUBLIC_BATTLE_TOKEN_ADDRESS=
 ```
 
-## 📚 Documentation
+### Development
 
-- [OnchainKit Documentation](https://docs.base.org/onchainkit/getting-started)
-- [Base Network](https://docs.base.org/)
-- [Next.js App Router](https://nextjs.org/docs/app)
+```bash
+# Start development server
+npm run dev
 
-## 🤝 Contributing
+# Open browser
+open http://localhost:3000
+```
+
+### Smart Contract Deployment
+
+```bash
+# Deploy to Base mainnet
+npm run deploy:token
+
+# Deploy to Base Sepolia testnet
+npm run deploy:testnet
+
+# Run tests
+npm test
+```
+
+## API Endpoints
+
+### News & Topics
+- `GET /api/news/trending-topics` - Current battle topic
+- `POST /api/battle/create-battle` - Create new battle
+
+### Farcaster Frames
+- `GET /api/frame/battle-announcement` - Main battle frame
+- `POST /api/frame/join-battle` - Join battle
+- `POST /api/frame/submit-cast` - Submit argument
+- `POST /api/frame/generate-topic` - Generate new topic
+
+## How It Works
+
+### 1. News Curation
+Our News Curator Agent scans high-impact global politics and cryptocurrency news, scoring articles for relevance and engagement potential.
+
+### 2. Debate Generation
+The Debate Generator Agent transforms curated news into balanced debate questions with compelling pro/con arguments using advanced AI analysis.
+
+### 3. Battle Participation
+Users join battles through Farcaster Frames, submit their arguments, and compete for $BATTLE tokens.
+
+### 4. AI Moderation
+The Moderator Agent evaluates content quality, appropriateness, and relevance during battle completion.
+
+### 5. Winner Selection
+The Judge Agent determines winners using hybrid scoring algorithms combining quality, engagement, and AI analysis.
+
+## Technology Stack
+
+- **Frontend**: Next.js 15, React 19, TypeScript
+- **Blockchain**: Base network, OnchainKit, Viem, Wagmi
+- **AI**: Google Gemini, Vercel AI SDK, Zod schemas
+- **Data**: NewsAPI, Axios
+- **Styling**: CSS Modules, Base design system
+
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+
+### Development Workflow
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test thoroughly
+4. Add tests if applicable
 5. Submit a pull request
 
-## 📄 License
+## License
 
-MIT License - see LICENSE file for details
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🎯 Roadmap
+## Support
 
-- [ ] Multi-agent AI architecture
-- [ ] Smart contract deployment
-- [ ] Farcaster Frame integration
-- [ ] Mobile optimization
-- [ ] Advanced battle types
-- [ ] Community features
+- **Documentation**: [Base Docs](https://docs.base.org)
+- **OnchainKit**: [OnchainKit Docs](https://docs.base.org/onchainkit)
+- **Issues**: [GitHub Issues](https://github.com/battleonbase-pro/cast-battle-onbase-app/issues)
+
+## Roadmap
+
+- [ ] Enhanced AI moderation algorithms
+- [ ] Advanced tokenomics features
+- [ ] Mobile app development
+- [ ] Cross-chain integration
+- [ ] Community governance system
 
 ---
 
-Built with ❤️ using OnchainKit and Base network
+<div align="center">
+  <p>Built with ❤️ on <a href="https://base.org">Base</a></p>
+  <p>Powered by <a href="https://docs.base.org/onchainkit">OnchainKit</a></p>
+</div>
