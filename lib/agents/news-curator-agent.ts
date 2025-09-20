@@ -1,0 +1,329 @@
+// lib/agents/news-curator-agent.js
+import BaseAgent from './base-agent';
+import axios from 'axios';
+
+class NewsCuratorAgent extends BaseAgent {
+  constructor(apiKey) {
+    super('News Curator', 'Content Discovery & Filtering', apiKey);
+    this.newsApiKey = process.env.NEWS_API_KEY;
+    this.baseUrl = 'https://newsapi.org/v2';
+    this.cache = new Map();
+    this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
+  }
+
+  // Main method: Find the best trending topic for daily battle
+  async findDailyBattleTopic() {
+    this.logActivity('Starting daily battle topic discovery');
+    
+    try {
+      // Check cache first
+      const cacheKey = this.getCacheKey();
+      const cached = this.cache.get(cacheKey);
+      
+      if (cached && this.isCacheValid(cached.timestamp)) {
+        this.logActivity('Returning cached topic', { topic: cached.data.title });
+        return cached.data;
+      }
+
+      // Fetch trending news from multiple sources
+      const [worldNews, politicsNews, cryptoNews] = await Promise.all([
+        this.fetchWorldNews(),
+        this.fetchNewsByCategory('politics', 'us'),
+        this.fetchCryptoNews()
+      ]);
+
+      // Combine and filter articles
+      const allArticles = [...worldNews, ...politicsNews, ...cryptoNews];
+      const relevantArticles = this.filterRelevantArticles(allArticles);
+      
+      // Score and rank articles
+      const scoredArticles = relevantArticles.map(article => ({
+        ...article,
+        score: this.calculateEngagementScore(article)
+      }));
+
+      // Get the hottest article
+      const hottestArticle = scoredArticles.sort((a, b) => b.score - a.score)[0];
+      
+      if (!hottestArticle) {
+        throw new Error('No relevant articles found');
+      }
+
+      // Create curated topic data
+      const curatedTopic = {
+        id: `curated_${Date.now()}`,
+        title: hottestArticle.title,
+        description: hottestArticle.description,
+        source: hottestArticle.source?.name || 'Unknown',
+        url: hottestArticle.url,
+        publishedAt: hottestArticle.publishedAt,
+        category: this.categorizeArticle(hottestArticle),
+        engagementScore: hottestArticle.score,
+        relevanceFactors: this.extractRelevanceFactors(hottestArticle),
+        articleData: hottestArticle,
+        curatedBy: this.name,
+        curatedAt: new Date().toISOString()
+      };
+
+      // Cache the result
+      this.cache.set(cacheKey, {
+        data: curatedTopic,
+        timestamp: new Date()
+      });
+
+      this.logActivity('Successfully curated daily battle topic', {
+        title: curatedTopic.title,
+        score: curatedTopic.engagementScore,
+        category: curatedTopic.category
+      });
+
+      return curatedTopic;
+
+    } catch (error) {
+      this.logActivity('Error in daily battle topic discovery', { error: error.message });
+      throw error;
+    }
+  }
+
+  // Fetch high-impact global news
+  async fetchWorldNews() {
+    try {
+      const response = await axios.get(`${this.baseUrl}/top-headlines`, {
+        params: {
+          country: 'us',
+          pageSize: 25,
+          apiKey: this.newsApiKey
+        }
+      });
+      return response.data.articles || [];
+    } catch (error) {
+      console.error('Error fetching world news:', error);
+      return [];
+    }
+  }
+
+  // Fetch news by category
+  async fetchNewsByCategory(category, country = 'us') {
+    try {
+      const response = await axios.get(`${this.baseUrl}/top-headlines`, {
+        params: {
+          category,
+          country,
+          pageSize: 15,
+          apiKey: this.newsApiKey
+        }
+      });
+      return response.data.articles || [];
+    } catch (error) {
+      console.error(`Error fetching ${category} news:`, error);
+      return [];
+    }
+  }
+
+  // Fetch high-impact crypto news
+  async fetchCryptoNews() {
+    try {
+      const response = await axios.get(`${this.baseUrl}/everything`, {
+        params: {
+          q: 'bitcoin OR ethereum OR crypto regulation OR SEC OR CFTC OR crypto ETF OR institutional crypto OR crypto adoption OR blockchain technology OR DeFi OR crypto market',
+          pageSize: 20,
+          sortBy: 'publishedAt',
+          language: 'en',
+          apiKey: this.newsApiKey
+        }
+      });
+      return response.data.articles || [];
+    } catch (error) {
+      console.error('Error fetching crypto news:', error);
+      return [];
+    }
+  }
+
+  // Filter articles for relevance (high-impact global politics and crypto focus)
+  filterRelevantArticles(articles) {
+    const highImpactKeywords = [
+      // High-impact global politics
+      'election', 'president', 'congress', 'senate', 'house', 'democrat', 'republican',
+      'policy', 'regulation', 'government', 'federal', 'state', 'local',
+      'trump', 'biden', 'harris', 'politics', 'political',
+      'war', 'conflict', 'sanctions', 'trade war', 'diplomacy', 'international',
+      'nato', 'un', 'eu', 'china', 'russia', 'iran', 'north korea',
+      'immigration', 'border', 'refugee', 'asylum',
+      
+      // High-impact cryptocurrency news
+      'crypto', 'bitcoin', 'ethereum', 'blockchain', 'defi', 'nft', 'web3',
+      'sec', 'cftc', 'regulation', 'tax', 'stablecoin', 'cbdc',
+      'binance', 'coinbase', 'kraken', 'ftx', 'celsius', 'voyager',
+      'etf', 'spot etf', 'bitcoin etf', 'ethereum etf',
+      'halving', 'mining', 'hash rate', 'difficulty',
+      'layer 2', 'scaling', 'gas fees', 'transaction fees',
+      'institutional', 'adoption', 'mainstream', 'corporate',
+      
+      // Economic impact keywords
+      'economy', 'inflation', 'recession', 'market', 'trading', 'banking',
+      'fed', 'federal reserve', 'monetary policy', 'interest rates',
+      'gdp', 'unemployment', 'jobs', 'employment',
+      
+      // Technology impact keywords
+      'ai', 'artificial intelligence', 'tech', 'technology', 'innovation',
+      'privacy', 'surveillance', 'big tech', 'social media',
+      'quantum', 'cybersecurity', 'data breach', 'hack'
+    ];
+
+    return articles.filter(article => {
+      const content = `${article.title} ${article.description || ''}`.toLowerCase();
+      return highImpactKeywords.some(keyword => content.includes(keyword));
+    });
+  }
+
+  // Calculate engagement score for articles
+  calculateEngagementScore(article) {
+    let score = 0;
+    const title = article.title?.toLowerCase() || '';
+    const description = article.description?.toLowerCase() || '';
+    const content = `${title} ${description}`;
+    
+    // Source credibility (40 points max)
+    const credibleSources = [
+      'reuters', 'ap', 'bbc', 'cnn', 'fox news', 'nbc', 'abc', 'cbs',
+      'washington post', 'new york times', 'wall street journal', 'bloomberg',
+      'politico', 'axios', 'techcrunch', 'coindesk', 'cointelegraph'
+    ];
+    
+    if (credibleSources.some(source => 
+      article.source?.name?.toLowerCase().includes(source))) {
+      score += 40;
+    }
+
+    // Engagement keywords (30 points max)
+    const engagementKeywords = {
+      'breaking': 30, 'urgent': 25, 'major': 20, 'historic': 25,
+      'significant': 15, 'exclusive': 20, 'developing': 15
+    };
+    
+    Object.entries(engagementKeywords).forEach(([keyword, points]) => {
+      if (content.includes(keyword)) score += points;
+    });
+
+    // Topic relevance (30 points max) - Prioritize high-impact global politics and crypto
+    const topicKeywords = {
+      // High-impact global politics (highest priority)
+      'election': 50, 'president': 45, 'war': 45, 'conflict': 40,
+      'sanctions': 35, 'trade war': 35, 'diplomacy': 30,
+      'nato': 30, 'china': 30, 'russia': 30, 'iran': 25,
+      'immigration': 25, 'border': 20,
+      
+      // High-impact cryptocurrency news (high priority)
+      'crypto': 40, 'bitcoin': 35, 'ethereum': 30, 'blockchain': 25,
+      'sec': 35, 'cftc': 30, 'regulation': 25, 'etf': 30,
+      'binance': 25, 'coinbase': 25, 'institutional': 25,
+      'halving': 20, 'mining': 15, 'defi': 20,
+      
+      // Economic impact
+      'economy': 25, 'inflation': 20, 'fed': 25, 'interest rates': 20,
+      'gdp': 15, 'unemployment': 15,
+      
+      // Technology impact
+      'ai': 25, 'tech': 15, 'cybersecurity': 20, 'data breach': 15
+    };
+    
+    Object.entries(topicKeywords).forEach(([keyword, points]) => {
+      if (content.includes(keyword)) score += points;
+    });
+
+    // Recency bonus (10 points max)
+    const publishedAt = new Date(article.publishedAt);
+    const hoursAgo = (Date.now() - publishedAt.getTime()) / (1000 * 60 * 60);
+    
+    if (hoursAgo < 1) score += 10;
+    else if (hoursAgo < 6) score += 8;
+    else if (hoursAgo < 12) score += 5;
+    else if (hoursAgo < 24) score += 2;
+    
+    return Math.min(score, 100); // Cap at 100
+  }
+
+  // Categorize article based on content (prioritize high-impact global politics and crypto)
+  categorizeArticle(article) {
+    const content = `${article.title} ${article.description || ''}`.toLowerCase();
+    
+    // High-impact cryptocurrency news
+    if (content.includes('crypto') || content.includes('bitcoin') || content.includes('ethereum') || 
+        content.includes('blockchain') || content.includes('defi') || content.includes('nft') ||
+        content.includes('sec') || content.includes('cftc') || content.includes('etf')) {
+      return 'crypto';
+    }
+    
+    // High-impact global politics
+    if (content.includes('election') || content.includes('president') || content.includes('congress') ||
+        content.includes('war') || content.includes('conflict') || content.includes('sanctions') ||
+        content.includes('nato') || content.includes('china') || content.includes('russia') ||
+        content.includes('immigration') || content.includes('border')) {
+      return 'politics';
+    }
+    
+    // Economic impact
+    if (content.includes('economy') || content.includes('inflation') || content.includes('market') ||
+        content.includes('fed') || content.includes('interest rates') || content.includes('gdp')) {
+      return 'economy';
+    }
+    
+    // Technology impact
+    if (content.includes('ai') || content.includes('tech') || content.includes('technology') ||
+        content.includes('cybersecurity') || content.includes('data breach')) {
+      return 'technology';
+    }
+    
+    return 'general';
+  }
+
+  // Extract relevance factors for transparency (high-impact global politics and crypto focus)
+  extractRelevanceFactors(article) {
+    const content = `${article.title} ${article.description || ''}`.toLowerCase();
+    const factors = [];
+
+    // Breaking news indicators
+    if (content.includes('breaking')) factors.push('breaking_news');
+    if (content.includes('urgent')) factors.push('urgent_news');
+    if (content.includes('major')) factors.push('major_news');
+    
+    // High-impact global politics
+    if (content.includes('election')) factors.push('political_relevance');
+    if (content.includes('war') || content.includes('conflict')) factors.push('global_conflict');
+    if (content.includes('sanctions')) factors.push('international_sanctions');
+    if (content.includes('nato') || content.includes('china') || content.includes('russia')) factors.push('international_politics');
+    if (content.includes('immigration')) factors.push('immigration_policy');
+    
+    // High-impact cryptocurrency news
+    if (content.includes('crypto') || content.includes('bitcoin')) factors.push('crypto_relevance');
+    if (content.includes('sec') || content.includes('cftc')) factors.push('crypto_regulation');
+    if (content.includes('etf')) factors.push('crypto_etf');
+    if (content.includes('institutional')) factors.push('institutional_adoption');
+    
+    // Economic impact
+    if (content.includes('economy')) factors.push('economic_impact');
+    if (content.includes('fed') || content.includes('interest rates')) factors.push('monetary_policy');
+    
+    // Technology impact
+    if (content.includes('ai')) factors.push('tech_relevance');
+    if (content.includes('cybersecurity')) factors.push('cybersecurity_impact');
+
+    return factors;
+  }
+
+  // Cache management
+  getCacheKey() {
+    const now = new Date();
+    const utcHour = now.getUTCHours();
+    const utcDay = now.getUTCDate();
+    return `daily_topic_${utcDay}_${Math.floor(utcHour / 12)}`;
+  }
+
+  isCacheValid(timestamp) {
+    const now = new Date();
+    const cacheAge = now.getTime() - timestamp.getTime();
+    return cacheAge < this.cacheTimeout;
+  }
+}
+
+export default NewsCuratorAgent;
