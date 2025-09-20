@@ -1,7 +1,7 @@
 # Cast Battle OnBase
 
 <div align="center">
-  <img src="https://base.org/images/base-logo.svg" alt="Base Logo" width="200"/>
+  <img src="/Base_basemark_blue.png" alt="Base Logo" width="200"/>
   
   **AI-Powered Debate Battles on Base Network**
   
