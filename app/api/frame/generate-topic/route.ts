@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
     }
     
-    const { fid, buttonIndex } = untrustedData;
+    const { fid: _fid, buttonIndex } = untrustedData;
     
     if (buttonIndex === 1) {
       // Generate New Topic button clicked

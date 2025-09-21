@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
     }
     
-    const { fid, inputText, buttonIndex } = untrustedData;
+    const { fid, inputText: _inputText, buttonIndex } = untrustedData;
     
     if (buttonIndex === 1) {
       // Join Battle button clicked

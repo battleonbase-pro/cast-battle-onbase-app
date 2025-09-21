@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import newsService from '@/lib/services/news-service';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const topic = await newsService.getDailyBattleTopic();
     

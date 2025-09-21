@@ -31,11 +31,13 @@ model Battle {
   description String
   category    String
   source      String
+  sourceUrl   String?     // URL to the original news article
   status      BattleStatus @default(ACTIVE)
   
   // Battle timing
   startTime   DateTime
   endTime     DateTime
+  durationHours Float  // Intended duration in hours (stored for historical accuracy)
   
   // Battle configuration
   maxParticipants Int @default(1000)

@@ -5,21 +5,27 @@ import { BattleManagerDB } from '@/lib/services/battle-manager-db';
  * GET /api/battle/history
  * Get battle history with winners
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const battleManager = BattleManagerDB.getInstance();
     const battleHistory = await battleManager.getBattleHistory();
 
     // Format battle history for frontend
-    const formattedHistory = battleHistory.map(battle => ({
-      id: battle.id,
-      topic: battle.topic,
-      status: battle.status,
-      startTime: battle.startTime,
-      endTime: battle.endTime,
-      participants: battle.participants.length,
-      winners: battle.winners,
-      createdAt: battle.createdAt
+    const formattedHistory = battleHistory.map(historyEntry => ({
+      id: historyEntry.battle.id,
+      title: historyEntry.battle.title,
+      description: historyEntry.battle.description,
+      category: historyEntry.battle.category,
+      source: historyEntry.battle.source,
+      status: historyEntry.battle.status,
+      startTime: historyEntry.battle.startTime,
+      endTime: historyEntry.battle.endTime,
+      participants: historyEntry.totalParticipants,
+      casts: historyEntry.totalCasts,
+      winnerAddress: historyEntry.winnerAddress,
+      winners: historyEntry.battle.winners,
+      completedAt: historyEntry.completedAt,
+      createdAt: historyEntry.battle.createdAt
     }));
 
     return NextResponse.json({

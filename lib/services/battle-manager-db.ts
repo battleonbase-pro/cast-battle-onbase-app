@@ -5,6 +5,7 @@
 
 import NewsService from './news-service';
 import { DatabaseService } from './database';
+import { battleEventEmitter } from '@/app/api/battle/state-stream/route';
 
 export interface BattleConfig {
   battleDurationHours: number;
@@ -19,7 +20,7 @@ export class BattleManagerDB {
 
   constructor() {
     this.config = {
-      battleDurationHours: parseInt(process.env.BATTLE_DURATION_HOURS || '24'),
+      battleDurationHours: parseFloat(process.env.BATTLE_DURATION_HOURS || '24'),
       maxParticipants: parseInt(process.env.BATTLE_MAX_PARTICIPANTS || '1000'),
       enabled: process.env.BATTLE_GENERATION_ENABLED === 'true'
     };
@@ -49,6 +50,9 @@ export class BattleManagerDB {
     if (cleanedCount > 0) {
       console.log(`Cleaned up ${cleanedCount} expired battles`);
     }
+
+    // Check for duration configuration changes and complete current battle if needed
+    await this.checkForDurationChange();
     
     // Check if we need to create a new battle
     await this.checkAndCreateBattle();
@@ -70,6 +74,9 @@ export class BattleManagerDB {
     // Cleanup expired battles first
     await this.db.cleanupExpiredBattles();
     
+    // Check for duration configuration changes and complete current battle if needed
+    await this.checkForDurationChange();
+    
     // Check if we need to create a new battle
     await this.checkAndCreateBattle();
   }
@@ -82,25 +89,83 @@ export class BattleManagerDB {
       const currentBattle = await this.db.getCurrentBattle();
       
       if (!currentBattle) {
-        console.log('No active battle found, creating new one...');
-        await this.createNewBattle();
+        console.log('No active battle found, attempting to create new one...');
+        try {
+          await this.createNewBattle();
+        } catch {
+          console.log('❌ Could not create new battle, will retry later');
+        }
       } else {
         // Check if current battle has expired
         const now = new Date();
         if (now > currentBattle.endTime && currentBattle.status === 'ACTIVE') {
           console.log(`Current battle "${currentBattle.title}" has expired, completing it and creating new one...`);
           
+          // Emit SSE event for battle ending
+          battleEventEmitter.emit('battleEnded', {
+            battleId: currentBattle.id,
+            title: currentBattle.title
+          });
+          
           // Complete the expired battle
           await this.db.completeBattle(currentBattle.id, []);
           
           // Create a new battle immediately
-          await this.createNewBattle();
+          try {
+            await this.createNewBattle();
+          } catch {
+            console.log('❌ Could not create new battle after completing expired one, will retry later');
+          }
         } else {
           console.log(`Current battle: ${currentBattle.title} (${currentBattle.status}) - ends at ${currentBattle.endTime.toISOString()}`);
         }
       }
     } catch (error) {
       console.error('Error checking battle status:', error);
+    }
+  }
+
+  /**
+   * Check if the battle duration configuration has changed and complete current battle if needed
+   */
+  private async checkForDurationChange(): Promise<void> {
+    try {
+      const currentBattle = await this.db.getCurrentBattle();
+      
+      if (!currentBattle || currentBattle.status !== 'ACTIVE') {
+        return; // No active battle to check
+      }
+
+      // Check if the stored duration differs from current configuration
+      const storedDurationHours = currentBattle.durationHours;
+      const currentConfigHours = this.config.battleDurationHours;
+      
+      // Allow for small differences due to floating point precision (within 0.01 hours = 36 seconds)
+      const toleranceHours = 0.01;
+      const durationDifference = Math.abs(storedDurationHours - currentConfigHours);
+      
+      if (durationDifference > toleranceHours) {
+        console.log(`🔄 Battle duration configuration changed!`);
+        console.log(`   Stored battle duration: ${storedDurationHours}h`);
+        console.log(`   New configuration: ${currentConfigHours}h`);
+        console.log(`   Completing current battle "${currentBattle.title}" and will create new one with correct duration...`);
+        
+        // Emit SSE event for battle ending due to duration change
+        battleEventEmitter.emit('battleEnded', {
+          battleId: currentBattle.id,
+          title: currentBattle.title,
+          reason: 'duration_change'
+        });
+        
+        // Complete the current battle immediately
+        await this.db.completeBattle(currentBattle.id, []);
+        
+        console.log(`✅ Battle "${currentBattle.title}" completed due to duration configuration change`);
+      } else {
+        console.log(`✅ Current battle duration matches configuration (${currentConfigHours}h)`);
+      }
+    } catch (error) {
+      console.error('Error checking for duration changes:', error);
     }
   }
 
@@ -126,8 +191,10 @@ export class BattleManagerDB {
         description: topic.description,
         category: topic.category,
         source: topic.source,
+        sourceUrl: topic.articleUrl || topic.sourceUrl,
         startTime: now,
         endTime: endTime,
+        durationHours: this.config.battleDurationHours,
         maxParticipants: this.config.maxParticipants,
         debatePoints: topic.debatePoints,
         overallScore: topic.qualityAnalysis?.overallScore,
@@ -141,8 +208,22 @@ export class BattleManagerDB {
       console.log(`Battle ends at: ${battle.endTime}`);
       console.log(`Automatic battle generation scheduled every ${this.config.battleDurationHours} hours`);
 
+      // Emit SSE event for new battle
+      battleEventEmitter.emit('battleStarted', {
+        battleId: battle.id,
+        title: battle.title,
+        description: battle.description,
+        category: battle.category,
+        source: battle.source,
+        sourceUrl: battle.sourceUrl,
+        endTime: battle.endTime
+      });
+
     } catch (error) {
-      console.error('Error creating new battle:', error);
+      console.error('❌ Failed to create new battle:', error.message);
+      console.log('🔄 Will retry battle generation on next interval');
+      // Don't create a battle if topic generation fails
+      // The system will retry on the next interval
     }
   }
 

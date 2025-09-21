@@ -5,7 +5,7 @@ import { BattleManagerDB } from '@/lib/services/battle-manager-db';
  * POST /api/battle/manage
  * Initialize battle manager and create battles automatically
  */
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     const battleManager = BattleManagerDB.getInstance();
     
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
  * GET /api/battle/manage
  * Get battle manager status and configuration
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const battleManager = BattleManagerDB.getInstance();
     const currentBattle = await battleManager.getCurrentBattle();
@@ -83,7 +83,7 @@ export async function PUT(request: NextRequest) {
  * DELETE /api/battle/manage
  * Manually trigger battle generation (for testing/admin purposes)
  */
-export async function DELETE(request: NextRequest) {
+export async function DELETE(_request: NextRequest) {
   try {
     const battleManager = BattleManagerDB.getInstance();
     

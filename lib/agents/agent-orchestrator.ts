@@ -401,6 +401,90 @@ class AgentOrchestrator {
       testedAt: new Date().toISOString()
     };
   }
+
+  // Generate daily battle topic with variation strategy
+  async generateDailyBattleTopicWithVariation(strategy: 'different_category' | 'broad_topic') {
+    const workflowId = `workflow_${Date.now()}`;
+    this.logWorkflow(`Starting daily battle topic generation with ${strategy} strategy`, workflowId);
+
+    try {
+      // Step 1: News Curator finds trending topic with variation
+      this.logWorkflow('Step 1: News curation with variation', workflowId);
+      const curatedTopic = await this.newsCurator.findDailyBattleTopicWithVariation(strategy);
+      
+      if (!curatedTopic) {
+        throw new Error('News curator failed to find suitable topic with variation');
+      }
+
+      // Step 2: Debate Generator creates debate topic
+      this.logWorkflow('Step 2: Debate generation', workflowId);
+      const debateTopic = await this.debateGenerator.generateDebateTopic(curatedTopic);
+      
+      if (!debateTopic) {
+        throw new Error('Debate generator failed to create topic');
+      }
+
+      // Step 3: Quality analysis
+      this.logWorkflow('Step 3: Quality analysis', workflowId);
+      const qualityAnalysis = await this.debateGenerator.analyzeDebateQuality(debateTopic);
+      
+      if (!qualityAnalysis) {
+        throw new Error('Quality analysis failed');
+      }
+
+      const result = {
+        workflowId,
+        debateTopic,
+        curatedTopic,
+        qualityAnalysis,
+        generatedAt: new Date().toISOString(),
+        strategy,
+        agents: {
+          newsCurator: this.newsCurator.name,
+          debateGenerator: this.debateGenerator.name
+        }
+      };
+
+      this.logWorkflow(`Successfully generated daily battle topic with ${strategy} strategy`, workflowId, {
+        title: debateTopic.title,
+        qualityScore: qualityAnalysis.overallScore
+      });
+
+      this.workflowHistory.push({
+        id: workflowId,
+        type: 'daily_battle_generation_variation',
+        status: 'completed',
+        timestamp: new Date().toISOString(),
+        result: result
+      });
+
+      return result;
+
+    } catch (error) {
+      this.logWorkflow(`Error in daily battle topic generation with ${strategy} strategy`, workflowId, { error: error.message });
+      
+      this.workflowHistory.push({
+        id: workflowId,
+        type: 'daily_battle_generation_variation',
+        status: 'failed',
+        timestamp: new Date().toISOString(),
+        error: error.message
+      });
+
+      throw error;
+    }
+  }
+
+  // Generate text using any of the agents (they all inherit from BaseAgent)
+  async generateText(prompt: string, temperature = 0.7): Promise<string> {
+    const result = await this.debateGenerator.generateTextContent(prompt, temperature);
+    
+    if (result.success) {
+      return result.data;
+    } else {
+      throw new Error(`AI generation failed: ${result.error}`);
+    }
+  }
 }
 
 export default AgentOrchestrator;

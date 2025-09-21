@@ -170,4 +170,5 @@ class BattleService {
   }
 }
 
-export default new BattleService();
+const battleService = new BattleService();
+export default battleService;

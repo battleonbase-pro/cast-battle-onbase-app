@@ -5,7 +5,7 @@ import { BattleManagerDB } from '@/lib/services/battle-manager-db';
  * POST /api/init
  * Initialize the application and battle manager
  */
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     console.log('Initializing Cast Battle application...');
     
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
  * GET /api/init
  * Get application status
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const battleManager = BattleManagerDB.getInstance();
     const config = battleManager.getConfig();

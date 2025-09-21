@@ -172,6 +172,47 @@
   margin: 0 0 16px 0;
 }
 
+.topicMeta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.topicCategory {
+  background: #f3f4f6;
+  color: #374151;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.topicSource {
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.2s ease;
+}
+
+.topicSource:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.linkIcon {
+  margin-left: 4px;
+  font-size: 0.75em;
+  opacity: 0.7;
+}
+
 /* Debate Points - Coinbase Style */
 .debatePoints {
   display: grid;
@@ -641,6 +682,19 @@
     font-size: 1.125rem;
   }
   
+  .topicMeta {
+    gap: 8px;
+  }
+  
+  .topicCategory {
+    font-size: 0.6875rem;
+    padding: 3px 6px;
+  }
+  
+  .topicSource {
+    font-size: 0.6875rem;
+  }
+  
   .chartContainer {
     height: 180px;
   }
@@ -705,5 +759,81 @@
     font-size: 0.75rem;
     margin-bottom: 8px;
     padding-left: 14px;
+  }
+  
+  .topicMeta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  
+  .topicCategory {
+    font-size: 0.625rem;
+    padding: 2px 4px;
+  }
+  
+  .topicSource {
+    font-size: 0.625rem;
+  }
+}
+
+/* Battle Transition Overlay */
+.transitionOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.transitionContent {
+  text-align: center;
+  color: white;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.transitionSpinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top: 3px solid #0052ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+.transitionMessage {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+  color: white;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
   }
 }

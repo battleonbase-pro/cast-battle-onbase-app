@@ -26,8 +26,10 @@ export class DatabaseService {
     description: string;
     category: string;
     source: string;
+    sourceUrl?: string;
     startTime: Date;
     endTime: Date;
+    durationHours: number;
     maxParticipants: number;
     debatePoints: any;
     overallScore?: number;
@@ -359,4 +361,40 @@ export class DatabaseService {
       totalCasts,
     };
   }
+
+  // Get recent battles for similarity checking
+  async getRecentBattles(count: number) {
+    return await prisma.battle.findMany({
+      where: {
+        status: BattleStatus.COMPLETED,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: count,
+      select: {
+        id: true,
+        title: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  // Get battles by date range
+  async getBattlesByDateRange(startDate: Date, endDate: Date) {
+    return await prisma.battle.findMany({
+      where: {
+        createdAt: {
+          gte: startDate,
+          lt: endDate,
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
 }
+
+const databaseService = new DatabaseService();
+export default databaseService;

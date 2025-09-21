@@ -120,7 +120,7 @@ export async function broadcastSentimentUpdate(battleId: string, userAddress?: s
     // Check if user has submitted (if userAddress provided)
     let userSubmissionStatus = undefined;
     if (userAddress) {
-      const userCast = casts.find(cast => cast.userAddress.toLowerCase() === userAddress.toLowerCase());
+      const userCast = casts.find(cast => cast.userAddress && cast.userAddress.toLowerCase() === userAddress.toLowerCase());
       userSubmissionStatus = !!userCast;
     }
     

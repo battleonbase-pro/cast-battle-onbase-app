@@ -8,7 +8,75 @@ class NewsCuratorAgent extends BaseAgent {
     this.newsApiKey = process.env.NEWS_API_KEY;
     this.baseUrl = 'https://newsapi.org/v2';
     this.cache = new Map();
-    this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
+    // Cache timeout based on battle duration
+    const battleDurationHours = parseFloat(process.env.BATTLE_DURATION_HOURS || '0.083333');
+    this.cacheTimeout = battleDurationHours * 60 * 60 * 1000; // Battle duration in milliseconds
+  }
+
+  // Find trending topic with variation strategy
+  async findDailyBattleTopicWithVariation(strategy: 'different_category' | 'broad_topic') {
+    this.logActivity(`Starting daily battle topic discovery with ${strategy} strategy`);
+    
+    try {
+      let articles: any[] = [];
+      
+      if (strategy === 'different_category') {
+        // Try different news categories to avoid repetition
+        console.log('[News Curator] Trying different categories to avoid similarity...');
+        const [techNews, businessNews, healthNews] = await Promise.all([
+          this.fetchNewsByCategory('technology', 'us'),
+          this.fetchNewsByCategory('business', 'us'),
+          this.fetchNewsByCategory('health', 'us')
+        ]);
+        articles = [...techNews, ...businessNews, ...healthNews];
+      } else if (strategy === 'broad_topic') {
+        // Try broader, more general topics
+        console.log('[News Curator] Trying broader topics to avoid similarity...');
+        const [generalNews, scienceNews, entertainmentNews] = await Promise.all([
+          this.fetchWorldNews(),
+          this.fetchNewsByCategory('science', 'us'),
+          this.fetchNewsByCategory('entertainment', 'us')
+        ]);
+        articles = [...generalNews, ...scienceNews, ...entertainmentNews];
+      }
+
+      // Filter and score articles
+      const relevantArticles = this.filterRelevantArticles(articles);
+      const scoredArticles = relevantArticles.map(article => ({
+        ...article,
+        score: this.calculateEngagementScore(article)
+      }));
+
+      // Get the hottest article
+      const hottestArticle = scoredArticles.sort((a, b) => b.score - a.score)[0];
+      
+      if (!hottestArticle) {
+        throw new Error(`No relevant articles found with ${strategy} strategy`);
+      }
+
+      const curatedTopic = {
+        title: hottestArticle.title,
+        description: hottestArticle.description || hottestArticle.title,
+        category: this.categorizeArticle(hottestArticle),
+        source: hottestArticle.source?.name || 'Unknown',
+        articleUrl: hottestArticle.url,
+        score: hottestArticle.score,
+        publishedAt: hottestArticle.publishedAt,
+        strategy
+      };
+
+      this.logActivity(`Successfully curated daily battle topic with ${strategy} strategy`, {
+        title: curatedTopic.title,
+        category: curatedTopic.category,
+        score: curatedTopic.score
+      });
+
+      return curatedTopic;
+
+    } catch (error) {
+      this.logActivity(`Error in daily battle topic discovery with ${strategy} strategy`, { error: error.message });
+      throw error;
+    }
   }
 
   // Main method: Find the best trending topic for daily battle
@@ -360,9 +428,14 @@ class NewsCuratorAgent extends BaseAgent {
   // Cache management
   getCacheKey() {
     const now = new Date();
-    const utcHour = now.getUTCHours();
-    const utcDay = now.getUTCDate();
-    return `daily_topic_${utcDay}_${Math.floor(utcHour / 12)}`;
+    const battleDurationHours = parseFloat(process.env.BATTLE_DURATION_HOURS || '0.083333'); // Default 5 minutes
+    const battleDurationMs = battleDurationHours * 60 * 60 * 1000;
+    
+    // Calculate which battle cycle we're in based on battle duration
+    const battleCycleStart = Math.floor(now.getTime() / battleDurationMs) * battleDurationMs;
+    const battleCycleId = Math.floor(battleCycleStart / battleDurationMs);
+    
+    return `battle_topic_${battleCycleId}`;
   }
 
   isCacheValid(timestamp) {

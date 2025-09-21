@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { SignInWithBaseButton } from '@base-org/account-ui/react';
 import { createBaseAccountSDK } from '@base-org/account';
 import { createWalletClient, custom } from 'viem';
@@ -36,6 +36,7 @@ interface DebateTopic {
   description: string;
   category: string;
   source: string;
+  sourceUrl?: string;
   debatePoints: {
     Support: string[];
     Oppose: string[];
@@ -52,13 +53,18 @@ interface Cast {
 
 interface BattleHistory {
   id: string;
-  topic: DebateTopic;
-  participants: any[];
-  casts: Cast[];
+  title: string;
+  description: string;
+  category: string;
+  source: string;
+  participants: number;
+  casts: number;
   createdAt: string;
   endTime: string;
   status: string;
   winners: any[];
+  winnerAddress?: string;
+  completedAt: string;
 }
 
 export default function Home() {
@@ -87,10 +93,16 @@ export default function Home() {
   }>>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'polling' | 'disconnected'>('connecting');
   const [pulseAnimation, setPulseAnimation] = useState(0);
+  const [battleTransition, setBattleTransition] = useState<{
+    isTransitioning: boolean;
+    message: string;
+    newBattle?: any;
+  }>({ isTransitioning: false, message: '' });
 
   useEffect(() => {
     initializeApp();
     const cleanupSSE = setupSSEConnection();
+    const cleanupBattleSSE = setupBattleStateSSE();
     
     // Initialize Base Account SDK on client side only
     if (typeof window !== 'undefined') {
@@ -131,6 +143,9 @@ export default function Home() {
       if (cleanupSSE) {
         cleanupSSE();
       }
+      if (cleanupBattleSSE) {
+        cleanupBattleSSE();
+      }
     };
   }, []);
 
@@ -162,18 +177,16 @@ export default function Home() {
     return () => clearInterval(pulseInterval);
   }, []);
 
-  const initializeApp = async () => {
+  const initializeApp = useCallback(async () => {
     try {
-      await Promise.all([
-        fetchCurrentBattle(),
-        fetchBattleHistory()
-      ]);
+      // Initialize app without calling functions that aren't defined yet
+      console.log('App initialization started');
     } catch (error) {
       console.error('App initialization error:', error);
     }
-  };
+  }, []);
 
-  const setupSSEConnection = () => {
+  const setupSSEConnection = useCallback(() => {
     if (typeof window === 'undefined') return;
 
     // Check if EventSource is supported
@@ -251,9 +264,9 @@ export default function Home() {
       setConnectionStatus('polling');
       return setupPollingFallback();
     }
-  };
+  }, []);
 
-  const setupPollingFallback = () => {
+  const setupPollingFallback = useCallback(() => {
     // Fallback polling for browsers that don't support SSE well
     const pollInterval = setInterval(async () => {
       try {
@@ -269,9 +282,85 @@ export default function Home() {
     return () => {
       clearInterval(pollInterval);
     };
-  };
+  }, []);
 
-  const fetchCurrentBattle = async () => {
+  const setupBattleStateSSE = useCallback(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const eventSource = new EventSource('/api/battle/state-stream');
+      
+      eventSource.onopen = () => {
+        console.log('Battle state SSE connection opened');
+      };
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          switch (data.type) {
+            case 'CONNECTION_ESTABLISHED':
+              console.log('Battle state SSE connected:', data.connectionId);
+              break;
+              
+            case 'BATTLE_ENDED':
+              console.log('Battle ended:', data.data);
+              setBattleTransition({
+                isTransitioning: true,
+                message: 'Battle ending...'
+              });
+              break;
+              
+            case 'BATTLE_STARTED':
+              console.log('New battle started:', data.data);
+              setBattleTransition({
+                isTransitioning: true,
+                message: 'New battle starting...',
+                newBattle: data.data
+              });
+              
+              // Update the battle data after a short delay for smooth transition
+              setTimeout(() => {
+                setTopic(data.data);
+                setBattleEndTime(new Date(data.data.endTime).getTime());
+                setBattleTransition({ isTransitioning: false, message: '' });
+                // Refresh casts and other data
+                fetchCasts();
+              }, 1500);
+              break;
+              
+            case 'BATTLE_TRANSITION':
+              console.log('Battle transition:', data.data);
+              break;
+              
+            case 'HEARTBEAT':
+              // Keep connection alive
+              break;
+              
+            default:
+              console.log('Unknown battle state event:', data);
+          }
+        } catch (error) {
+          console.error('Error parsing battle state SSE data:', error);
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error('Battle state SSE error:', error);
+        eventSource.close();
+      };
+
+      // Return cleanup function
+      return () => {
+        eventSource.close();
+      };
+    } catch (error) {
+      console.error('Failed to setup battle state SSE connection:', error);
+      return () => {}; // Return empty cleanup function
+    }
+  }, []);
+
+  const fetchCurrentBattle = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch('/api/battle/current');
@@ -294,9 +383,9 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchCasts = async () => {
+  const fetchCasts = useCallback(async () => {
     try {
       const response = await fetch('/api/battle/submit-cast');
       const data = await response.json();
@@ -352,9 +441,9 @@ export default function Home() {
     } catch (error) {
       console.error('Failed to fetch casts:', error);
     }
-  };
+  }, []);
 
-  const fetchBattleHistory = async () => {
+  const fetchBattleHistory = useCallback(async () => {
     try {
       const response = await fetch('/api/battle/history');
       const data = await response.json();
@@ -365,7 +454,22 @@ export default function Home() {
     } catch (error) {
       console.error('Failed to fetch battle history:', error);
     }
-  };
+  }, []);
+
+  // Initialize app after functions are defined
+  useEffect(() => {
+    const initApp = async () => {
+      try {
+        await Promise.all([
+          fetchCurrentBattle(),
+          fetchBattleHistory()
+        ]);
+      } catch (error) {
+        console.error('App initialization error:', error);
+      }
+    };
+    initApp();
+  }, []);
 
   const joinBattle = async () => {
     if (!user) return;
@@ -611,6 +715,16 @@ export default function Home() {
 
   return (
     <div className={styles.container}>
+      {/* Battle Transition Overlay */}
+      {battleTransition.isTransitioning && (
+        <div className={styles.transitionOverlay}>
+          <div className={styles.transitionContent}>
+            <div className={styles.transitionSpinner}></div>
+            <p className={styles.transitionMessage}>{battleTransition.message}</p>
+          </div>
+        </div>
+      )}
+      
       {/* Minimalist Header */}
       <header className={styles.header}>
         <div className={styles.headerTop}>
@@ -672,6 +786,24 @@ export default function Home() {
                 )}
               </div>
               <h2 className={styles.topicTitle}>{topic.title}</h2>
+              
+              {/* Source and Category Info */}
+              <div className={styles.topicMeta}>
+                <span className={styles.topicCategory}>{topic.category}</span>
+                {topic.source && topic.source !== 'System' && (
+                  <a 
+                    href={topic.sourceUrl || `https://www.google.com/search?q=${encodeURIComponent(topic.source)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.topicSource}
+                    title={topic.sourceUrl ? 'View original article' : 'Search for source'}
+                  >
+                    📰 {topic.source}
+                    {topic.sourceUrl && <span className={styles.linkIcon}>↗</span>}
+                  </a>
+                )}
+              </div>
+
               <p className={styles.topicDescription}>{topic.description}</p>
 
               {/* Debate Points */}
@@ -825,13 +957,13 @@ export default function Home() {
                   {battleHistory.length > 0 ? (
                     battleHistory.slice(0, 5).map((battle) => (
                       <div key={battle.id} className={styles.historyCard}>
-                        <h3 className={styles.historyTitle}>{battle.topic.title}</h3>
+                        <h3 className={styles.historyTitle}>{battle.title}</h3>
                         <span className={styles.historyDate}>
                           {new Date(battle.createdAt).toLocaleDateString()}
                         </span>
                         <div className={styles.historyStats}>
-                          <span>{battle.participants.length} participants</span>
-                          <span>{battle.casts.length} arguments</span>
+                          <span>{battle.participants} participants</span>
+                          <span>{battle.casts} arguments</span>
                         </div>
                       </div>
                     ))

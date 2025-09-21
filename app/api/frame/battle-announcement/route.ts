@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import newsService from '@/lib/services/news-service';
 import battleService from '@/lib/services/battle-service';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Get current battle or create new one
     let battle = battleService.getCurrentBattle();

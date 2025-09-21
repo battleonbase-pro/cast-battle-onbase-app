@@ -5,7 +5,7 @@ import { BattleManagerDB } from '@/lib/services/battle-manager-db';
  * GET /api/battle/current
  * Get the current active battle
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const battleManager = BattleManagerDB.getInstance();
     
@@ -53,6 +53,9 @@ export async function POST(request: NextRequest) {
     const battleManager = BattleManagerDB.getInstance();
     await battleManager.joinBattle(userAddress);
 
+    // Log user joining battle
+    console.log(`🎯 User ${userAddress} joined battle`);
+
     return NextResponse.json({
       success: true,
       message: 'Successfully joined battle'
@@ -63,12 +66,14 @@ export async function POST(request: NextRequest) {
     
     // Handle "already joined" case gracefully
     if (error.message && error.message.includes('already joined')) {
+      console.log(`⚠️ User ${userAddress} attempted to join battle but already joined`);
       return NextResponse.json({
         success: false,
         error: error.message
       }, { status: 400 });
     }
     
+    console.log(`❌ User ${userAddress} failed to join battle: ${error.message || 'Unknown error'}`);
     return NextResponse.json({
       success: false,
       error: error.message || 'Failed to join battle'

@@ -34,7 +34,7 @@ export class BattleManager {
 
   constructor() {
     this.config = {
-      battleDurationHours: parseInt(process.env.BATTLE_DURATION_HOURS || '24'),
+      battleDurationHours: parseFloat(process.env.BATTLE_DURATION_HOURS || '24'),
       maxParticipants: parseInt(process.env.BATTLE_MAX_PARTICIPANTS || '1000'),
       enabled: process.env.BATTLE_GENERATION_ENABLED === 'true'
     };
