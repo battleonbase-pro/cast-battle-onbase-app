@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BattleManagerDB } from '@/lib/services/battle-manager-db';
+import { broadcastSentimentUpdate } from '../sentiment-stream/route';
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,6 +45,9 @@ export async function POST(request: NextRequest) {
     
     // Create the cast
     const cast = await battleManager.createCast(userAddress, content.trim(), side);
+    
+    // Broadcast sentiment update to all connected clients
+    await broadcastSentimentUpdate(currentBattle.id, userAddress);
     
     return NextResponse.json({ 
       success: true, 

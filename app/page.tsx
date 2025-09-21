@@ -4,7 +4,31 @@ import { SignInWithBaseButton } from '@base-org/account-ui/react';
 import { createBaseAccountSDK } from '@base-org/account';
 import { createWalletClient, custom } from 'viem';
 import { base } from 'viem/chains';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
 import styles from "./page.module.css";
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
 interface DebateTopic {
   id: string;
@@ -18,74 +42,286 @@ interface DebateTopic {
   };
 }
 
+interface Cast {
+  id: string;
+  content: string;
+  side: 'SUPPORT' | 'OPPOSE';
+  userAddress: string;
+  createdAt: string;
+}
+
+interface BattleHistory {
+  id: string;
+  topic: DebateTopic;
+  participants: any[];
+  casts: Cast[];
+  createdAt: string;
+  endTime: string;
+  status: string;
+  winners: any[];
+}
+
 export default function Home() {
-  const [topic, setTopic] = useState<DebateTopic | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [battleJoined, setBattleJoined] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [sdk, setSdk] = useState<any>(null);
-  const [balance, setBalance] = useState<string>('0');
-  const [battleStatus, setBattleStatus] = useState<'active' | 'completed' | null>(null);
-  const [battleHistory, setBattleHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [topic, setTopic] = useState<DebateTopic | null>(null);
+  const [battleJoined, setBattleJoined] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
-  const [casts, setCasts] = useState<any[]>([]);
+  const [casts, setCasts] = useState<Cast[]>([]);
   const [submittingCast, setSubmittingCast] = useState(false);
   const [castContent, setCastContent] = useState('');
   const [castSide, setCastSide] = useState<'SUPPORT' | 'OPPOSE'>('SUPPORT');
   const [activeTab, setActiveTab] = useState<'battle' | 'arguments' | 'history'>('battle');
   const [hasSubmittedCast, setHasSubmittedCast] = useState(false);
-  const [currentBattleId, setCurrentBattleId] = useState<string | null>(null);
-  const [historyPage, setHistoryPage] = useState(1);
-  const [historyPageSize] = useState(5);
+  const [battleHistory, setBattleHistory] = useState<BattleHistory[]>([]);
+  const [sentimentData, setSentimentData] = useState({ support: 0, oppose: 0, supportPercent: 0, opposePercent: 0 });
+  const [sentimentHistory, setSentimentHistory] = useState<Array<{
+    timestamp: number;
+    support: number;
+    oppose: number;
+    supportPercent: number;
+    opposePercent: number;
+  }>>([]);
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'polling' | 'disconnected'>('connecting');
 
   useEffect(() => {
     initializeApp();
-  }, []);
-
-  // Countdown timer effect
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
+    const cleanupSSE = setupSSEConnection();
     
-    if (timeRemaining && timeRemaining > 0) {
-      interval = setInterval(() => {
-        setTimeRemaining(prev => {
-          if (prev && prev <= 1) {
-            // Battle ended, refresh the battle data
-            fetchCurrentBattle();
-            return null;
-          }
-          return prev ? prev - 1 : null;
+    // Initialize Base Account SDK on client side only
+    if (typeof window !== 'undefined') {
+      try {
+        // Check if ethereum provider is available
+        if (!window.ethereum) {
+          console.warn('No Ethereum provider found. Wallet connection will not be available.');
+          return;
+        }
+
+        const baseSDK = createBaseAccountSDK({
+          appName: 'NewsCast Battle on Base',
+          appIcon: '/sphere.svg',
+          appUrl: window.location.origin,
+          chain: base,
+          client: createWalletClient({
+            chain: base,
+            transport: custom(window.ethereum)
+          })
         });
-      }, 1000);
+        setSdk(baseSDK);
+        
+        // Check for existing authentication
+        const savedUser = localStorage.getItem('cast-battle-user');
+        if (savedUser) {
+          const userData = JSON.parse(savedUser);
+          setUser(userData);
+        }
+      } catch (error) {
+        console.error('Failed to initialize Base Account SDK:', error);
+        setError('Failed to initialize wallet connection');
+      }
     }
 
+    // Cleanup function
     return () => {
-      if (interval) clearInterval(interval);
+      if (cleanupSSE) {
+        cleanupSSE();
+      }
     };
-  }, [timeRemaining]);
-
-  // Debug battleJoined state changes
-  useEffect(() => {
-    console.log('🔍 battleJoined state changed to:', battleJoined);
-  }, [battleJoined]);
+  }, []);
 
   const initializeApp = async () => {
     try {
-      console.log('Initializing app...');
-      // Initialize the application and battle manager
-      await fetch('/api/init', { method: 'POST' });
-      console.log('App initialized');
-      
-      // Then fetch the current battle and history
       await Promise.all([
         fetchCurrentBattle(),
         fetchBattleHistory()
       ]);
-      console.log('Battle data fetched');
     } catch (error) {
-      console.error('Failed to initialize app:', error);
-      setError('Failed to initialize application');
+      console.error('App initialization error:', error);
+    }
+  };
+
+  const setupSSEConnection = () => {
+    if (typeof window === 'undefined') return;
+
+    // Check if EventSource is supported
+    if (typeof EventSource === 'undefined') {
+      console.log('EventSource not supported, using polling fallback');
+      setConnectionStatus('polling');
+      return setupPollingFallback();
+    }
+
+    try {
+      const eventSource = new EventSource('/api/battle/sentiment-stream');
+      
+      eventSource.onopen = () => {
+        console.log('SSE connection opened');
+        setConnectionStatus('connected');
+      };
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === 'sentiment_update') {
+            // Update sentiment data
+            setSentimentData(data.sentiment);
+            
+            // Update sentiment history for chart
+            const historyEntry = {
+              timestamp: data.timestamp,
+              ...data.sentiment
+            };
+            
+            setSentimentHistory(prev => {
+              const newHistory = [...prev, historyEntry];
+              return newHistory.slice(-20); // Keep last 20 data points
+            });
+
+            // Update casts if provided
+            if (data.casts) {
+              setCasts(data.casts);
+            }
+
+            // Update user submission status if provided
+            if (data.userSubmissionStatus !== undefined && user) {
+              setHasSubmittedCast(data.userSubmissionStatus);
+            }
+          } else if (data.type === 'heartbeat') {
+            // Heartbeat received, connection is alive
+            setConnectionStatus('connected');
+          }
+        } catch (error) {
+          console.error('Error parsing SSE data:', error);
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error('SSE connection error:', error);
+        setConnectionStatus('disconnected');
+        
+        // Attempt to reconnect after 5 seconds
+        setTimeout(() => {
+          if (eventSource.readyState === EventSource.CLOSED) {
+            console.log('Attempting to reconnect SSE...');
+            setupSSEConnection();
+          }
+        }, 5000);
+      };
+
+      // Return cleanup function
+      return () => {
+        eventSource.close();
+        setConnectionStatus('disconnected');
+      };
+    } catch (error) {
+      console.error('Failed to setup SSE connection:', error);
+      setConnectionStatus('polling');
+      return setupPollingFallback();
+    }
+  };
+
+  const setupPollingFallback = () => {
+    // Fallback polling for browsers that don't support SSE well
+    const pollInterval = setInterval(async () => {
+      try {
+        await fetchCasts();
+        setConnectionStatus('polling');
+      } catch (error) {
+        console.error('Polling error:', error);
+        setConnectionStatus('disconnected');
+      }
+    }, 10000); // Poll every 10 seconds
+
+    // Return cleanup function
+    return () => {
+      clearInterval(pollInterval);
+    };
+  };
+
+  const fetchCurrentBattle = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/battle/current');
+      const data = await response.json();
+      
+      if (data.success && data.battle) {
+        setTopic(data.battle);
+        
+        // Calculate time remaining
+        const endTime = new Date(data.battle.endTime).getTime();
+        const now = Date.now();
+        const remaining = Math.max(0, Math.floor((endTime - now) / 1000));
+        setTimeRemaining(remaining);
+        
+        await fetchCasts();
+      } else {
+        setError(data.error || 'No active battle available');
+      }
+    } catch (error) {
+      console.error('Error fetching battle:', error);
+      setError('Failed to fetch battle data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCasts = async () => {
+    try {
+      const response = await fetch('/api/battle/submit-cast');
+      const data = await response.json();
+      
+      if (data.success) {
+        setCasts(data.casts);
+        
+        // Calculate sentiment data
+        const support = data.casts.filter((cast: Cast) => cast.side === 'SUPPORT').length;
+        const oppose = data.casts.filter((cast: Cast) => cast.side === 'OPPOSE').length;
+        const total = support + oppose;
+        
+        if (total > 0) {
+          const sentiment = {
+            support,
+            oppose,
+            supportPercent: Math.round((support / total) * 100),
+            opposePercent: Math.round((oppose / total) * 100)
+          };
+          
+          setSentimentData(sentiment);
+          
+          // Add to history
+          const historyEntry = {
+            timestamp: Date.now(),
+            ...sentiment
+          };
+          
+          setSentimentHistory(prev => {
+            const newHistory = [...prev, historyEntry];
+            return newHistory.slice(-20);
+          });
+        }
+        
+        // Check if user has submitted
+        if (user) {
+          const userCast = data.casts.find((cast: Cast) => 
+            cast.userAddress.toLowerCase() === user.address.toLowerCase()
+          );
+          setHasSubmittedCast(!!userCast);
+        } else {
+          // Check localStorage for user data if state is not ready
+          const savedUser = localStorage.getItem('cast-battle-user');
+          if (savedUser) {
+            const userData = JSON.parse(savedUser);
+            const userCast = data.casts.find((cast: Cast) => 
+              cast.userAddress.toLowerCase() === userData.address.toLowerCase()
+            );
+            setHasSubmittedCast(!!userCast);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch casts:', error);
     }
   };
 
@@ -102,197 +338,72 @@ export default function Home() {
     }
   };
 
-  const fetchCasts = async (userToCheck?: any) => {
+  const joinBattle = async () => {
+    if (!user) return;
+    
     try {
-      console.log('fetchCasts called with userToCheck:', userToCheck);
-      const response = await fetch('/api/battle/submit-cast');
+      setLoading(true);
+      const response = await fetch('/api/battle/current', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userAddress: user.address })
+      });
+      
       const data = await response.json();
       
       if (data.success) {
-        setCasts(data.casts);
-        
-        // Check if current user has already submitted a cast
-        const userToUse = userToCheck || user;
-        
-        // If no user from state, try to get from localStorage
-        let finalUser = userToUse;
-        if (!finalUser && typeof window !== 'undefined') {
-          const savedUser = localStorage.getItem('cast-battle-user');
-          if (savedUser) {
-            finalUser = JSON.parse(savedUser);
-          }
-        }
-        
-        console.log('User to use for cast check:', finalUser);
-        if (finalUser) {
-          const userCast = data.casts.find((cast: any) => cast.userAddress.toLowerCase() === finalUser.address.toLowerCase());
-          console.log('Checking cast submission status:', {
-            userAddress: finalUser.address,
-            castsCount: data.casts.length,
-            userCast: userCast,
-            hasSubmitted: !!userCast,
-            allCasts: data.casts.map(c => ({ address: c.userAddress, content: c.content }))
-          });
-          setHasSubmittedCast(!!userCast);
+        setBattleJoined(true);
+        setError(null);
+      } else {
+        if (data.error.includes('already joined')) {
+          setBattleJoined(true);
+          setError(null);
         } else {
-          console.log('No user found when checking cast submission status');
+          setError(data.error);
         }
       }
     } catch (error) {
-      console.error('Failed to fetch casts:', error);
+      console.error('Error joining battle:', error);
+      setError('Failed to join battle');
+    } finally {
+      setLoading(false);
     }
   };
 
   const submitCast = async () => {
-    if (!user || !castContent.trim() || castContent.trim().length < 10) {
-      setError('Please enter a valid argument (at least 10 characters)');
-      return;
-    }
-
-    setSubmittingCast(true);
+    if (!user || !castContent.trim()) return;
+    
     try {
+      setSubmittingCast(true);
       const response = await fetch('/api/battle/submit-cast', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userAddress: user.address,
           content: castContent.trim(),
           side: castSide
         })
       });
-
+      
       const data = await response.json();
       
       if (data.success) {
+        setHasSubmittedCast(true);
         setCastContent('');
-        setError(null);
-        // Refresh casts to show the new submission
-        await fetchCasts(user);
+        await fetchCasts();
       } else {
-        setError(data.error || 'Failed to submit argument');
+        setError(data.error);
       }
     } catch (error) {
-      console.error('Failed to submit cast:', error);
+      console.error('Error submitting cast:', error);
       setError('Failed to submit argument');
     } finally {
       setSubmittingCast(false);
     }
   };
 
-  useEffect(() => {
-    // Initialize Base Account SDK on client side only
-    if (typeof window !== 'undefined') {
-      try {
-        console.log('Initializing Base Account SDK...');
-        const baseSDK = createBaseAccountSDK({
-          appName: 'NewsCast Battle on Base',
-          appLogoUrl: 'https://base.org/favicon.ico',
-          appChainIds: [base.id],
-        });
-        console.log('SDK created:', !!baseSDK);
-        setSdk(baseSDK);
-        console.log('Base Account SDK initialized successfully');
-        
-        // Check for existing authentication
-        const savedUser = localStorage.getItem('cast-battle-user');
-        if (savedUser) {
-          const userData = JSON.parse(savedUser);
-          setUser(userData);
-          // Fetch balance for existing user
-          fetchBalance(userData.address);
-        }
-      } catch (error) {
-        console.error('Failed to initialize Base Account SDK:', error);
-        setError('Failed to initialize wallet connection');
-      }
-    }
-  }, []);
-
-  const fetchBalance = async (address: string) => {
-    try {
-      // Mock balance for now - in real app, fetch from contract
-      const mockBalance = '1,250';
-      setBalance(mockBalance);
-    } catch (error) {
-      console.error('Failed to fetch balance:', error);
-      setBalance('0');
-    }
-  };
-
-  const formatTimeRemaining = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    
-    if (hours > 0) {
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    } else {
-      return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-  };
-
-  const fetchCurrentBattle = async () => {
-    try {
-      console.log('Fetching current battle...');
-      setLoading(true);
-      
-      // Initialize battle manager first
-      await fetch('/api/battle/manage', { method: 'POST' });
-      console.log('Battle manager initialized');
-      
-      // Get current battle
-      const response = await fetch('/api/battle/current');
-      const data = await response.json();
-      console.log('Battle response:', data);
-      
-      if (data.success && data.battle) {
-        setTopic(data.battle);
-        setBattleStatus(data.battle.status);
-        
-        // Check if this is a new battle
-        const isNewBattle = currentBattleId !== data.battle.id;
-        if (isNewBattle) {
-          console.log('New battle detected:', { oldId: currentBattleId, newId: data.battle.id });
-          setCurrentBattleId(data.battle.id);
-          setHasSubmittedCast(false); // Reset for new battle
-        }
-        
-        // Calculate time remaining if battle is active
-        if (data.battle.status === 'active' && data.battle.endTime) {
-          const endTime = new Date(data.battle.endTime).getTime();
-          const now = Date.now();
-          const remaining = Math.max(0, Math.floor((endTime - now) / 1000));
-          setTimeRemaining(remaining);
-        } else {
-          setTimeRemaining(null);
-        }
-        
-        // Check if user already joined this battle
-        if (user && data.battle.participants.some(p => p.user.address === user.address)) {
-          setBattleJoined(true);
-        }
-        
-        // Fetch casts for this battle (visible to all users)
-        await fetchCasts(user);
-      } else {
-        setError(data.error || 'No active battle available');
-        setTimeRemaining(null);
-      }
-    } catch (error) {
-      setError(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSignIn = async () => {
-    console.log('🔍 Sign In button clicked!');
-    console.log('SDK status:', !!sdk);
-    
     if (!sdk) {
-      console.log('❌ SDK not ready');
       setError('Wallet connection not ready. Please try again.');
       return;
     }
@@ -307,14 +418,11 @@ export default function Home() {
 
       // Get account address (following documentation pattern)
       const addresses = await client.getAddresses();
-      console.log('🔍 Available addresses:', addresses);
       let account;
       
       if (!addresses || addresses.length === 0) {
-        console.log('🔍 No addresses found, requesting accounts...');
         // Try to request accounts if none are connected
         const accounts = await provider.request({ method: 'eth_requestAccounts' });
-        console.log('🔍 Requested accounts:', accounts);
         if (!accounts || accounts.length === 0) {
           throw new Error('Please connect your wallet first');
         }
@@ -322,8 +430,6 @@ export default function Home() {
       } else {
         account = addresses[0];
       }
-      
-      console.log('🔍 Using account:', account);
 
       // Sign authentication message (following documentation pattern)
       const message = `Sign in to NewsCast Battle on Base at ${Date.now()}`;
@@ -344,13 +450,8 @@ export default function Home() {
       // Save to localStorage for persistence
       localStorage.setItem('cast-battle-user', JSON.stringify(userData));
       
-      // Fetch balance
-      await fetchBalance(account);
-      
       // Refetch current battle to check if user already joined
       await fetchCurrentBattle();
-
-      console.log('User signed in successfully:', account);
     } catch (error) {
       console.error('Sign in failed:', error);
       setError(error.message || 'Sign in failed');
@@ -359,432 +460,336 @@ export default function Home() {
 
   const handleSignOut = () => {
     setUser(null);
-    setBalance('0');
+    setBattleJoined(false);
+    setHasSubmittedCast(false);
     localStorage.removeItem('cast-battle-user');
   };
 
-  const joinBattle = async () => {
-    if (!topic || !user) return;
+  const formatTimeRemaining = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
     
-    console.log('🔍 Joining battle for user:', user.address);
-    
-    try {
-      const response = await fetch('/api/battle/current', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userAddress: user.address })
-      });
-      
-      const data = await response.json();
-      console.log('🔍 Join battle response:', data);
-      console.log('🔍 Response status:', response.status);
-      
-      if (data.success) {
-        setBattleJoined(true);
-        console.log('✅ User joined battle for topic:', topic.title);
-      } else {
-        // Check if user already joined (this is not an error, just update state)
-        if (data.error && data.error.includes('already joined')) {
-          setBattleJoined(true);
-          setError(null); // Clear any existing error
-          console.log('✅ User was already in battle, updating state');
-          console.log('🔍 battleJoined state set to:', true);
-        } else {
-          console.log('❌ Join battle error:', data.error);
-          setError(data.error);
+    if (hours > 0) {
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    } else {
+      return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+  };
+
+  // Chart.js configuration
+  const chartData = {
+    labels: sentimentHistory.map((_, index) => {
+      if (sentimentHistory.length <= 1) return 'Now';
+      const timeDiff = Date.now() - sentimentHistory[index].timestamp;
+      const minutes = Math.floor(timeDiff / 60000);
+      return minutes === 0 ? 'Now' : `${minutes}m ago`;
+    }),
+    datasets: [
+      {
+        label: 'Support %',
+        data: sentimentHistory.map(point => point.supportPercent),
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+      },
+      {
+        label: 'Oppose %',
+        data: sentimentHistory.map(point => point.opposePercent),
+        borderColor: '#ef4444',
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+      }
+    ]
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+        labels: {
+          usePointStyle: true,
+          padding: 15,
+          font: { size: 11, weight: '500' as const }
+        }
+      },
+      tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleColor: '#ffffff',
+        bodyColor: '#ffffff',
+        borderColor: '#e2e8f0',
+        borderWidth: 1,
+        cornerRadius: 6,
+        displayColors: true,
+      }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#6b7280' } },
+      y: {
+        beginAtZero: true,
+        max: 105,
+        grid: { color: '#f3f4f6', drawBorder: false },
+        ticks: { 
+          font: { size: 9 }, 
+          color: '#6b7280', 
+          callback: (value: any) => {
+            if (value <= 100) {
+              return value + '%';
+            }
+            return '';
+          },
+          stepSize: 20
         }
       }
-    } catch (error) {
-      console.error('❌ Error joining battle:', error);
-      setError(error.message);
-    }
+    },
+    interaction: { intersect: false, mode: 'index' as const },
+    elements: { point: { hoverBackgroundColor: '#ffffff', hoverBorderWidth: 2 } }
   };
 
   return (
     <div className={styles.container}>
-      <header className={styles.headerWrapper}>
-        <div className={styles.headerContent}>
-          <div>
+      {/* Minimalist Header */}
+      <header className={styles.header}>
+        <div className={styles.headerTop}>
+          <div className={styles.headerLeft}>
             <h1 className={styles.title}>NewsCast Battle</h1>
-            <p className={styles.subtitle}>Battle on <span className={styles.baseText}>Base</span> • AI-powered daily debates with $BATTLE token rewards</p>
+            <p className={styles.subtitle}>Battle on <span className={styles.baseText}>Base</span></p>
           </div>
           {user ? (
-            <div className={styles.userSection}>
-              <div className={styles.balanceDisplay}>
-                <span className={styles.balanceLabel}>$BATTLE</span>
-                <span className={styles.balanceAmount}>{balance}</span>
-              </div>
-              <div className={styles.userProfile}>
-                <div className={styles.userAddress}>
-                  {user.address.slice(0, 6)}...{user.address.slice(-4)}
-                </div>
-                <button 
-                  onClick={handleSignOut}
-                  className={styles.signOutBtn}
-                >
-                  Sign out
-                </button>
-              </div>
+            <div className={styles.userCompact}>
+              <span className={styles.userAddress}>{user.address.slice(0, 6)}...{user.address.slice(-4)}</span>
+              <button 
+                onClick={handleSignOut}
+                className={styles.signOutBtn}
+              >
+                Sign Out
+              </button>
+            </div>
+          ) : sdk ? (
+            <div className={styles.signInWrapper}>
+              <SignInWithBaseButton 
+                size="small"
+                variant="solid"
+                colorScheme="light"
+                onClick={handleSignIn}
+              />
             </div>
           ) : (
-            <div className={styles.signInSection}>
-              <p className={styles.signInDescription}>
-                Connect your Base Account to join battles and earn $BATTLE tokens
-              </p>
-              <div className={styles.signInButtonContainer}>
-                <SignInWithBaseButton 
-                  align="center"
-                  variant="solid"
-                  colorScheme="light"
-                  size="small"
-                  disabled={!sdk}
-                  onClick={handleSignIn}
-                />
-              </div>
+            <div className={styles.signInWrapper}>
+              <button 
+                className={styles.signOutBtn}
+                disabled
+                style={{ opacity: 0.5, cursor: 'not-allowed' }}
+              >
+                Wallet Loading...
+              </button>
             </div>
           )}
         </div>
       </header>
 
-      <div className={styles.content}>
-        {/* Battle Topic */}
-        <div className={styles.battleSection}>
-          <h2 className={styles.sectionTitle}>Today's Battle Topic</h2>
-          {battleStatus && (
-            <div className={styles.battleStatusIndicator}>
-              <span className={`${styles.statusBadge} ${styles[battleStatus]}`}>
-                {battleStatus.toUpperCase()}
-              </span>
-              {timeRemaining !== null && battleStatus === 'active' && (
-                <div className={styles.countdownTimer}>
-                  <span className={styles.timerLabel}>Time Remaining:</span>
-                  <span className={styles.timerValue}>{formatTimeRemaining(timeRemaining)}</span>
+      {/* Main Content */}
+      <main className={styles.main}>
+        {loading ? (
+          <div className={styles.loading}>Loading...</div>
+        ) : error ? (
+          <div className={styles.error}>
+            <p>⚠️ {error}</p>
+            <button onClick={fetchCurrentBattle} className={styles.retryBtn}>Retry</button>
+          </div>
+        ) : topic ? (
+          <div className={styles.battleCard}>
+            {/* Battle Header */}
+            <div className={styles.battleHeader}>
+              <div className={styles.battleStatus}>
+                <span className={`${styles.statusBadge} ${styles.active}`}>ACTIVE</span>
+                {timeRemaining && (
+                  <span className={styles.timer}>{formatTimeRemaining(timeRemaining)}</span>
+                )}
+              </div>
+              <h2 className={styles.topicTitle}>{topic.title}</h2>
+              <p className={styles.topicDescription}>{topic.description}</p>
+
+              {/* Debate Points */}
+              <div className={styles.debatePoints}>
+                <div className={`${styles.debateSide} ${styles.support}`}>
+                  <h4>Support</h4>
+                  <ul>
+                    {topic.debatePoints?.Support?.map((point, index) => (
+                      <li key={index}>{point}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className={`${styles.debateSide} ${styles.oppose}`}>
+                  <h4>Oppose</h4>
+                  <ul>
+                    {topic.debatePoints?.Oppose?.map((point, index) => (
+                      <li key={index}>{point}</li>
+                    ))}
+                  </ul>
+                </div>
+                </div>
+              </div>
+
+            {/* Quick Actions */}
+            <div className={styles.quickActions}>
+              {!battleJoined && !hasSubmittedCast && (
+                <button 
+                  onClick={joinBattle} 
+                  className={styles.joinBtn}
+                  disabled={!user}
+                >
+                  {user ? 'Join Battle' : 'Sign in to Join Battle'}
+                </button>
+              )}
+              {battleJoined && !hasSubmittedCast && (
+                <div className={styles.submitForm}>
+                  <div className={styles.sideToggle}>
+                    <button 
+                      className={`${styles.sideBtn} ${castSide === 'SUPPORT' ? styles.active : ''}`}
+                      onClick={() => setCastSide('SUPPORT')}
+                    >
+                      Support
+                    </button>
+                    <button 
+                      className={`${styles.sideBtn} ${castSide === 'OPPOSE' ? styles.active : ''}`}
+                      onClick={() => setCastSide('OPPOSE')}
+                    >
+                      Oppose
+                    </button>
+                  </div>
+                  <textarea
+                    className={styles.argumentInput}
+                    placeholder="Your argument..."
+                    value={castContent}
+                    onChange={(e) => setCastContent(e.target.value)}
+                    rows={3}
+                    maxLength={500}
+                  />
+                  <button
+                    onClick={submitCast}
+                    disabled={submittingCast || castContent.trim().length < 10}
+                    className={styles.submitBtn}
+                  >
+                    {submittingCast ? 'Submitting...' : 'Submit'}
+                  </button>
+                </div>
+              )}
+              {hasSubmittedCast && (
+                <div className={styles.thankYou}>
+                  <span>✅ Thank you for participating!</span>
                 </div>
               )}
             </div>
-          )}
-          
-          {/* Navigation Menu */}
-          <nav className={styles.navigation}>
-            <button 
-              className={`${styles.navButton} ${activeTab === 'battle' ? styles.active : ''}`}
-              onClick={() => setActiveTab('battle')}
-            >
-              Current Battle
-            </button>
-            <button 
-              className={`${styles.navButton} ${activeTab === 'arguments' ? styles.active : ''}`}
-              onClick={() => setActiveTab('arguments')}
-            >
-              Submitted Arguments ({casts.length})
-            </button>
-            <button 
-              className={`${styles.navButton} ${activeTab === 'history' ? styles.active : ''}`}
-              onClick={() => setActiveTab('history')}
-            >
-              Previous Battles
-            </button>
-          </nav>
-          
-          {/* Tab Content */}
-          {activeTab === 'battle' && (
-            <>
-              {loading && (
-                <div className={styles.loading}>
-                  <div className={styles.spinner}></div>
-                  <p>AI is curating today's battle topic...</p>
-                </div>
-              )}
 
-              {error && (
-                <div className={styles.error}>
-                  ⚠️ {error}
-                  <button onClick={joinBattle} className={styles.retryBtn}>Retry</button>
-                </div>
-              )}
+            {/* Compact Navigation */}
+            <nav className={styles.compactNav}>
+              <button 
+                className={`${styles.navBtn} ${activeTab === 'battle' ? styles.active : ''}`}
+                onClick={() => setActiveTab('battle')}
+              >
+                Battle
+              </button>
+              <button 
+                className={`${styles.navBtn} ${activeTab === 'arguments' ? styles.active : ''}`}
+                onClick={() => setActiveTab('arguments')}
+              >
+                Arguments ({casts.length})
+              </button>
+              <button 
+                className={`${styles.navBtn} ${activeTab === 'history' ? styles.active : ''}`}
+                onClick={() => setActiveTab('history')}
+              >
+                History
+              </button>
+            </nav>
 
-              {topic && !loading && !error && (
-            <div className={styles.topicCard}>
-              <div className={styles.topicHeader}>
-                <h3>{topic.title}</h3>
-                <div className={styles.topicMeta}>
-                  <span className={styles.category}>{topic.category}</span>
-                  <span className={styles.source}>Source: {topic.source}</span>
-                </div>
-              </div>
-
-              <div className={styles.topicDescription}>
-                <p>{topic.description}</p>
-              </div>
-
-              <div className={styles.debatePoints}>
-                <div className={styles.debateSide}>
-                  <h4>Support:</h4>
-                  <ul>
-                    {topic.debatePoints.Support.map((point, index) => (
-                      <li key={index}>{point}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div className={styles.debateSide}>
-                  <h4>Oppose:</h4>
-                  <ul>
-                    {topic.debatePoints.Oppose.map((point, index) => (
-                      <li key={index}>{point}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              <div className={styles.topicActions}>
-                {console.log('UI Logic Check:', { hasSubmittedCast, battleJoined, user: user?.address })}
-                {hasSubmittedCast ? (
-                  <div className={styles.thankYouMessage}>
-                    <h3>🎉 Thank You for Participating!</h3>
-                    <p className={styles.thankYouText}>
-                      You've successfully submitted your argument for this battle. Good luck in the competition!
-                    </p>
-                    <p className={styles.thankYouNote}>
-                      When this battle ends and a new one begins, you'll be able to participate again.
-                    </p>
-                  </div>
-                ) : !battleJoined ? (
-                  <button onClick={joinBattle} className={styles.createBattleBtn}>
-                    Join Battle
-                  </button>
-                ) : (
-                  <div className={styles.battleCreated}>
-                    <p>✅ Successfully joined the battle!</p>
-                    <p className={styles.battleStatus}>
-                      You're now participating in today's debate. Submit your arguments and compete for $BATTLE tokens!
-                    </p>
-                    
-                    {/* Cast Submission Form */}
-                    <div className={styles.castSubmissionForm}>
-                      <h4>Submit Your Argument</h4>
-                      <div className={styles.sideSelection}>
-                        <label>
-                          <input
-                            type="radio"
-                            name="side"
-                            value="SUPPORT"
-                            checked={castSide === 'SUPPORT'}
-                            onChange={(e) => setCastSide(e.target.value as 'SUPPORT' | 'OPPOSE')}
-                          />
-                          <span className={styles.sideOption}>Support</span>
-                        </label>
-                        <label>
-                          <input
-                            type="radio"
-                            name="side"
-                            value="OPPOSE"
-                            checked={castSide === 'OPPOSE'}
-                            onChange={(e) => setCastSide(e.target.value as 'SUPPORT' | 'OPPOSE')}
-                          />
-                          <span className={styles.sideOption}>Oppose</span>
-                        </label>
-                      </div>
-                      <textarea
-                        className={styles.castTextarea}
-                        placeholder="Write your argument here... (minimum 10 characters)"
-                        value={castContent}
-                        onChange={(e) => setCastContent(e.target.value)}
-                        rows={4}
-                        maxLength={500}
-                      />
-                      <div className={styles.castActions}>
-                        <span className={styles.charCount}>{castContent.length}/500</span>
-                        <button
-                          onClick={submitCast}
-                          disabled={submittingCast || castContent.trim().length < 10}
-                          className={styles.submitCastBtn}
-                        >
-                          {submittingCast ? 'Submitting...' : 'Submit Argument'}
-                        </button>
-                      </div>
+            {/* Tab Content */}
+            {activeTab === 'battle' && (
+              <div className={styles.tabContent}>
+                {casts.length > 0 && (
+                  <div className={styles.compactGraph}>
+                    <div className={styles.graphHeader}>
+                      <h3>Market Sentiment</h3>
+                      <span className={`${styles.connectionStatus} ${styles[connectionStatus]}`}>
+                        {connectionStatus === 'connected' && '🟢 Live'}
+                        {connectionStatus === 'polling' && '🟡 Polling'}
+                        {connectionStatus === 'connecting' && '🟠 Connecting'}
+                        {connectionStatus === 'disconnected' && '🔴 Offline'}
+                      </span>
+                    </div>
+                    <div className={styles.chartContainer}>
+                      <Line data={chartData} options={chartOptions} />
+                    </div>
+                    <div className={styles.compactStats}>
+                      <span>Support: {sentimentData.supportPercent}%</span>
+                      <span>Oppose: {sentimentData.opposePercent}%</span>
+                      <span>Total: {sentimentData.support + sentimentData.oppose}</span>
                     </div>
                   </div>
                 )}
               </div>
-            </div>
-          )}
-            </>
-          )}
+            )}
 
-          {activeTab === 'arguments' && (
-            <div className={styles.castsSection}>
-          <h2 className={styles.sectionTitle}>Submitted Arguments</h2>
-          {casts.length > 0 ? (
-            <div className={styles.castsList}>
-              {casts.map((cast) => (
-                <div key={cast.id} className={`${styles.castCard} ${styles[cast.side.toLowerCase()]}`}>
-                  <div className={styles.castHeader}>
-                    <span className={styles.castSide}>{cast.side}</span>
-                    <span className={styles.castUser}>{cast.userAddress.slice(0, 6)}...{cast.userAddress.slice(-4)}</span>
-                    <span className={styles.castTime}>
-                      {new Date(cast.createdAt).toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <div className={styles.castContent}>
-                    {cast.content}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className={styles.noCastsMessage}>
-              <p>No arguments submitted yet. Be the first to share your thoughts!</p>
-            </div>
-          )}
-            </div>
-          )}
-
-          {activeTab === 'history' && (
-            <div className={styles.historySection}>
-              <h2 className={styles.sectionTitle}>Previous Battles & Winners</h2>
-              {battleHistory.length > 0 ? (
-                <>
-                  <div className={styles.battleHistory}>
-                    {battleHistory
-                      .slice((historyPage - 1) * historyPageSize, historyPage * historyPageSize)
-                      .map((battle, index) => (
-                        <div key={battle.id} className={styles.historyCard}>
-                          <div className={styles.historyHeader}>
-                            <h3 className={styles.historyTitle}>{battle.topic.title}</h3>
-                            <span className={styles.historyDate}>
-                              {new Date(battle.createdAt).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <div className={styles.historyContent}>
-                            <p className={styles.historyDescription}>{battle.topic.description}</p>
-                            <div className={styles.historyStats}>
-                              <span className={styles.statItem}>
-                                <strong>{battle.participants.length}</strong> participants
-                              </span>
-                              <span className={styles.statItem}>
-                                <strong>{battle.casts?.length || 0}</strong> arguments
-                              </span>
-                            </div>
-                            {battle.winners && battle.winners.length > 0 ? (
-                              <div className={styles.winnersSection}>
-                                <h4 className={styles.winnersTitle}>🏆 Winners</h4>
-                                <div className={styles.winnersList}>
-                                  {battle.winners.map((winner, winnerIndex) => (
-                                    <div key={winnerIndex} className={styles.winnerCard}>
-                                      <span className={styles.winnerRank}>#{winnerIndex + 1}</span>
-                                      <span className={styles.winnerAddress}>
-                                        {winner.userAddress.slice(0, 6)}...{winner.userAddress.slice(-4)}
-                                      </span>
-                                      <span className={styles.winnerScore}>
-                                        Score: {winner.score?.toFixed(2) || 'N/A'}
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ) : (
-                              <div className={styles.noWinners}>
-                                <p>No winners determined yet</p>
-                              </div>
-                            )}
-                          </div>
+            {activeTab === 'arguments' && (
+              <div className={styles.tabContent}>
+                <div className={styles.argumentsList}>
+                  {casts.length > 0 ? (
+                    casts.map((cast) => (
+                      <div key={cast.id} className={styles.argumentCard}>
+                        <div className={styles.argumentHeader}>
+                          <span className={`${styles.argumentSide} ${styles[cast.side.toLowerCase()]}`}>
+                            {cast.side}
+                          </span>
+                          <span className={styles.argumentUser}>
+                            {cast.userAddress.slice(0, 6)}...{cast.userAddress.slice(-4)}
+                          </span>
                         </div>
-                      ))}
-                  </div>
-                  
-                  {/* Pagination */}
-                  {battleHistory.length > historyPageSize && (
-                    <div className={styles.pagination}>
-                      <button 
-                        className={styles.paginationBtn}
-                        onClick={() => setHistoryPage(Math.max(1, historyPage - 1))}
-                        disabled={historyPage === 1}
-                      >
-                        Previous
-                      </button>
-                      <span className={styles.paginationInfo}>
-                        Page {historyPage} of {Math.ceil(battleHistory.length / historyPageSize)}
-                      </span>
-                      <button 
-                        className={styles.paginationBtn}
-                        onClick={() => setHistoryPage(Math.min(Math.ceil(battleHistory.length / historyPageSize), historyPage + 1))}
-                        disabled={historyPage >= Math.ceil(battleHistory.length / historyPageSize)}
-                      >
-                        Next
-                      </button>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className={styles.noHistoryMessage}>
-                  <p>No previous battles found. Check back after the first battle completes!</p>
-                </div>
-              )}
+                        <div className={styles.argumentContent}>{cast.content}</div>
             </div>
+                    ))
+                  ) : (
+                    <div className={styles.loading}>No arguments submitted yet.</div>
           )}
         </div>
+      </div>
+            )}
 
-        {/* Battle History */}
-        {battleHistory.length > 0 && (
-          <div className={styles.battleSection}>
-            <h2 className={styles.sectionTitle}>Recent Battle Results</h2>
-            <div className={styles.battleHistory}>
-              {battleHistory.slice(0, 3).map((battle, index) => (
-                <div key={battle.id} className={styles.historyCard}>
-                  <div className={styles.historyHeader}>
-                    <h3 className={styles.historyTitle}>{battle.topic.title}</h3>
-                    <span className={styles.historyDate}>
-                      {new Date(battle.endTime).toLocaleDateString()}
-                    </span>
-                  </div>
-                  
-                  <div className={styles.historyDescription}>
-                    {battle.topic.description}
-                  </div>
-                  
-                  {battle.winners && (
-                    <div className={styles.winnersSection}>
-                      <h4 className={styles.winnersTitle}>Winners</h4>
-                      <div className={styles.winnersList}>
-                        <div className={styles.winnerItem}>
-                          <span className={styles.winnerRank}>1st</span>
-                          <span className={styles.winnerAddress}>
-                            {battle.winners.first.slice(0, 6)}...{battle.winners.first.slice(-4)}
-                          </span>
-                          <span className={styles.winnerPrize}>500 $BATTLE</span>
-                        </div>
-                        <div className={styles.winnerItem}>
-                          <span className={styles.winnerRank}>2nd</span>
-                          <span className={styles.winnerAddress}>
-                            {battle.winners.second.slice(0, 6)}...{battle.winners.second.slice(-4)}
-                          </span>
-                          <span className={styles.winnerPrize}>300 $BATTLE</span>
-                        </div>
-                        <div className={styles.winnerItem}>
-                          <span className={styles.winnerRank}>3rd</span>
-                          <span className={styles.winnerAddress}>
-                            {battle.winners.third.slice(0, 6)}...{battle.winners.third.slice(-4)}
-                          </span>
-                          <span className={styles.winnerPrize}>200 $BATTLE</span>
+            {activeTab === 'history' && (
+              <div className={styles.tabContent}>
+                <div className={styles.historyList}>
+                  {battleHistory.length > 0 ? (
+                    battleHistory.slice(0, 5).map((battle) => (
+                      <div key={battle.id} className={styles.historyCard}>
+                        <h3 className={styles.historyTitle}>{battle.topic.title}</h3>
+                        <span className={styles.historyDate}>
+                          {new Date(battle.createdAt).toLocaleDateString()}
+                        </span>
+                        <div className={styles.historyStats}>
+                          <span>{battle.participants.length} participants</span>
+                          <span>{battle.casts.length} arguments</span>
                         </div>
                       </div>
-                    </div>
+                    ))
+                  ) : (
+                    <div className={styles.loading}>No previous battles.</div>
                   )}
-                  
-                  <div className={styles.historyStats}>
-                    <span className={styles.statItem}>
-                      <strong>{battle.participants}</strong> participants
-                    </span>
-                    <span className={styles.statItem}>
-                      <strong>24h</strong> duration
-                    </span>
-                  </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
+        ) : (
+          <div className={styles.loading}>No active battle available.</div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

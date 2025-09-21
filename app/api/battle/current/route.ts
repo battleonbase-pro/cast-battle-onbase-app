@@ -8,6 +8,10 @@ import { BattleManagerDB } from '@/lib/services/battle-manager-db';
 export async function GET(request: NextRequest) {
   try {
     const battleManager = BattleManagerDB.getInstance();
+    
+    // Ensure battle manager is initialized and battle exists
+    await battleManager.ensureBattleExists();
+    
     const currentBattle = await battleManager.getCurrentBattle();
 
     if (!currentBattle) {

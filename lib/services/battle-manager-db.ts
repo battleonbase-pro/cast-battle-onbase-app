@@ -58,6 +58,23 @@ export class BattleManagerDB {
   }
 
   /**
+   * Ensure a battle exists (called by API endpoints)
+   * This is the main entry point for server-side battle management
+   */
+  async ensureBattleExists(): Promise<void> {
+    if (!this.config.enabled) {
+      console.log('Automatic battle generation is disabled');
+      return;
+    }
+
+    // Cleanup expired battles first
+    await this.db.cleanupExpiredBattles();
+    
+    // Check if we need to create a new battle
+    await this.checkAndCreateBattle();
+  }
+
+  /**
    * Check if we need to create a new battle
    */
   private async checkAndCreateBattle(): Promise<void> {
