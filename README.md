@@ -15,6 +15,14 @@
 
 Cast Battle OnBase transforms trending global news into engaging debate battles on the Base network. Users participate through Farcaster Frames, submit their arguments, and compete for $BATTLE tokens. Our multi-agent AI system curates high-impact news, generates balanced debate topics, and moderates content quality.
 
+## Screenshot
+
+<div align="center">
+  <img src="./public/screenshot.png" alt="Cast Battle OnBase Application Screenshot" width="800"/>
+  
+  *Cast Battle OnBase - AI-Powered Debate Platform*
+</div>
+
 ## Architecture
 
 ### Core Components
