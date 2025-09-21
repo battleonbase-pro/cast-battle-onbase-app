@@ -132,7 +132,6 @@ The battle duration is fully configurable via environment variables:
 | 1 hour | `1` | Hourly battles |
 | 24 hours | `24` | Daily battles |
 
-See [BATTLE_DURATION_CONFIG.md](./BATTLE_DURATION_CONFIG.md) for detailed configuration options.
 
 ### Development
 
