@@ -612,54 +612,54 @@ export default function Home() {
 
   // Chart.js configuration
   const chartData = {
-    labels: sentimentHistory.map((_, index) => {
+    labels: sentimentHistory.length > 0 ? sentimentHistory.map((_, index) => {
       if (sentimentHistory.length <= 1) return 'Now';
       const timeDiff = Date.now() - sentimentHistory[index].timestamp;
       const minutes = Math.floor(timeDiff / 60000);
       return minutes === 0 ? 'Now' : `${minutes}m ago`;
-    }),
+    }) : ['Now'],
     datasets: [
       {
         label: 'Support %',
-        data: sentimentHistory.map(point => point.supportPercent),
+        data: sentimentHistory.length > 0 ? sentimentHistory.map(point => point.supportPercent) : [0],
         borderColor: '#10b981',
         backgroundColor: 'rgba(16, 185, 129, 0.1)',
         fill: true,
         tension: 0.4,
-        pointRadius: sentimentHistory.map((_, index) => 
+        pointRadius: sentimentHistory.length > 0 ? sentimentHistory.map((_, index) => 
           index === sentimentHistory.length - 1 ? 6 + Math.sin(pulseAnimation * Math.PI / 2) * 2 : 3
-        ),
+        ) : [0],
         pointHoverRadius: 8,
-        pointBackgroundColor: sentimentHistory.map((_, index) => 
+        pointBackgroundColor: sentimentHistory.length > 0 ? sentimentHistory.map((_, index) => 
           index === sentimentHistory.length - 1 ? '#10b981' : '#10b981'
-        ),
-        pointBorderColor: sentimentHistory.map((_, index) => 
+        ) : ['#10b981'],
+        pointBorderColor: sentimentHistory.length > 0 ? sentimentHistory.map((_, index) => 
           index === sentimentHistory.length - 1 ? '#ffffff' : '#10b981'
-        ),
-        pointBorderWidth: sentimentHistory.map((_, index) => 
+        ) : ['#10b981'],
+        pointBorderWidth: sentimentHistory.length > 0 ? sentimentHistory.map((_, index) => 
           index === sentimentHistory.length - 1 ? 3 : 1
-        ),
+        ) : [1],
       },
       {
         label: 'Oppose %',
-        data: sentimentHistory.map(point => point.opposePercent),
+        data: sentimentHistory.length > 0 ? sentimentHistory.map(point => point.opposePercent) : [0],
         borderColor: '#ef4444',
         backgroundColor: 'rgba(239, 68, 68, 0.1)',
         fill: true,
         tension: 0.4,
-        pointRadius: sentimentHistory.map((_, index) => 
+        pointRadius: sentimentHistory.length > 0 ? sentimentHistory.map((_, index) => 
           index === sentimentHistory.length - 1 ? 6 + Math.sin(pulseAnimation * Math.PI / 2) * 2 : 3
-        ),
+        ) : [0],
         pointHoverRadius: 8,
-        pointBackgroundColor: sentimentHistory.map((_, index) => 
+        pointBackgroundColor: sentimentHistory.length > 0 ? sentimentHistory.map((_, index) => 
           index === sentimentHistory.length - 1 ? '#ef4444' : '#ef4444'
-        ),
-        pointBorderColor: sentimentHistory.map((_, index) => 
+        ) : ['#ef4444'],
+        pointBorderColor: sentimentHistory.length > 0 ? sentimentHistory.map((_, index) => 
           index === sentimentHistory.length - 1 ? '#ffffff' : '#ef4444'
-        ),
-        pointBorderWidth: sentimentHistory.map((_, index) => 
+        ) : ['#ef4444'],
+        pointBorderWidth: sentimentHistory.length > 0 ? sentimentHistory.map((_, index) => 
           index === sentimentHistory.length - 1 ? 3 : 1
-        ),
+        ) : [1],
       }
     ]
   };
@@ -669,7 +669,7 @@ export default function Home() {
     maintainAspectRatio: false,
     animation: {
       duration: 1000,
-      easing: 'easeInOutQuart'
+      easing: 'easeInOutQuart' as const
     },
     plugins: {
       legend: {
@@ -774,7 +774,7 @@ export default function Home() {
           <div className={styles.error}>
             <p>⚠️ {error}</p>
             <button onClick={fetchCurrentBattle} className={styles.retryBtn}>Retry</button>
-              </div>
+          </div>
         ) : topic ? (
           <div className={styles.battleCard}>
             {/* Battle Header */}
@@ -807,25 +807,27 @@ export default function Home() {
               <p className={styles.topicDescription}>{topic.description}</p>
 
               {/* Debate Points */}
-              <div className={styles.debatePoints}>
-                <div className={`${styles.debateSide} ${styles.support}`}>
-                  <h4>Support</h4>
-                  <ul>
-                    {topic.debatePoints?.Support?.map((point, index) => (
-                      <li key={index}>{point}</li>
-                    ))}
-                  </ul>
+              {topic.debatePoints && (
+                <div className={styles.debatePoints}>
+                  <div className={`${styles.debateSide} ${styles.support}`}>
+                    <h4>Support</h4>
+                    <ul>
+                      {topic.debatePoints?.Support?.map((point, index) => (
+                        <li key={index}>{point}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className={`${styles.debateSide} ${styles.oppose}`}>
+                    <h4>Oppose</h4>
+                    <ul>
+                      {topic.debatePoints?.Oppose?.map((point, index) => (
+                        <li key={index}>{point}</li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
-                <div className={`${styles.debateSide} ${styles.oppose}`}>
-                  <h4>Oppose</h4>
-                  <ul>
-                    {topic.debatePoints?.Oppose?.map((point, index) => (
-                      <li key={index}>{point}</li>
-                    ))}
-                  </ul>
-                </div>
-                </div>
-              </div>
+              )}
+            </div>
 
             {/* Quick Actions */}
             <div className={styles.quickActions}>
@@ -903,27 +905,28 @@ export default function Home() {
             {/* Tab Content */}
             {activeTab === 'battle' && (
               <div className={styles.tabContent}>
-                {casts.length > 0 && (
-                  <div className={styles.compactGraph}>
-                    <div className={styles.graphHeader}>
-                      <h3>Market Sentiment</h3>
-                      <span className={`${styles.connectionStatus} ${styles[connectionStatus]}`}>
-                        {connectionStatus === 'connected' && '🟢 Live'}
-                        {connectionStatus === 'polling' && '🟡 Polling'}
-                        {connectionStatus === 'connecting' && '🟠 Connecting'}
-                        {connectionStatus === 'disconnected' && '🔴 Offline'}
-                      </span>
-                    </div>
-                    <div className={styles.chartContainer}>
-                      <Line data={chartData} options={chartOptions} />
-                    </div>
-                    <div className={styles.compactStats}>
-                      <span>Support: {sentimentData.supportPercent}%</span>
-                      <span>Oppose: {sentimentData.opposePercent}%</span>
-                      <span>Total: {sentimentData.support + sentimentData.oppose}</span>
-                    </div>
+                <div className={styles.compactGraph}>
+                  <div className={styles.graphHeader}>
+                    <h3>Market Sentiment</h3>
+                    <span className={`${styles.connectionStatus} ${styles[connectionStatus]}`}>
+                      {connectionStatus === 'connected' && '🟢 Live'}
+                      {connectionStatus === 'polling' && '🟡 Polling'}
+                      {connectionStatus === 'connecting' && '🟠 Connecting'}
+                      {connectionStatus === 'disconnected' && '🔴 Offline'}
+                    </span>
                   </div>
-                )}
+                  <div className={styles.chartContainer}>
+                    <Line data={chartData} options={chartOptions} />
+                  </div>
+                  <div className={styles.compactStats}>
+                    <span>Support: {sentimentData.supportPercent}%</span>
+                    <span>Oppose: {sentimentData.opposePercent}%</span>
+                    <span>Total: {sentimentData.support + sentimentData.oppose}</span>
+                    {casts.length === 0 && (
+                      <span className={styles.emptyState}>No votes yet - be the first to participate!</span>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -942,13 +945,13 @@ export default function Home() {
                           </span>
                         </div>
                         <div className={styles.argumentContent}>{cast.content}</div>
-            </div>
+                      </div>
                     ))
                   ) : (
                     <div className={styles.loading}>No arguments submitted yet.</div>
-          )}
-        </div>
-      </div>
+                  )}
+                </div>
+              </div>
             )}
 
             {activeTab === 'history' && (
