@@ -1,9 +1,9 @@
-# Cast Battle on Base
+# NewsCast Battle
 
 <div align="center">
   <img src="./public/Base_basemark_blue.png" alt="Base Logo" width="200"/>
   
-  **AI-Powered Debate Battles on Base Network**
+  **AI-Powered News Debate Platform on Base Network**
   
   [![Base Network](https://img.shields.io/badge/Network-Base-blue)](https://base.org)
   [![Next.js](https://img.shields.io/badge/Framework-Next.js-black)](https://nextjs.org)
@@ -13,14 +13,14 @@
 
 ## Overview
 
-Cast Battle on Base transforms trending global news into engaging debate battles on the Base network. Users participate through Farcaster Frames, submit their arguments, and compete for $BATTLE tokens. Our multi-agent AI system curates high-impact news, generates balanced debate topics, and moderates content quality.
+NewsCast Battle transforms trending global news into engaging debate battles on the Base network. Users participate through Farcaster Frames, submit their arguments, and compete for $BATTLE tokens. Our sophisticated multi-agent AI system curates high-impact news, generates balanced debate topics, and moderates content quality in real-time.
 
 ## Screenshot
 
 <div align="center">
-  <img src="./public/screenshot.png" alt="Cast Battle OnBase Application Screenshot" width="800"/>
+  <img src="./public/screenshot.png" alt="NewsCast Battle Application Screenshot" width="800"/>
   
-  *Cast Battle OnBase - AI-Powered Debate Platform*
+  *NewsCast Battle - AI-Powered News Debate Platform*
 </div>
 
 ## Architecture
@@ -35,33 +35,40 @@ Cast Battle on Base transforms trending global news into engaging debate battles
 
 ### AI Agent System
 
-Our sophisticated AI system consists of specialized agents:
+Our sophisticated multi-agent AI system consists of specialized agents working in harmony:
 
-1. **News Curator Agent** - Discovers and filters high-impact global politics and crypto news
-2. **Debate Generator Agent** - Transforms news into balanced debate topics with compelling arguments
-3. **Moderator Agent** - Evaluates content quality and appropriateness
-4. **Judge Agent** - Determines battle winners using hybrid scoring algorithms
+1. **News Curator Agent** - Discovers and filters high-impact global news across politics, technology, crypto, and business sectors
+2. **Debate Generator Agent** - Transforms curated news into balanced debate topics with compelling pro/con arguments
+3. **Moderator Agent** - Evaluates content quality, appropriateness, and ensures respectful discourse
+4. **Judge Agent** - Determines battle winners using advanced hybrid scoring algorithms combining quality, engagement, and AI analysis
 
 ## Features
 
 ### 🎯 Battle System
-- **Configurable Duration**: Battles can be set from 5 minutes to 24 hours
-- **Real-time Participation**: Join battles via Farcaster Frames
-- **Token Rewards**: Win $BATTLE tokens for quality arguments
-- **AI Moderation**: Automated content quality assessment
-- **Automatic Generation**: New battles start immediately when previous ones end
+- **Configurable Duration**: Battles can be set from 2 minutes to 24 hours with automatic transitions
+- **Real-time Participation**: Join battles via Farcaster Frames with instant updates
+- **Token Rewards**: Win $BATTLE tokens for quality arguments and engagement
+- **AI Moderation**: Advanced automated content quality assessment and similarity detection
+- **Automatic Generation**: New battles start immediately when previous ones end with intelligent topic diversification
 
 ### 🔗 OnchainKit Integration
-- **Wallet Connection**: Seamless Base wallet integration
-- **Token Operations**: Native $BATTLE token handling
-- **Transaction Management**: Built-in transaction processing
-- **Multi-wallet Support**: MetaMask, Coinbase Wallet, WalletConnect
+- **Wallet Connection**: Seamless Base wallet integration with Base Account SDK
+- **Token Operations**: Native $BATTLE token handling and balance management
+- **Transaction Management**: Built-in transaction processing with error handling
+- **Multi-wallet Support**: MetaMask, Coinbase Wallet, WalletConnect with priority ordering
 
 ### 📱 Farcaster Frames
-- **Interactive Cards**: Rich Frame experiences
-- **Battle Participation**: Join battles directly from Farcaster
-- **Cast Submission**: Submit arguments through Frames
-- **Real-time Updates**: Live battle status and results
+- **Interactive Cards**: Rich Frame experiences with dynamic content
+- **Battle Participation**: Join battles directly from Farcaster with one-click integration
+- **Cast Submission**: Submit arguments through Frames with real-time validation
+- **Real-time Updates**: Live battle status, results, and participant tracking
+
+### 🤖 Advanced AI Features
+- **Intelligent Topic Diversification**: AI-powered similarity detection prevents repetitive topics
+- **Multi-Strategy Retry Logic**: Automatic category switching when topics are too similar
+- **Semantic Analysis**: Advanced AI similarity scoring for topic uniqueness
+- **Quality Assessment**: Comprehensive content evaluation with scoring algorithms
+- **Cache Optimization**: Battle-duration-aligned caching for optimal performance
 
 ## Tokenomics
 
@@ -87,8 +94,8 @@ Our sophisticated AI system consists of specialized agents:
 
 ```bash
 # Clone the repository
-git clone https://github.com/battleonbase-pro/cast-battle-onbase-app.git
-cd cast-battle-onbase-app
+git clone https://github.com/battleonbase-pro/newscast-battle-onbase-app.git
+cd newscast-battle-onbase-app
 
 # Install dependencies
 npm install
@@ -116,7 +123,7 @@ GOOGLE_GENERATIVE_AI_API_KEY=your_google_gemini_api_key
 NEXT_PUBLIC_BATTLE_TOKEN_ADDRESS=
 
 # Battle Configuration (Optional)
-BATTLE_DURATION_HOURS=0.083333  # 5 minutes
+BATTLE_DURATION_HOURS=0.033333  # 2 minutes (configurable)
 BATTLE_MAX_PARTICIPANTS=1000
 BATTLE_GENERATION_ENABLED=true
 ```
@@ -127,9 +134,10 @@ The battle duration is fully configurable via environment variables:
 
 | Duration | BATTLE_DURATION_HOURS | Use Case |
 |----------|----------------------|----------|
-| 5 minutes | `0.083333` | Fast-paced testing |
-| 30 minutes | `0.5` | Quick battles |
-| 1 hour | `1` | Hourly battles |
+| 2 minutes | `0.033333` | Fast-paced testing |
+| 5 minutes | `0.083333` | Quick battles |
+| 30 minutes | `0.5` | Standard battles |
+| 1 hour | `1` | Extended battles |
 | 24 hours | `24` | Daily battles |
 
 
@@ -154,6 +162,12 @@ npm run deploy:testnet
 
 # Run tests
 npm test
+
+# Run specific test suites
+npm run test:news          # Test news API integration
+npm run test:ai-similarity # Test AI similarity calculation
+npm run test:retry-strategy # Test intelligent retry logic
+npm run test:cache-key    # Test battle-duration cache alignment
 ```
 
 ## API Endpoints
@@ -171,19 +185,19 @@ npm test
 ## How It Works
 
 ### 1. News Curation
-Our News Curator Agent scans high-impact global politics and cryptocurrency news, scoring articles for relevance and engagement potential.
+Our News Curator Agent scans high-impact global news across multiple sectors (politics, technology, crypto, business), scoring articles for relevance and engagement potential using advanced filtering algorithms.
 
 ### 2. Debate Generation
-The Debate Generator Agent transforms curated news into balanced debate questions with compelling pro/con arguments using advanced AI analysis.
+The Debate Generator Agent transforms curated news into balanced debate questions with compelling pro/con arguments using sophisticated AI analysis and semantic understanding.
 
 ### 3. Battle Participation
-Users join battles through Farcaster Frames, submit their arguments, and compete for $BATTLE tokens.
+Users join battles through Farcaster Frames, submit their arguments, and compete for $BATTLE tokens with real-time validation and feedback.
 
 ### 4. AI Moderation
-The Moderator Agent evaluates content quality, appropriateness, and relevance during battle completion.
+The Moderator Agent evaluates content quality, appropriateness, and relevance during battle completion, ensuring respectful discourse and high-quality engagement.
 
 ### 5. Winner Selection
-The Judge Agent determines winners using hybrid scoring algorithms combining quality, engagement, and AI analysis.
+The Judge Agent determines winners using advanced hybrid scoring algorithms combining content quality, engagement metrics, and AI analysis for fair and accurate results.
 
 ## Technology Stack
 
@@ -213,15 +227,17 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Documentation**: [Base Docs](https://docs.base.org)
 - **OnchainKit**: [OnchainKit Docs](https://docs.base.org/onchainkit)
-- **Issues**: [GitHub Issues](https://github.com/battleonbase-pro/cast-battle-onbase-app/issues)
+- **Issues**: [GitHub Issues](https://github.com/battleonbase-pro/newscast-battle-onbase-app/issues)
 
 ## Roadmap
 
-- [ ] Enhanced AI moderation algorithms
-- [ ] Advanced tokenomics features
-- [ ] Mobile app development
-- [ ] Cross-chain integration
-- [ ] Community governance system
+- [ ] Enhanced AI moderation algorithms with sentiment analysis
+- [ ] Advanced tokenomics features including staking and governance
+- [ ] Mobile app development for iOS and Android
+- [ ] Cross-chain integration with Ethereum and other L2s
+- [ ] Community governance system with voting mechanisms
+- [ ] Advanced analytics dashboard for battle insights
+- [ ] Integration with additional news sources and APIs
 
 ---
 
