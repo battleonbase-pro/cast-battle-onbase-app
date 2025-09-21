@@ -69,6 +69,7 @@ export default function Home() {
   const [topic, setTopic] = useState<DebateTopic | null>(null);
   const [battleJoined, setBattleJoined] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const [battleEndTime, setBattleEndTime] = useState<number | null>(null);
   const [casts, setCasts] = useState<Cast[]>([]);
   const [submittingCast, setSubmittingCast] = useState(false);
   const [castContent, setCastContent] = useState('');
@@ -85,6 +86,7 @@ export default function Home() {
     opposePercent: number;
   }>>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'polling' | 'disconnected'>('connecting');
+  const [pulseAnimation, setPulseAnimation] = useState(0);
 
   useEffect(() => {
     initializeApp();
@@ -95,7 +97,8 @@ export default function Home() {
       try {
         // Check if ethereum provider is available
         if (!window.ethereum) {
-          console.warn('No Ethereum provider found. Wallet connection will not be available.');
+          console.log('No Ethereum provider found. Wallet connection will not be available.');
+          // Continue without wallet - app can still be used for viewing battles
           return;
         }
 
@@ -129,6 +132,34 @@ export default function Home() {
         cleanupSSE();
       }
     };
+  }, []);
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (!battleEndTime) return;
+
+    const updateCountdown = () => {
+      const now = Date.now();
+      const remaining = Math.max(0, Math.floor((battleEndTime - now) / 1000));
+      setTimeRemaining(remaining);
+    };
+
+    // Update immediately
+    updateCountdown();
+
+    // Set up interval to update every second
+    const interval = setInterval(updateCountdown, 1000);
+
+    return () => clearInterval(interval);
+  }, [battleEndTime]);
+
+  // Pulse animation effect for chart end points
+  useEffect(() => {
+    const pulseInterval = setInterval(() => {
+      setPulseAnimation(prev => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(pulseInterval);
   }, []);
 
   const initializeApp = async () => {
@@ -249,11 +280,9 @@ export default function Home() {
       if (data.success && data.battle) {
         setTopic(data.battle);
         
-        // Calculate time remaining
+        // Set battle end time for countdown timer
         const endTime = new Date(data.battle.endTime).getTime();
-        const now = Date.now();
-        const remaining = Math.max(0, Math.floor((endTime - now) / 1000));
-        setTimeRemaining(remaining);
+        setBattleEndTime(endTime);
         
         await fetchCasts();
       } else {
@@ -493,8 +522,19 @@ export default function Home() {
         backgroundColor: 'rgba(16, 185, 129, 0.1)',
         fill: true,
         tension: 0.4,
-        pointRadius: 3,
-        pointHoverRadius: 5,
+        pointRadius: sentimentHistory.map((_, index) => 
+          index === sentimentHistory.length - 1 ? 6 + Math.sin(pulseAnimation * Math.PI / 2) * 2 : 3
+        ),
+        pointHoverRadius: 8,
+        pointBackgroundColor: sentimentHistory.map((_, index) => 
+          index === sentimentHistory.length - 1 ? '#10b981' : '#10b981'
+        ),
+        pointBorderColor: sentimentHistory.map((_, index) => 
+          index === sentimentHistory.length - 1 ? '#ffffff' : '#10b981'
+        ),
+        pointBorderWidth: sentimentHistory.map((_, index) => 
+          index === sentimentHistory.length - 1 ? 3 : 1
+        ),
       },
       {
         label: 'Oppose %',
@@ -503,8 +543,19 @@ export default function Home() {
         backgroundColor: 'rgba(239, 68, 68, 0.1)',
         fill: true,
         tension: 0.4,
-        pointRadius: 3,
-        pointHoverRadius: 5,
+        pointRadius: sentimentHistory.map((_, index) => 
+          index === sentimentHistory.length - 1 ? 6 + Math.sin(pulseAnimation * Math.PI / 2) * 2 : 3
+        ),
+        pointHoverRadius: 8,
+        pointBackgroundColor: sentimentHistory.map((_, index) => 
+          index === sentimentHistory.length - 1 ? '#ef4444' : '#ef4444'
+        ),
+        pointBorderColor: sentimentHistory.map((_, index) => 
+          index === sentimentHistory.length - 1 ? '#ffffff' : '#ef4444'
+        ),
+        pointBorderWidth: sentimentHistory.map((_, index) => 
+          index === sentimentHistory.length - 1 ? 3 : 1
+        ),
       }
     ]
   };
@@ -512,6 +563,10 @@ export default function Home() {
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    animation: {
+      duration: 1000,
+      easing: 'easeInOutQuart'
+    },
     plugins: {
       legend: {
         position: 'top' as const,
@@ -572,7 +627,7 @@ export default function Home() {
               >
                 Sign Out
               </button>
-            </div>
+        </div>
           ) : sdk ? (
             <div className={styles.signInWrapper}>
               <SignInWithBaseButton 
@@ -588,12 +643,13 @@ export default function Home() {
                 className={styles.signOutBtn}
                 disabled
                 style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                title="Install a wallet extension (Coinbase Wallet, MetaMask, etc.) to participate in battles"
               >
-                Wallet Loading...
+                {typeof window !== 'undefined' && !window.ethereum ? 'Install Wallet' : 'Wallet Loading...'}
               </button>
             </div>
           )}
-        </div>
+                </div>
       </header>
 
       {/* Main Content */}
@@ -604,7 +660,7 @@ export default function Home() {
           <div className={styles.error}>
             <p>⚠️ {error}</p>
             <button onClick={fetchCurrentBattle} className={styles.retryBtn}>Retry</button>
-          </div>
+              </div>
         ) : topic ? (
           <div className={styles.battleCard}>
             {/* Battle Header */}
