@@ -21,6 +21,11 @@ NEWS_API_KEY=your_news_api_key_here
 # AI Configuration
 GOOGLE_GENERATIVE_AI_API_KEY=your_google_api_key_here
 
+# Battle Configuration
+BATTLE_DURATION_HOURS=0.083333
+BATTLE_MAX_PARTICIPANTS=1000
+BATTLE_GENERATION_ENABLED=true
+
 # Battle Token Contract Address (will be set after deployment)
 NEXT_PUBLIC_BATTLE_TOKEN_ADDRESS=
 
@@ -54,6 +59,7 @@ console.log('✅ Transaction handling');
 console.log('✅ Battle creation and participation');
 console.log('✅ AI-powered topic generation');
 console.log('✅ Farcaster Frame integration');
+console.log('✅ Configurable battle duration (5 minutes)');
 console.log('');
 
 console.log('🚀 Next Steps:');

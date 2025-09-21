@@ -37,10 +37,11 @@ Our sophisticated AI system consists of specialized agents:
 ## Features
 
 ### 🎯 Battle System
-- **Daily Battles**: Fresh topics generated every 12 hours
+- **Configurable Duration**: Battles can be set from 5 minutes to 24 hours
 - **Real-time Participation**: Join battles via Farcaster Frames
 - **Token Rewards**: Win $BATTLE tokens for quality arguments
 - **AI Moderation**: Automated content quality assessment
+- **Automatic Generation**: New battles start immediately when previous ones end
 
 ### 🔗 OnchainKit Integration
 - **Wallet Connection**: Seamless Base wallet integration
@@ -105,7 +106,25 @@ GOOGLE_GENERATIVE_AI_API_KEY=your_google_gemini_api_key
 
 # Contract Address (set after deployment)
 NEXT_PUBLIC_BATTLE_TOKEN_ADDRESS=
+
+# Battle Configuration (Optional)
+BATTLE_DURATION_HOURS=0.083333  # 5 minutes
+BATTLE_MAX_PARTICIPANTS=1000
+BATTLE_GENERATION_ENABLED=true
 ```
+
+### Battle Configuration
+
+The battle duration is fully configurable via environment variables:
+
+| Duration | BATTLE_DURATION_HOURS | Use Case |
+|----------|----------------------|----------|
+| 5 minutes | `0.083333` | Fast-paced testing |
+| 30 minutes | `0.5` | Quick battles |
+| 1 hour | `1` | Hourly battles |
+| 24 hours | `24` | Daily battles |
+
+See [BATTLE_DURATION_CONFIG.md](./BATTLE_DURATION_CONFIG.md) for detailed configuration options.
 
 ### Development
 

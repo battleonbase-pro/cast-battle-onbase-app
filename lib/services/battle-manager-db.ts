@@ -85,7 +85,19 @@ export class BattleManagerDB {
         console.log('No active battle found, creating new one...');
         await this.createNewBattle();
       } else {
-        console.log(`Current battle: ${currentBattle.title} (${currentBattle.status})`);
+        // Check if current battle has expired
+        const now = new Date();
+        if (now > currentBattle.endTime && currentBattle.status === 'ACTIVE') {
+          console.log(`Current battle "${currentBattle.title}" has expired, completing it and creating new one...`);
+          
+          // Complete the expired battle
+          await this.db.completeBattle(currentBattle.id, []);
+          
+          // Create a new battle immediately
+          await this.createNewBattle();
+        } else {
+          console.log(`Current battle: ${currentBattle.title} (${currentBattle.status}) - ends at ${currentBattle.endTime.toISOString()}`);
+        }
       }
     } catch (error) {
       console.error('Error checking battle status:', error);
@@ -144,6 +156,7 @@ export class BattleManagerDB {
 
     const intervalMs = this.config.battleDurationHours * 60 * 60 * 1000;
     
+    // Set up the main interval for battle generation
     setInterval(async () => {
       try {
         await this.checkAndCreateBattle();
@@ -152,7 +165,18 @@ export class BattleManagerDB {
       }
     }, intervalMs);
 
+    // Set up a more frequent check to catch expired battles immediately
+    // Check every 30 seconds to ensure battles are completed and new ones created promptly
+    setInterval(async () => {
+      try {
+        await this.checkAndCreateBattle();
+      } catch (error) {
+        console.error('Error in battle status check:', error);
+      }
+    }, 30000); // 30 seconds
+
     console.log(`Automatic battle generation scheduled every ${this.config.battleDurationHours} hours`);
+    console.log(`Battle status checks every 30 seconds for immediate transitions`);
   }
 
   /**
@@ -167,6 +191,18 @@ export class BattleManagerDB {
    */
   async getBattleHistory(limit: number = 10) {
     return await this.db.getBattleHistory(limit);
+  }
+
+  /**
+   * Manually trigger battle generation (for testing/admin purposes)
+   */
+  async triggerBattleGeneration(): Promise<void> {
+    if (!this.config.enabled) {
+      throw new Error('Battle generation is disabled');
+    }
+    
+    console.log('Manually triggering battle generation...');
+    await this.checkAndCreateBattle();
   }
 
   /**

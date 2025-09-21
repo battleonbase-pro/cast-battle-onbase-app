@@ -78,3 +78,31 @@ export async function PUT(request: NextRequest) {
     }, { status: 500 });
   }
 }
+
+/**
+ * DELETE /api/battle/manage
+ * Manually trigger battle generation (for testing/admin purposes)
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    const battleManager = BattleManagerDB.getInstance();
+    
+    // Manually trigger battle generation
+    await battleManager.triggerBattleGeneration();
+    
+    const currentBattle = await battleManager.getCurrentBattle();
+
+    return NextResponse.json({
+      success: true,
+      message: 'Battle generation triggered successfully',
+      currentBattle
+    });
+
+  } catch (error) {
+    console.error('Error triggering battle generation:', error);
+    return NextResponse.json({
+      success: false,
+      error: error.message || 'Failed to trigger battle generation'
+    }, { status: 500 });
+  }
+}
