@@ -140,6 +140,16 @@ model SystemConfig {
   @@map("system_config")
 }
 
+model SharedState {
+  id                String    @id @default(cuid())
+  key               String    @unique
+  rateLimitCooldown DateTime?
+  lastUpdated       DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+  
+  @@map("shared_state")
+}
+
 enum BattleStatus {
   ACTIVE
   COMPLETED

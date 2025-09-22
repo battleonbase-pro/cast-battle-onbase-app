@@ -35,19 +35,18 @@ class NewsService {
   async getDailyBattleTopic(): Promise<DebateTopic> {
     const battleCount = await this.getBattleCountForToday();
     const cacheKey = this.getCacheKey(battleCount);
-    const cached = this.cache.get(cacheKey);
-    
-    // Return cached topic if it's still valid (within 12-hour window)
-    if (cached && this.isCacheValid(cached.timestamp)) {
+      const cached = this.cache.get(cacheKey);
+      
+      // Return cached topic if it's still valid (within 12-hour window)
+      if (cached && this.isCacheValid(cached.timestamp)) {
       console.log('[News Service] Returning cached topic:', cached.data.title);
-      return cached.data;
-    }
+        return cached.data;
+      }
 
     // Try to generate topic with retry logic and similarity checking
     const maxRetries = 3;
     let lastError: Error | null = null;
     let similarityFailures = 0;
-    let bestSimilarityResult: { topic: DebateTopic; articleTitle: string; similarity: number } | null = null;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -55,7 +54,7 @@ class NewsService {
         
         // Use different strategies based on attempt and previous failures
         const workflowResult = await this.generateTopicWithStrategy(attempt, similarityFailures);
-        const aiGeneratedTopic = workflowResult.debateTopic;
+      const aiGeneratedTopic = workflowResult.debateTopic;
         const newsArticleTitle = workflowResult.curatedTopic?.title;
         
         // Validate the generated topic
@@ -67,28 +66,18 @@ class NewsService {
             console.log(`[News Service] ✅ Successfully generated unique news article on attempt ${attempt}:`, newsArticleTitle);
             console.log(`[News Service] ✅ Debate topic:`, aiGeneratedTopic.title);
             console.log(`[News Service] ✅ Similarity score:`, similarity);
-            
-            // Cache the AI-generated topic
-            this.cache.set(cacheKey, {
-              data: aiGeneratedTopic,
-              timestamp: new Date()
-            });
+      
+      // Cache the AI-generated topic
+      this.cache.set(cacheKey, {
+        data: aiGeneratedTopic,
+        timestamp: new Date()
+      });
 
-            return aiGeneratedTopic;
+      return aiGeneratedTopic;
           } else {
             similarityFailures++;
             console.log(`[News Service] ⚠️ News article too similar to recent battles (${similarity}), retrying with different strategy...`);
             console.log(`[News Service] ⚠️ Similar article:`, newsArticleTitle);
-            
-            // Store this result as a potential fallback if it's the best we have
-            if (!bestSimilarityResult || similarity < bestSimilarityResult.similarity) {
-              bestSimilarityResult = {
-                topic: aiGeneratedTopic,
-                articleTitle: newsArticleTitle || aiGeneratedTopic.title,
-                similarity: similarity
-              };
-              console.log(`[News Service] 📝 Storing as best fallback option (similarity: ${similarity})`);
-            }
             
             throw new Error(`News article too similar to recent battles on attempt ${attempt}`);
           }
@@ -96,7 +85,7 @@ class NewsService {
           throw new Error(`Generated topic failed validation on attempt ${attempt}`);
         }
         
-      } catch (error) {
+    } catch (error) {
         lastError = error as Error;
         console.error(`[News Service] ❌ Attempt ${attempt}/${maxRetries} failed:`, error.message);
         
@@ -119,24 +108,7 @@ class NewsService {
       }
     }
 
-    // If we have a fallback option, use it gracefully
-    if (bestSimilarityResult) {
-      console.log(`[News Service] 🔄 All attempts found similar articles, using best fallback option`);
-      console.log(`[News Service] 📰 Fallback article:`, bestSimilarityResult.articleTitle);
-      console.log(`[News Service] 🎯 Fallback topic:`, bestSimilarityResult.topic.title);
-      console.log(`[News Service] 📊 Fallback similarity:`, bestSimilarityResult.similarity);
-      console.log(`[News Service] ⚠️ Note: This article is similar to recent battles but proceeding to ensure battle continuity`);
-      
-      // Cache the fallback topic
-      this.cache.set(cacheKey, {
-        data: bestSimilarityResult.topic,
-        timestamp: new Date()
-      });
-
-      return bestSimilarityResult.topic;
-    }
-
-    // All attempts failed and no fallback available, throw error
+    // All attempts failed, throw error
     console.error(`[News Service] 🚨 All ${maxRetries} attempts failed. Last error:`, lastError?.message);
     console.log('[News Service] ❌ No valid news article found, throwing error');
     
@@ -347,6 +319,7 @@ class NewsService {
     }
   }
 
+
   private async calculateAISimilarity(topic1: string, topic2: string): Promise<number> {
     try {
       const prompt = `Compare these two debate topics and return a similarity score from 0.0 to 1.0:
@@ -397,6 +370,7 @@ Return only a number between 0.0 and 1.0 (e.g., 0.85 for very similar, 0.15 for 
   }
 
   private hashString(str: string): string {
+    if (!str) return '0';
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);

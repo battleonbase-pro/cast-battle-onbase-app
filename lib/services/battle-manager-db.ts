@@ -6,6 +6,7 @@
 import NewsService from './news-service';
 import { DatabaseService } from './database';
 import { battleEventEmitter } from '@/app/api/battle/state-stream/route';
+import { DBSharedStateManager } from './db-shared-state';
 
 export interface BattleConfig {
   battleDurationHours: number;
@@ -13,12 +14,24 @@ export interface BattleConfig {
   enabled: boolean;
 }
 
+// Global singleton to ensure only one instance across all imports and hot reloads
+declare global {
+  var __battleManagerInstance: BattleManagerDB | undefined;
+  var __battleManagerInitialized: boolean | undefined;
+}
+
+// Ensure global variables are initialized
+if (typeof global.__battleManagerInstance === 'undefined') {
+  global.__battleManagerInstance = undefined;
+}
+if (typeof global.__battleManagerInitialized === 'undefined') {
+  global.__battleManagerInitialized = false;
+}
+
 export class BattleManagerDB {
-  private static instance: BattleManagerDB;
-  private static isInitialized = false;
   private config: BattleConfig;
   private db: DatabaseService;
-  private rateLimitCooldown: Date | null = null;
+  private sharedState: DBSharedStateManager;
 
   constructor() {
     this.config = {
@@ -27,20 +40,21 @@ export class BattleManagerDB {
       enabled: process.env.BATTLE_GENERATION_ENABLED === 'true'
     };
     this.db = DatabaseService.getInstance();
+    this.sharedState = DBSharedStateManager.getInstance();
   }
 
   static async getInstance(): Promise<BattleManagerDB> {
-    if (!BattleManagerDB.instance) {
-      BattleManagerDB.instance = new BattleManagerDB();
+    if (!global.__battleManagerInstance) {
+      global.__battleManagerInstance = new BattleManagerDB();
     }
     
     // Auto-initialize on first access
-    if (!BattleManagerDB.isInitialized) {
-      await BattleManagerDB.instance.initialize();
-      BattleManagerDB.isInitialized = true;
+    if (!global.__battleManagerInitialized) {
+      await global.__battleManagerInstance.initialize();
+      global.__battleManagerInitialized = true;
     }
     
-    return BattleManagerDB.instance;
+    return global.__battleManagerInstance;
   }
 
   /**
@@ -185,14 +199,21 @@ export class BattleManagerDB {
     try {
       console.log('Creating new automatic battle...');
       
-      // Check if we're in rate limit cooldown
-      if (this.rateLimitCooldown && new Date() < this.rateLimitCooldown) {
-        const remainingMinutes = Math.ceil((this.rateLimitCooldown.getTime() - Date.now()) / (1000 * 60));
-        console.log(`🚫 Still in rate limit cooldown, skipping battle creation. ${remainingMinutes} minutes remaining.`);
+      // Check if we're in rate limit cooldown using database shared state
+      const now = new Date();
+      const stateInfo = await this.sharedState.getStateInfo();
+      
+      console.log('🔍 Cooldown check (database shared state):');
+      console.log('  - Current time:', now.toISOString());
+      console.log('  - Current cooldown:', stateInfo.cooldown ? stateInfo.cooldown.toISOString() : 'null');
+      console.log('  - Is cooldown active:', stateInfo.isActive);
+      
+      if (stateInfo.isActive) {
+        console.log(`🚫 Still in rate limit cooldown, skipping battle creation. ${stateInfo.remainingMinutes} minutes remaining.`);
         return;
-      } else if (this.rateLimitCooldown && new Date() >= this.rateLimitCooldown) {
+      } else if (stateInfo.cooldown && now >= stateInfo.cooldown) {
         // Cooldown has expired, clear it
-        this.rateLimitCooldown = null;
+        await this.sharedState.setRateLimitCooldown(null);
         console.log('✅ Rate limit cooldown expired, resuming battle creation');
       }
       
@@ -203,7 +224,6 @@ export class BattleManagerDB {
         throw new Error('Failed to generate battle topic');
       }
 
-      const now = new Date();
       const endTime = new Date(now.getTime() + (this.config.battleDurationHours * 60 * 60 * 1000));
 
       const battle = await this.db.createBattle({
@@ -247,12 +267,22 @@ export class BattleManagerDB {
           error.message.includes('rate limit') ||
           error.message.includes('Failed to generate battle topic after')) {
         // Only set cooldown if not already in cooldown or if current cooldown has expired
-        if (!this.rateLimitCooldown || new Date() >= this.rateLimitCooldown) {
-          this.rateLimitCooldown = new Date(Date.now() + 30 * 60 * 1000);
+        const now = new Date();
+        const stateInfo = await this.sharedState.getStateInfo();
+        
+        console.log('🔍 Rate limit error detected (database shared state):');
+        console.log('  - Current time:', now.toISOString());
+        console.log('  - Current cooldown:', stateInfo.cooldown ? stateInfo.cooldown.toISOString() : 'null');
+        console.log('  - Is cooldown active:', stateInfo.isActive);
+        
+        if (!stateInfo.cooldown || now >= stateInfo.cooldown) {
+          const newCooldown = new Date(now.getTime() + 30 * 60 * 1000);
+          await this.sharedState.setRateLimitCooldown(newCooldown);
           console.log('🚫 Rate limit detected, setting 30-minute cooldown period');
-          console.log('⏰ Next battle generation attempt will be at:', this.rateLimitCooldown.toISOString());
+          console.log('⏰ Next battle generation attempt will be at:', newCooldown.toISOString());
         } else {
           console.log('🚫 Rate limit detected, but already in cooldown period');
+          console.log('🔍 Current cooldown expires at:', stateInfo.cooldown.toISOString());
         }
       } else {
         console.log('🔄 Will retry battle generation on next interval');

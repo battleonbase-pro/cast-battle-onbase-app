@@ -10,7 +10,7 @@ export async function POST(_request: NextRequest) {
     console.log('Initializing Cast Battle application...');
     
     // Initialize battle manager
-    const battleManager = BattleManagerDB.getInstance();
+    const battleManager = await BattleManagerDB.getInstance();
     await battleManager.initialize();
     
     const config = battleManager.getConfig();
@@ -48,7 +48,7 @@ export async function POST(_request: NextRequest) {
  */
 export async function GET(_request: NextRequest) {
   try {
-    const battleManager = BattleManagerDB.getInstance();
+    const battleManager = await BattleManagerDB.getInstance();
     const config = battleManager.getConfig();
     const currentBattle = await battleManager.getCurrentBattle();
     

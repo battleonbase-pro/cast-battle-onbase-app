@@ -12,12 +12,17 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 // Database service class
 export class DatabaseService {
   private static instance: DatabaseService;
+  public prisma: PrismaClient;
 
   static getInstance(): DatabaseService {
     if (!DatabaseService.instance) {
       DatabaseService.instance = new DatabaseService();
     }
     return DatabaseService.instance;
+  }
+
+  constructor() {
+    this.prisma = prisma;
   }
 
   // Battle Management
