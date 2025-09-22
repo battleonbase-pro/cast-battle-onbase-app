@@ -47,6 +47,7 @@ class NewsService {
     const maxRetries = 3;
     let lastError: Error | null = null;
     let similarityFailures = 0;
+    let bestSimilarityResult: { topic: DebateTopic; articleTitle: string; similarity: number } | null = null;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -55,14 +56,17 @@ class NewsService {
         // Use different strategies based on attempt and previous failures
         const workflowResult = await this.generateTopicWithStrategy(attempt, similarityFailures);
         const aiGeneratedTopic = workflowResult.debateTopic;
+        const newsArticleTitle = workflowResult.curatedTopic?.title;
         
         // Validate the generated topic
         if (this.validateTopic(aiGeneratedTopic)) {
-          // Check similarity against recent battles
-          const isUnique = await this.checkTopicSimilarity(aiGeneratedTopic.title);
+          // Check similarity against recent battles using NEWS ARTICLE title, not debate topic
+          const similarity = await this.checkTopicSimilarity(newsArticleTitle || aiGeneratedTopic.title);
           
-          if (isUnique) {
-            console.log(`[News Service] ✅ Successfully generated unique topic on attempt ${attempt}:`, aiGeneratedTopic.title);
+          if (similarity < 0.7) { // Threshold for uniqueness
+            console.log(`[News Service] ✅ Successfully generated unique news article on attempt ${attempt}:`, newsArticleTitle);
+            console.log(`[News Service] ✅ Debate topic:`, aiGeneratedTopic.title);
+            console.log(`[News Service] ✅ Similarity score:`, similarity);
             
             // Cache the AI-generated topic
             this.cache.set(cacheKey, {
@@ -73,8 +77,20 @@ class NewsService {
             return aiGeneratedTopic;
           } else {
             similarityFailures++;
-            console.log(`[News Service] ⚠️ Topic too similar to recent battles, retrying with different strategy...`);
-            throw new Error(`Topic too similar to recent battles on attempt ${attempt}`);
+            console.log(`[News Service] ⚠️ News article too similar to recent battles (${similarity}), retrying with different strategy...`);
+            console.log(`[News Service] ⚠️ Similar article:`, newsArticleTitle);
+            
+            // Store this result as a potential fallback if it's the best we have
+            if (!bestSimilarityResult || similarity < bestSimilarityResult.similarity) {
+              bestSimilarityResult = {
+                topic: aiGeneratedTopic,
+                articleTitle: newsArticleTitle || aiGeneratedTopic.title,
+                similarity: similarity
+              };
+              console.log(`[News Service] 📝 Storing as best fallback option (similarity: ${similarity})`);
+            }
+            
+            throw new Error(`News article too similar to recent battles on attempt ${attempt}`);
           }
         } else {
           throw new Error(`Generated topic failed validation on attempt ${attempt}`);
@@ -84,6 +100,17 @@ class NewsService {
         lastError = error as Error;
         console.error(`[News Service] ❌ Attempt ${attempt}/${maxRetries} failed:`, error.message);
         
+        // If we hit rate limits (429) or quota exceeded, stop retrying immediately
+        if (error.message.includes('429') || 
+            error.message.includes('rate limit') || 
+            error.message.includes('quota') ||
+            error.message.includes('Quota exceeded') ||
+            (error as any).response?.status === 429 ||
+            (error as any).code === 'ERR_BAD_REQUEST') {
+          console.log('[News Service] 🚫 Rate limit or quota exceeded, stopping retries to avoid further API abuse');
+          break;
+        }
+        
         if (attempt < maxRetries) {
           const delay = attempt * 2000; // 2s, 4s delays
           console.log(`[News Service] ⏳ Waiting ${delay}ms before retry...`);
@@ -92,9 +119,26 @@ class NewsService {
       }
     }
 
-    // All attempts failed, throw error instead of returning fallback
+    // If we have a fallback option, use it gracefully
+    if (bestSimilarityResult) {
+      console.log(`[News Service] 🔄 All attempts found similar articles, using best fallback option`);
+      console.log(`[News Service] 📰 Fallback article:`, bestSimilarityResult.articleTitle);
+      console.log(`[News Service] 🎯 Fallback topic:`, bestSimilarityResult.topic.title);
+      console.log(`[News Service] 📊 Fallback similarity:`, bestSimilarityResult.similarity);
+      console.log(`[News Service] ⚠️ Note: This article is similar to recent battles but proceeding to ensure battle continuity`);
+      
+      // Cache the fallback topic
+      this.cache.set(cacheKey, {
+        data: bestSimilarityResult.topic,
+        timestamp: new Date()
+      });
+
+      return bestSimilarityResult.topic;
+    }
+
+    // All attempts failed and no fallback available, throw error
     console.error(`[News Service] 🚨 All ${maxRetries} attempts failed. Last error:`, lastError?.message);
-    console.log('[News Service] ❌ No valid topic generated, throwing error');
+    console.log('[News Service] ❌ No valid news article found, throwing error');
     
     throw new Error(`Failed to generate battle topic after ${maxRetries} attempts: ${lastError?.message}`);
   }
@@ -165,7 +209,7 @@ class NewsService {
       }
 
       // Check if category is valid
-      const validCategories = ['politics', 'technology', 'economics', 'society', 'environment', 'health', 'education', 'sports', 'crypto'];
+      const validCategories = ['politics', 'technology', 'economics', 'economy', 'society', 'environment', 'health', 'education', 'sports', 'crypto'];
       if (!validCategories.includes(topic.category.toLowerCase())) {
         console.log('[News Service] ❌ Topic category invalid:', topic.category);
         return false;
@@ -199,44 +243,54 @@ class NewsService {
     }
   }
 
-  private async checkTopicSimilarity(newTopicTitle: string): Promise<boolean> {
+  private async checkTopicSimilarity(newTopicTitle: string): Promise<number> {
     try {
-      // Get last 3 battles for similarity checking
-      const recentBattles = await this.getRecentBattles(3);
+      // Get last 2 battles for similarity checking
+      const recentBattles = await this.getRecentBattles(2);
       
       if (recentBattles.length === 0) {
         console.log('[News Service] No recent battles to compare against');
-        return true; // First battle of the day
+        return 0; // First battle of the day - no similarity
       }
 
-      console.log(`[News Service] Checking similarity against ${recentBattles.length} recent battles...`);
+      console.log(`[News Service] Checking similarity against ${recentBattles.length} recent battle descriptions...`);
 
-      // Check similarity against each recent battle
+      let maxSimilarity = 0;
+      let mostSimilarBattle = '';
+
+      // Check similarity against each recent battle using description for better context
       for (const battle of recentBattles) {
-        const similarity = await this.calculateTopicSimilarity(newTopicTitle, battle.title);
+        const similarity = await this.calculateTopicSimilarity(newTopicTitle, battle.description);
         
-        if (similarity > 0.75) {
-          console.log(`[News Service] ❌ Topic too similar (${similarity.toFixed(3)}) to recent battle: "${battle.title}"`);
-          return false;
+        if (similarity > maxSimilarity) {
+          maxSimilarity = similarity;
+          mostSimilarBattle = battle.title;
         }
       }
 
-      console.log('[News Service] ✅ Topic is sufficiently unique');
-      return true;
+      console.log(`[News Service] Calculated AI similarity: ${maxSimilarity.toFixed(3)}`);
+      if (maxSimilarity > 0.75) {
+        console.log(`[News Service] ❌ News article too similar (${maxSimilarity.toFixed(3)}) to recent battle description: "${mostSimilarBattle}"`);
+      } else {
+        console.log('[News Service] ✅ News article is sufficiently unique');
+      }
+
+      return maxSimilarity;
 
     } catch (error) {
       console.error('[News Service] ❌ Error checking topic similarity:', error);
       // Fallback to simple title matching if AI similarity fails
-      return this.checkSimpleTitleSimilarity(newTopicTitle);
+      return this.checkSimpleTitleSimilarity(newTopicTitle) ? 0.8 : 0;
     }
   }
 
-  private async getRecentBattles(count: number): Promise<{ id: string; title: string }[]> {
+  private async getRecentBattles(count: number): Promise<{ id: string; title: string; description: string }[]> {
     try {
       const battles = await this.db.getRecentBattles(count);
       return battles.map((battle: any) => ({
         id: battle.id,
-        title: battle.title
+        title: battle.title,
+        description: battle.description
       }));
     } catch (error) {
       console.error('[News Service] Error getting recent battles:', error);

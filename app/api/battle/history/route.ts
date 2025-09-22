@@ -7,7 +7,7 @@ import { BattleManagerDB } from '@/lib/services/battle-manager-db';
  */
 export async function GET(_request: NextRequest) {
   try {
-    const battleManager = BattleManagerDB.getInstance();
+    const battleManager = await BattleManagerDB.getInstance();
     const battleHistory = await battleManager.getBattleHistory();
 
     // Format battle history for frontend

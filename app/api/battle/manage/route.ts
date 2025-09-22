@@ -7,10 +7,7 @@ import { BattleManagerDB } from '@/lib/services/battle-manager-db';
  */
 export async function POST(_request: NextRequest) {
   try {
-    const battleManager = BattleManagerDB.getInstance();
-    
-    // Initialize the battle manager
-    await battleManager.initialize();
+    const battleManager = await BattleManagerDB.getInstance();
 
     return NextResponse.json({
       success: true,
@@ -33,7 +30,7 @@ export async function POST(_request: NextRequest) {
  */
 export async function GET(_request: NextRequest) {
   try {
-    const battleManager = BattleManagerDB.getInstance();
+    const battleManager = await BattleManagerDB.getInstance();
     const currentBattle = await battleManager.getCurrentBattle();
     const config = battleManager.getConfig();
 
@@ -60,7 +57,7 @@ export async function GET(_request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const updates = await request.json();
-    const battleManager = BattleManagerDB.getInstance();
+    const battleManager = await BattleManagerDB.getInstance();
     
     battleManager.updateConfig(updates);
 
@@ -85,7 +82,7 @@ export async function PUT(request: NextRequest) {
  */
 export async function DELETE(_request: NextRequest) {
   try {
-    const battleManager = BattleManagerDB.getInstance();
+    const battleManager = await BattleManagerDB.getInstance();
     
     // Manually trigger battle generation
     await battleManager.triggerBattleGeneration();

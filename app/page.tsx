@@ -168,6 +168,7 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [battleEndTime]);
 
+
   // Pulse animation effect for chart end points
   useEffect(() => {
     const pulseInterval = setInterval(() => {
@@ -331,6 +332,14 @@ export default function Home() {
               
             case 'BATTLE_TRANSITION':
               console.log('Battle transition:', data.data);
+              break;
+              
+            case 'TIMER_UPDATE':
+              console.log('Timer update from server:', data.data.timeRemaining, 'seconds remaining');
+              // Update battle end time if it changed (new battle)
+              if (data.data.endTime && data.data.endTime !== battleEndTime) {
+                setBattleEndTime(new Date(data.data.endTime).getTime());
+              }
               break;
               
             case 'HEARTBEAT':
@@ -808,26 +817,26 @@ export default function Home() {
 
               {/* Debate Points */}
               {topic.debatePoints && (
-                <div className={styles.debatePoints}>
+              <div className={styles.debatePoints}>
                   <div className={`${styles.debateSide} ${styles.support}`}>
                     <h4>Support</h4>
-                    <ul>
+                  <ul>
                       {topic.debatePoints?.Support?.map((point, index) => (
-                        <li key={index}>{point}</li>
-                      ))}
-                    </ul>
-                  </div>
+                      <li key={index}>{point}</li>
+                    ))}
+                  </ul>
+                </div>
                   <div className={`${styles.debateSide} ${styles.oppose}`}>
                     <h4>Oppose</h4>
-                    <ul>
+                  <ul>
                       {topic.debatePoints?.Oppose?.map((point, index) => (
-                        <li key={index}>{point}</li>
-                      ))}
-                    </ul>
-                  </div>
+                      <li key={index}>{point}</li>
+                    ))}
+                  </ul>
+                </div>
                 </div>
               )}
-            </div>
+              </div>
 
             {/* Quick Actions */}
             <div className={styles.quickActions}>
@@ -848,7 +857,7 @@ export default function Home() {
                       onClick={() => setCastSide('SUPPORT')}
                     >
                       Support
-                    </button>
+                  </button>
                     <button 
                       className={`${styles.sideBtn} ${castSide === 'OPPOSE' ? styles.active : ''}`}
                       onClick={() => setCastSide('OPPOSE')}
@@ -871,12 +880,12 @@ export default function Home() {
                   >
                     {submittingCast ? 'Submitting...' : 'Submit'}
                   </button>
-                </div>
-              )}
+                  </div>
+                )}
               {hasSubmittedCast && (
                 <div className={styles.thankYou}>
                   <span>✅ Thank you for participating!</span>
-                </div>
+              </div>
               )}
             </div>
 
@@ -924,9 +933,9 @@ export default function Home() {
                     <span>Total: {sentimentData.support + sentimentData.oppose}</span>
                     {casts.length === 0 && (
                       <span className={styles.emptyState}>No votes yet - be the first to participate!</span>
-                    )}
-                  </div>
-                </div>
+          )}
+        </div>
+      </div>
               </div>
             )}
 

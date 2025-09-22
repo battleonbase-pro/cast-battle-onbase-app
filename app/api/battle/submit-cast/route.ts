@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
     
-    const battleManager = BattleManagerDB.getInstance();
+    const battleManager = await BattleManagerDB.getInstance();
     
     // Check if user is a participant in the current battle
     const currentBattle = await battleManager.getCurrentBattle();
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(_request: NextRequest) {
   try {
-    const battleManager = BattleManagerDB.getInstance();
+    const battleManager = await BattleManagerDB.getInstance();
     const casts = await battleManager.getCurrentBattleCasts();
     
     return NextResponse.json({ 

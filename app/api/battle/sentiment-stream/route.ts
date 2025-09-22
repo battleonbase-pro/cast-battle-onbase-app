@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
  */
 async function sendInitialData(controller: ReadableStreamDefaultController, encoder: TextEncoder) {
   try {
-    const battleManager = BattleManagerDB.getInstance();
+    const battleManager = await BattleManagerDB.getInstance();
     const currentBattle = await battleManager.getCurrentBattle();
     
     if (currentBattle) {
@@ -113,7 +113,7 @@ function calculateSentiment(casts: any[]) {
  */
 export async function broadcastSentimentUpdate(battleId: string, userAddress?: string) {
   try {
-    const battleManager = BattleManagerDB.getInstance();
+    const battleManager = await BattleManagerDB.getInstance();
     const casts = await battleManager.getCurrentBattleCasts();
     const sentiment = calculateSentiment(casts);
     

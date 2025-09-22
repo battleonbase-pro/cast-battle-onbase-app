@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { BattleManagerDB } from '@/lib/services/battle-manager-db';
 
 // Store active SSE connections
 const connections = new Set<{
@@ -121,6 +122,8 @@ export async function GET(request: NextRequest) {
         battleEventEmitter.off('battleEnded', handleBattleEnded);
         battleEventEmitter.off('battleStarted', handleBattleStarted);
         battleEventEmitter.off('battleTransition', handleBattleTransition);
+        clearInterval(heartbeat);
+        clearInterval(battleTimer);
         connections.delete(connection);
         console.log(`🔌 SSE connection ${connectionId} closed`);
       };
@@ -143,10 +146,33 @@ export async function GET(request: NextRequest) {
         }
       }, 30000);
 
-      // Cleanup heartbeat on close
-      request.signal.addEventListener('abort', () => {
-        clearInterval(heartbeat);
-      });
+      // Server-side timer management - check battle status every 30 seconds
+      const battleTimer = setInterval(async () => {
+        try {
+          const battleManager = await BattleManagerDB.getInstance();
+          await battleManager.ensureBattleExists();
+          
+          const currentBattle = await battleManager.getCurrentBattle();
+          if (currentBattle) {
+            const timeRemaining = Math.max(0, Math.floor((new Date(currentBattle.endTime).getTime() - Date.now()) / 1000));
+            
+            const timerData = {
+              type: 'TIMER_UPDATE',
+              data: {
+                battleId: currentBattle.id,
+                timeRemaining,
+                endTime: currentBattle.endTime,
+                status: currentBattle.status
+              },
+              timestamp: new Date().toISOString()
+            };
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(timerData)}\n\n`));
+          }
+        } catch (error) {
+          console.error('Battle timer error:', error);
+        }
+      }, 30000); // Check every 30 seconds
+
     },
 
     cancel() {

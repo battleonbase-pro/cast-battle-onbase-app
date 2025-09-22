@@ -15,8 +15,10 @@ export interface BattleConfig {
 
 export class BattleManagerDB {
   private static instance: BattleManagerDB;
+  private static isInitialized = false;
   private config: BattleConfig;
   private db: DatabaseService;
+  private rateLimitCooldown: Date | null = null;
 
   constructor() {
     this.config = {
@@ -27,10 +29,17 @@ export class BattleManagerDB {
     this.db = DatabaseService.getInstance();
   }
 
-  static getInstance(): BattleManagerDB {
+  static async getInstance(): Promise<BattleManagerDB> {
     if (!BattleManagerDB.instance) {
       BattleManagerDB.instance = new BattleManagerDB();
     }
+    
+    // Auto-initialize on first access
+    if (!BattleManagerDB.isInitialized) {
+      await BattleManagerDB.instance.initialize();
+      BattleManagerDB.isInitialized = true;
+    }
+    
     return BattleManagerDB.instance;
   }
 
@@ -176,6 +185,13 @@ export class BattleManagerDB {
     try {
       console.log('Creating new automatic battle...');
       
+      // Check if we're in rate limit cooldown
+      if (this.rateLimitCooldown && new Date() < this.rateLimitCooldown) {
+        const remainingMinutes = Math.ceil((this.rateLimitCooldown.getTime() - Date.now()) / (1000 * 60));
+        console.log(`🚫 Still in rate limit cooldown, skipping battle creation. ${remainingMinutes} minutes remaining.`);
+        return;
+      }
+      
       // Use the news service directly to get a real topic
       const topic = await NewsService.getDailyBattleTopic();
       
@@ -221,7 +237,18 @@ export class BattleManagerDB {
 
     } catch (error) {
       console.error('❌ Failed to create new battle:', error.message);
-      console.log('🔄 Will retry battle generation on next interval');
+      
+      // If it's a rate limit error, set a cooldown period
+      if (error.message.includes('429') || 
+          error.message.includes('rate limit') ||
+          error.message.includes('Failed to generate battle topic after')) {
+        // Set cooldown for 30 minutes to avoid further API abuse
+        this.rateLimitCooldown = new Date(Date.now() + 30 * 60 * 1000);
+        console.log('🚫 Rate limit detected, setting 30-minute cooldown period');
+        console.log('⏰ Next battle generation attempt will be at:', this.rateLimitCooldown.toISOString());
+      } else {
+        console.log('🔄 Will retry battle generation on next interval');
+      }
       // Don't create a battle if topic generation fails
       // The system will retry on the next interval
     }
@@ -232,32 +259,39 @@ export class BattleManagerDB {
    */
   private setupAutomaticGeneration(): void {
     if (!this.config.enabled) {
+      console.log('⚠️ Automatic battle generation is disabled');
       return;
     }
 
     const intervalMs = this.config.battleDurationHours * 60 * 60 * 1000;
+    console.log(`🕐 Setting up automatic battle generation every ${this.config.battleDurationHours} hours (${intervalMs}ms)`);
     
     // Set up the main interval for battle generation
     setInterval(async () => {
+      console.log('⏰ Main battle generation interval triggered');
       try {
         await this.checkAndCreateBattle();
       } catch (error) {
         console.error('Error in automatic battle generation:', error);
+        // Don't retry immediately - wait for next interval
       }
     }, intervalMs);
 
-    // Set up a more frequent check to catch expired battles immediately
-    // Check every 30 seconds to ensure battles are completed and new ones created promptly
+    // Set up a less frequent check to avoid API spam
+    // Check every 5 minutes instead of 30 seconds to reduce API calls
+    console.log('🔄 Setting up battle status check every 5 minutes');
     setInterval(async () => {
+      console.log('🔍 Battle status check triggered');
       try {
         await this.checkAndCreateBattle();
       } catch (error) {
         console.error('Error in battle status check:', error);
+        // Don't retry immediately - wait for next interval
       }
-    }, 30000); // 30 seconds
+    }, 300000); // 5 minutes instead of 30 seconds
 
     console.log(`Automatic battle generation scheduled every ${this.config.battleDurationHours} hours`);
-    console.log(`Battle status checks every 30 seconds for immediate transitions`);
+    console.log(`Battle status checks every 5 minutes to avoid API spam`);
   }
 
   /**
