@@ -190,6 +190,10 @@ export class BattleManagerDB {
         const remainingMinutes = Math.ceil((this.rateLimitCooldown.getTime() - Date.now()) / (1000 * 60));
         console.log(`🚫 Still in rate limit cooldown, skipping battle creation. ${remainingMinutes} minutes remaining.`);
         return;
+      } else if (this.rateLimitCooldown && new Date() >= this.rateLimitCooldown) {
+        // Cooldown has expired, clear it
+        this.rateLimitCooldown = null;
+        console.log('✅ Rate limit cooldown expired, resuming battle creation');
       }
       
       // Use the news service directly to get a real topic
@@ -242,10 +246,14 @@ export class BattleManagerDB {
       if (error.message.includes('429') || 
           error.message.includes('rate limit') ||
           error.message.includes('Failed to generate battle topic after')) {
-        // Set cooldown for 30 minutes to avoid further API abuse
-        this.rateLimitCooldown = new Date(Date.now() + 30 * 60 * 1000);
-        console.log('🚫 Rate limit detected, setting 30-minute cooldown period');
-        console.log('⏰ Next battle generation attempt will be at:', this.rateLimitCooldown.toISOString());
+        // Only set cooldown if not already in cooldown or if current cooldown has expired
+        if (!this.rateLimitCooldown || new Date() >= this.rateLimitCooldown) {
+          this.rateLimitCooldown = new Date(Date.now() + 30 * 60 * 1000);
+          console.log('🚫 Rate limit detected, setting 30-minute cooldown period');
+          console.log('⏰ Next battle generation attempt will be at:', this.rateLimitCooldown.toISOString());
+        } else {
+          console.log('🚫 Rate limit detected, but already in cooldown period');
+        }
       } else {
         console.log('🔄 Will retry battle generation on next interval');
       }
