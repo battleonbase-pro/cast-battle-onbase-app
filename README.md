@@ -109,12 +109,20 @@ cp .env.sample .env
 
 Required API keys in `.env`:
 
+#### 1. Currents API Key
+- Visit [Currents API](https://currentsapi.services/)
+- Sign up for a free account
+- Get your API key from the dashboard
+- Add it to `CURRENTS_API_KEY` in your `.env` file
+
+#### 2. Other Required Keys
+
 ```env
 # OnchainKit Configuration
 NEXT_PUBLIC_ONCHAINKIT_API_KEY=your_alchemy_api_key
 
-# News API Configuration  
-NEWS_API_KEY=your_news_api_key
+# Currents API Configuration  
+CURRENTS_API_KEY=your_currents_api_key
 
 # AI Configuration
 GOOGLE_GENERATIVE_AI_API_KEY=your_google_gemini_api_key

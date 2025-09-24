@@ -75,7 +75,7 @@ async function testAgenticSystem() {
     console.error('\n❌ Error testing agentic system:', error.message);
     console.log('\n🔧 Troubleshooting:');
     console.log('   1. Check your GOOGLE_GENERATIVE_AI_API_KEY');
-    console.log('   2. Ensure NEWS_API_KEY is set');
+    console.log('   2. Ensure CURRENTS_API_KEY is set');
     console.log('   3. Check your internet connection');
     console.log('   4. Verify API key permissions');
   }

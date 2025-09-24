@@ -1,12 +1,31 @@
-// lib/agents/news-curator-agent.js
+// lib/agents/news-curator-agent.ts
 import BaseAgent from './base-agent';
 import axios from 'axios';
 
+interface Article {
+  title: string;
+  description?: string;
+  url: string;
+  author?: string;
+  published: string;
+  category?: string[];
+}
+
+interface CachedData {
+  data: any;
+  timestamp: Date;
+}
+
 class NewsCuratorAgent extends BaseAgent {
-  constructor(apiKey) {
+  private newsApiKey: string;
+  private baseUrl: string;
+  private cache: Map<string, CachedData>;
+  private cacheTimeout: number;
+
+  constructor(apiKey: string) {
     super('News Curator', 'Content Discovery & Filtering', apiKey);
-    this.newsApiKey = process.env.NEWS_API_KEY;
-    this.baseUrl = 'https://newsapi.org/v2';
+    this.newsApiKey = process.env.CURRENTS_API_KEY || '';
+    this.baseUrl = 'https://api.currentsapi.services/v1';
     this.cache = new Map();
     // Cache timeout based on battle duration
     const battleDurationHours = parseFloat(process.env.BATTLE_DURATION_HOURS || '0.083333');
@@ -58,10 +77,10 @@ class NewsCuratorAgent extends BaseAgent {
         title: hottestArticle.title,
         description: hottestArticle.description || hottestArticle.title,
         category: this.categorizeArticle(hottestArticle),
-        source: hottestArticle.source?.name || 'Unknown',
+        source: hottestArticle.author || 'Unknown',
         articleUrl: hottestArticle.url,
         score: hottestArticle.score,
-        publishedAt: hottestArticle.publishedAt,
+        publishedAt: hottestArticle.published,
         strategy
       };
 
@@ -73,7 +92,7 @@ class NewsCuratorAgent extends BaseAgent {
 
       return curatedTopic;
 
-    } catch (error) {
+    } catch (error: any) {
       this.logActivity(`Error in daily battle topic discovery with ${strategy} strategy`, { error: error.message });
       throw error;
     }
@@ -122,14 +141,14 @@ class NewsCuratorAgent extends BaseAgent {
         id: `curated_${Date.now()}`,
         title: hottestArticle.title,
         description: hottestArticle.description,
-        source: hottestArticle.source?.name || 'Unknown',
+        source: hottestArticle.author || 'Unknown',
         url: hottestArticle.url,
-        publishedAt: hottestArticle.publishedAt,
+        publishedAt: hottestArticle.published,
         category: this.categorizeArticle(hottestArticle),
         engagementScore: hottestArticle.score,
         relevanceFactors: this.extractRelevanceFactors(hottestArticle),
         articleData: hottestArticle,
-        curatedBy: this.name,
+        curatedBy: 'News Curator',
         curatedAt: new Date().toISOString()
       };
 
@@ -147,7 +166,7 @@ class NewsCuratorAgent extends BaseAgent {
 
       return curatedTopic;
 
-    } catch (error) {
+    } catch (error: any) {
       this.logActivity('Error in daily battle topic discovery', { error: error.message });
       throw error;
     }
@@ -156,24 +175,24 @@ class NewsCuratorAgent extends BaseAgent {
   // Fetch high-impact global news
   async fetchWorldNews() {
     try {
-      const response = await axios.get(`${this.baseUrl}/top-headlines`, {
+      const response = await axios.get(`${this.baseUrl}/latest-news`, {
         params: {
           country: 'us',
           pageSize: 25,
           apiKey: this.newsApiKey
         }
       });
-      return response.data.articles || [];
-    } catch (error) {
+      return response.data.news || [];
+    } catch (error: any) {
       console.error('Error fetching world news:', error);
       return [];
     }
   }
 
   // Fetch news by category
-  async fetchNewsByCategory(category, country = 'us') {
+  async fetchNewsByCategory(category: string, country = 'us') {
     try {
-      const response = await axios.get(`${this.baseUrl}/top-headlines`, {
+      const response = await axios.get(`${this.baseUrl}/latest-news`, {
         params: {
           category,
           country,
@@ -181,8 +200,8 @@ class NewsCuratorAgent extends BaseAgent {
           apiKey: this.newsApiKey
         }
       });
-      return response.data.articles || [];
-    } catch (error) {
+      return response.data.news || [];
+    } catch (error: any) {
       console.error(`Error fetching ${category} news:`, error);
       return [];
     }
@@ -191,24 +210,24 @@ class NewsCuratorAgent extends BaseAgent {
   // Fetch high-impact crypto news
   async fetchCryptoNews() {
     try {
-      const response = await axios.get(`${this.baseUrl}/everything`, {
+      const response = await axios.get(`${this.baseUrl}/search`, {
         params: {
-          q: 'bitcoin OR ethereum OR crypto regulation OR SEC OR CFTC OR crypto ETF OR institutional crypto OR crypto adoption OR blockchain technology OR DeFi OR crypto market',
+          keywords: 'bitcoin ethereum crypto regulation',
           pageSize: 20,
-          sortBy: 'publishedAt',
+          sortBy: 'published',
           language: 'en',
           apiKey: this.newsApiKey
         }
       });
-      return response.data.articles || [];
-    } catch (error) {
+      return response.data.news || [];
+    } catch (error: any) {
       console.error('Error fetching crypto news:', error);
       return [];
     }
   }
 
   // Filter articles for relevance (high-impact global politics and crypto focus)
-  filterRelevantArticles(articles) {
+  filterRelevantArticles(articles: Article[]) {
     const highImpactKeywords = [
       // US President's global impact (highest priority)
       'us president', 'american president', 'president of the united states', 'potus',
@@ -246,14 +265,14 @@ class NewsCuratorAgent extends BaseAgent {
       'quantum', 'cybersecurity', 'data breach', 'hack'
     ];
 
-    return articles.filter(article => {
+    return articles.filter((article: Article) => {
       const content = `${article.title} ${article.description || ''}`.toLowerCase();
       return highImpactKeywords.some(keyword => content.includes(keyword));
     });
   }
 
   // Calculate engagement score for articles
-  calculateEngagementScore(article) {
+  calculateEngagementScore(article: Article) {
     let score = 0;
     const title = article.title?.toLowerCase() || '';
     const description = article.description?.toLowerCase() || '';
@@ -267,7 +286,7 @@ class NewsCuratorAgent extends BaseAgent {
     ];
     
     if (credibleSources.some(source => 
-      article.source?.name?.toLowerCase().includes(source))) {
+      article.author?.toLowerCase().includes(source))) {
       score += 40;
     }
 
@@ -316,7 +335,7 @@ class NewsCuratorAgent extends BaseAgent {
     });
 
     // Recency bonus (10 points max)
-    const publishedAt = new Date(article.publishedAt);
+    const publishedAt = new Date(article.published);
     const hoursAgo = (Date.now() - publishedAt.getTime()) / (1000 * 60 * 60);
     
     if (hoursAgo < 1) score += 10;
@@ -328,7 +347,7 @@ class NewsCuratorAgent extends BaseAgent {
   }
 
   // Categorize article based on content (prioritize US President's global impact and high-impact global politics)
-  categorizeArticle(article) {
+  categorizeArticle(article: Article) {
     const content = `${article.title} ${article.description || ''}`.toLowerCase();
     
     // US President's global impact (highest priority)
@@ -377,7 +396,7 @@ class NewsCuratorAgent extends BaseAgent {
   }
 
   // Extract relevance factors for transparency (prioritize US President's global impact and high-impact global politics)
-  extractRelevanceFactors(article) {
+  extractRelevanceFactors(article: Article) {
     const content = `${article.title} ${article.description || ''}`.toLowerCase();
     const factors = [];
 
@@ -438,7 +457,7 @@ class NewsCuratorAgent extends BaseAgent {
     return `battle_topic_${battleCycleId}`;
   }
 
-  isCacheValid(timestamp) {
+  isCacheValid(timestamp: Date) {
     const now = new Date();
     const cacheAge = now.getTime() - timestamp.getTime();
     return cacheAge < this.cacheTimeout;

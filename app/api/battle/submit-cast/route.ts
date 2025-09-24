@@ -3,9 +3,12 @@ import { BattleManagerDB } from '@/lib/services/battle-manager-db';
 import { broadcastSentimentUpdate } from '../sentiment-stream/route';
 
 export async function POST(request: NextRequest) {
+  let userAddress: string | undefined;
+  
   try {
     const body = await request.json();
-    const { userAddress, content, side } = body;
+    const { userAddress: address, content, side } = body;
+    userAddress = address;
     
     if (!userAddress || !content || !side) {
       console.log(`❌ Invalid cast submission attempt - missing fields: userAddress=${!!userAddress}, content=${!!content}, side=${!!side}`);
@@ -25,6 +28,13 @@ export async function POST(request: NextRequest) {
       console.log(`❌ User ${userAddress} submitted cast too short (${content.trim().length} chars): "${content.trim()}"`);
       return NextResponse.json({ 
         error: 'Cast content must be at least 10 characters long' 
+      }, { status: 400 });
+    }
+    
+    if (content.trim().length > 140) {
+      console.log(`❌ User ${userAddress} submitted cast too long (${content.trim().length} chars): "${content.trim().substring(0, 50)}..."`);
+      return NextResponse.json({ 
+        error: 'Cast content must be 140 characters or less' 
       }, { status: 400 });
     }
     

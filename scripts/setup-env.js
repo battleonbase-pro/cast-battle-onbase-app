@@ -16,7 +16,7 @@ const envContent = `# OnchainKit Configuration
 NEXT_PUBLIC_ONCHAINKIT_API_KEY=your_alchemy_api_key_here
 
 # News API Configuration
-NEWS_API_KEY=your_news_api_key_here
+CURRENTS_API_KEY=your_currents_api_key_here
 
 # AI Configuration
 GOOGLE_GENERATIVE_AI_API_KEY=your_google_api_key_here
@@ -43,9 +43,9 @@ console.log('   - Sign up for free account');
 console.log('   - Create new app');
 console.log('   - Copy API key to NEXT_PUBLIC_ONCHAINKIT_API_KEY');
 console.log('');
-console.log('2. News API Key: https://newsapi.org/');
+console.log('2. Currents API Key: https://currentsapi.services/');
 console.log('   - Sign up for free account');
-console.log('   - Copy API key to NEWS_API_KEY');
+console.log('   - Copy API key to CURRENTS_API_KEY');
 console.log('');
 console.log('3. Google AI API Key: https://makersuite.google.com/app/apikey');
 console.log('   - Create new API key');

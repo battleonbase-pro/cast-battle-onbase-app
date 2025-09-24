@@ -7,11 +7,11 @@ dotenv.config();
 async function testNewsAPI() {
   console.log('📰 Testing News API Integration...\n');
 
-  const apiKey = process.env.NEWS_API_KEY;
+  const apiKey = process.env.CURRENTS_API_KEY;
 
   if (!apiKey || apiKey === 'your_news_api_key_here') {
-    console.log('❌ Please set your NEWS_API_KEY in the .env file');
-    console.log('   1. Go to: https://newsapi.org/');
+    console.log('❌ Please set your CURRENTS_API_KEY in the .env file');
+    console.log('   1. Go to: https://currentsapi.services/');
     console.log('   2. Sign up for a free account');
     console.log('   3. Get your API key from the dashboard');
     console.log('   4. Add it to your .env file\n');
@@ -22,7 +22,7 @@ async function testNewsAPI() {
     console.log('1️⃣ Testing News API connection...');
     
     // Test general news endpoint
-    const response = await axios.get('https://newsapi.org/v2/top-headlines', {
+    const response = await axios.get('https://api.currentsapi.services/v1/latest-news', {
       params: {
         apiKey: apiKey,
         country: 'us',
@@ -31,9 +31,8 @@ async function testNewsAPI() {
     });
 
     if (response.data.status === 'ok') {
-      console.log('✅ News API connection successful');
-      console.log(`   Total articles available: ${response.data.totalResults}`);
-      console.log(`   Articles fetched: ${response.data.articles.length}`);
+      console.log('✅ Currents API connection successful');
+      console.log(`   Articles fetched: ${response.data.news.length}`);
     } else {
       throw new Error(`API returned status: ${response.data.status}`);
     }
@@ -41,7 +40,7 @@ async function testNewsAPI() {
     console.log('\n2️⃣ Testing politics and crypto news...');
     
     // Test politics news
-    const politicsResponse = await axios.get('https://newsapi.org/v2/top-headlines', {
+    const politicsResponse = await axios.get('https://api.currentsapi.services/v1/latest-news', {
       params: {
         apiKey: apiKey,
         category: 'politics',
@@ -50,33 +49,33 @@ async function testNewsAPI() {
       }
     });
 
-    console.log(`✅ Politics news: ${politicsResponse.data.articles.length} articles`);
+    console.log(`✅ Politics news: ${politicsResponse.data.news.length} articles`);
 
     // Test crypto news (using search)
-    const cryptoResponse = await axios.get('https://newsapi.org/v2/everything', {
+    const cryptoResponse = await axios.get('https://api.currentsapi.services/v1/search', {
       params: {
         apiKey: apiKey,
-        q: 'cryptocurrency OR bitcoin OR ethereum',
-        sortBy: 'publishedAt',
+        keywords: 'bitcoin ethereum crypto',
+        sortBy: 'published',
         pageSize: 3
       }
     });
 
-    console.log(`✅ Crypto news: ${cryptoResponse.data.articles.length} articles`);
+    console.log(`✅ Crypto news: ${cryptoResponse.data.news.length} articles`);
 
     console.log('\n3️⃣ Sample articles:');
     console.log('\n📰 Politics Articles:');
-    politicsResponse.data.articles.forEach((article, index) => {
+    politicsResponse.data.news.forEach((article, index) => {
       console.log(`   ${index + 1}. ${article.title}`);
-      console.log(`      Source: ${article.source.name}`);
-      console.log(`      Published: ${new Date(article.publishedAt).toLocaleDateString()}`);
+      console.log(`      Author: ${article.author}`);
+      console.log(`      Published: ${new Date(article.published).toLocaleDateString()}`);
     });
 
     console.log('\n💰 Crypto Articles:');
-    cryptoResponse.data.articles.forEach((article, index) => {
+    cryptoResponse.data.news.forEach((article, index) => {
       console.log(`   ${index + 1}. ${article.title}`);
-      console.log(`      Source: ${article.source.name}`);
-      console.log(`      Published: ${new Date(article.publishedAt).toLocaleDateString()}`);
+      console.log(`      Author: ${article.author}`);
+      console.log(`      Published: ${new Date(article.published).toLocaleDateString()}`);
     });
 
     console.log('\n✅ News API Test Complete!');
@@ -94,7 +93,7 @@ async function testNewsAPI() {
     }
     
     console.log('\n🔧 Troubleshooting:');
-    console.log('   1. Check your NEWS_API_KEY');
+    console.log('   1. Check your CURRENTS_API_KEY');
     console.log('   2. Verify API key permissions');
     console.log('   3. Check your internet connection');
     console.log('   4. Ensure you have remaining API quota');

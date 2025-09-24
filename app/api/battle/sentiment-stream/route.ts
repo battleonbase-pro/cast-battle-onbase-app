@@ -80,7 +80,10 @@ async function sendInitialData(controller: ReadableStreamDefaultController, enco
         timestamp: Date.now()
       };
       
-      controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+      // Check if controller is still open before enqueuing
+      if (controller.desiredSize !== null) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+      }
     }
   } catch (error) {
     console.error('Error sending initial SSE data:', error);

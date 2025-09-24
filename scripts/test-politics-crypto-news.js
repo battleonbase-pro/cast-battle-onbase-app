@@ -7,11 +7,11 @@ dotenv.config();
 async function testPoliticsCryptoNews() {
   console.log('🏛️ Testing Politics & Crypto News Filtering...\n');
 
-  const apiKey = process.env.NEWS_API_KEY;
+  const apiKey = process.env.CURRENTS_API_KEY;
 
   if (!apiKey || apiKey === 'your_news_api_key_here') {
-    console.log('❌ Please set your NEWS_API_KEY in the .env file');
-    console.log('   1. Go to: https://newsapi.org/');
+    console.log('❌ Please set your CURRENTS_API_KEY in the .env file');
+    console.log('   1. Go to: https://currentsapi.services/');
     console.log('   2. Sign up for a free account');
     console.log('   3. Copy your API key');
     console.log('   4. Add it to your .env file\n');
@@ -23,7 +23,7 @@ async function testPoliticsCryptoNews() {
 
     // Test Politics News
     console.log('1️⃣ Testing Politics News...');
-    const politicsResponse = await axios.get('https://newsapi.org/v2/top-headlines', {
+    const politicsResponse = await axios.get('https://api.currentsapi.services/v1/latest-news', {
       params: {
         apiKey: apiKey,
         country: 'us',
@@ -33,10 +33,10 @@ async function testPoliticsCryptoNews() {
     });
 
     if (politicsResponse.data.status === 'ok') {
-      console.log(`   ✅ Found ${politicsResponse.data.totalResults} politics articles`);
+      console.log(`   ✅ Found ${politicsResponse.data.news.length} politics articles`);
       
       // Filter for high-impact articles
-      const highImpactPolitics = politicsResponse.data.articles.filter(article => {
+      const highImpactPolitics = politicsResponse.data.news.filter(article => {
         const title = article.title.toLowerCase();
         const description = article.description?.toLowerCase() || '';
         const content = title + ' ' + description;
@@ -58,21 +58,21 @@ async function testPoliticsCryptoNews() {
 
     // Test Crypto News
     console.log('\n2️⃣ Testing Crypto News...');
-    const cryptoResponse = await axios.get('https://newsapi.org/v2/everything', {
+    const cryptoResponse = await axios.get('https://api.currentsapi.services/v1/search', {
       params: {
         apiKey: apiKey,
-        q: 'cryptocurrency OR bitcoin OR ethereum OR blockchain OR defi',
+        keywords: 'bitcoin ethereum crypto blockchain',
         language: 'en',
-        sortBy: 'publishedAt',
+        sortBy: 'published',
         pageSize: 10
       }
     });
 
     if (cryptoResponse.data.status === 'ok') {
-      console.log(`   ✅ Found ${cryptoResponse.data.totalResults} crypto articles`);
+      console.log(`   ✅ Found ${cryptoResponse.data.news.length} crypto articles`);
       
       // Filter for high-impact crypto articles
-      const highImpactCrypto = cryptoResponse.data.articles.filter(article => {
+      const highImpactCrypto = cryptoResponse.data.news.filter(article => {
         const title = article.title.toLowerCase();
         const description = article.description?.toLowerCase() || '';
         const content = title + ' ' + description;
@@ -95,19 +95,19 @@ async function testPoliticsCryptoNews() {
 
     // Test World News for Global Politics
     console.log('\n3️⃣ Testing Global Politics...');
-    const worldResponse = await axios.get('https://newsapi.org/v2/top-headlines', {
+    const worldResponse = await axios.get('https://api.currentsapi.services/v1/latest-news', {
       params: {
         apiKey: apiKey,
-        sources: 'bbc-news,cnn,reuters',
+        country: 'us',
         pageSize: 10
       }
     });
 
     if (worldResponse.data.status === 'ok') {
-      console.log(`   ✅ Found ${worldResponse.data.totalResults} world articles`);
+      console.log(`   ✅ Found ${worldResponse.data.news.length} world articles`);
       
       // Filter for global politics
-      const globalPolitics = worldResponse.data.articles.filter(article => {
+      const globalPolitics = worldResponse.data.news.filter(article => {
         const title = article.title.toLowerCase();
         const description = article.description?.toLowerCase() || '';
         const content = title + ' ' + description;
@@ -143,13 +143,13 @@ async function testPoliticsCryptoNews() {
     
     if (error.response?.status === 401) {
       console.log('\n🔧 Troubleshooting:');
-      console.log('   1. Check your NEWS_API_KEY is correct');
-      console.log('   2. Verify the key is active at https://newsapi.org/');
+      console.log('   1. Check your CURRENTS_API_KEY is correct');
+      console.log('   2. Verify the key is active at https://currentsapi.services/');
     } else {
       console.log('\n🔧 Troubleshooting:');
       console.log('   1. Check your internet connection');
-      console.log('   2. Verify your NEWS_API_KEY');
-      console.log('   3. Check NewsAPI service status');
+      console.log('   2. Verify your CURRENTS_API_KEY');
+      console.log('   3. Check CurrentsAPI service status');
     }
   }
 }

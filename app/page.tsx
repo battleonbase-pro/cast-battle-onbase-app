@@ -738,8 +738,8 @@ export default function Home() {
       <header className={styles.header}>
         <div className={styles.headerTop}>
           <div className={styles.headerLeft}>
-            <h1 className={styles.title}>NewsCast Battle</h1>
-            <p className={styles.subtitle}>Battle on <span className={styles.baseText}>Base</span></p>
+            <h1 className={styles.title}><span className={styles.baseText}>NewsCast</span> Battle</h1>
+            <p className={styles.subtitle}>Battle <span className={styles.baseText}>on Base</span></p>
           </div>
           {user ? (
             <div className={styles.userCompact}>
@@ -867,15 +867,18 @@ export default function Home() {
                   </div>
                   <textarea
                     className={styles.argumentInput}
-                    placeholder="Your argument..."
+                    placeholder="Your argument... (140 chars max)"
                     value={castContent}
                     onChange={(e) => setCastContent(e.target.value)}
                     rows={3}
-                    maxLength={500}
+                    maxLength={140}
                   />
+                  <div className={styles.charCounter}>
+                    {castContent.length}/140 characters
+                  </div>
                   <button
                     onClick={submitCast}
-                    disabled={submittingCast || castContent.trim().length < 10}
+                    disabled={submittingCast || castContent.trim().length < 10 || castContent.trim().length > 140}
                     className={styles.submitBtn}
                   >
                     {submittingCast ? 'Submitting...' : 'Submit'}

@@ -32,6 +32,7 @@ export class BattleManagerDB {
   private config: BattleConfig;
   private db: DatabaseService;
   private sharedState: DBSharedStateManager;
+  private isGeneratingBattle: boolean = false;
 
   constructor() {
     this.config = {
@@ -108,7 +109,15 @@ export class BattleManagerDB {
    * Check if we need to create a new battle
    */
   private async checkAndCreateBattle(): Promise<void> {
+    // Prevent multiple simultaneous battle generation
+    if (this.isGeneratingBattle) {
+      console.log('🔄 Battle generation already in progress, skipping...');
+      return;
+    }
+
     try {
+      this.isGeneratingBattle = true;
+      
       const currentBattle = await this.db.getCurrentBattle();
       
       if (!currentBattle) {
@@ -145,6 +154,8 @@ export class BattleManagerDB {
       }
     } catch (error) {
       console.error('Error checking battle status:', error);
+    } finally {
+      this.isGeneratingBattle = false;
     }
   }
 
@@ -276,9 +287,9 @@ export class BattleManagerDB {
         console.log('  - Is cooldown active:', stateInfo.isActive);
         
         if (!stateInfo.cooldown || now >= stateInfo.cooldown) {
-          const newCooldown = new Date(now.getTime() + 30 * 60 * 1000);
+          const newCooldown = new Date(now.getTime() + 1 * 60 * 1000);
           await this.sharedState.setRateLimitCooldown(newCooldown);
-          console.log('🚫 Rate limit detected, setting 30-minute cooldown period');
+          console.log('🚫 Rate limit detected, setting 1-minute cooldown period');
           console.log('⏰ Next battle generation attempt will be at:', newCooldown.toISOString());
         } else {
           console.log('🚫 Rate limit detected, but already in cooldown period');

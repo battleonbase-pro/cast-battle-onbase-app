@@ -24,7 +24,7 @@ class NewsService {
   private cache = new Map();
   private similarityCache = new Map<string, SimilarityCacheEntry>();
   private agentOrchestrator: AgentOrchestrator;
-  private db: DatabaseService;
+  private db: typeof DatabaseService;
 
   constructor() {
     const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
@@ -241,7 +241,7 @@ class NewsService {
       }
 
       console.log(`[News Service] Calculated AI similarity: ${maxSimilarity.toFixed(3)}`);
-      if (maxSimilarity > 0.75) {
+      if (maxSimilarity > 0.3) {
         console.log(`[News Service] ❌ News article too similar (${maxSimilarity.toFixed(3)}) to recent battle description: "${mostSimilarBattle}"`);
       } else {
         console.log('[News Service] ✅ News article is sufficiently unique');
@@ -249,7 +249,7 @@ class NewsService {
 
       return maxSimilarity;
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('[News Service] ❌ Error checking topic similarity:', error);
       // Fallback to simple title matching if AI similarity fails
       return this.checkSimpleTitleSimilarity(newTopicTitle) ? 0.8 : 0;

@@ -42,7 +42,11 @@ async function handleCastSubmission(fid: string, castText: string) {
     
     // Validate cast text
     if (!castText || castText.trim().length < 10) {
-      return createInvalidCastFrame();
+      return createInvalidCastFrame('Cast must be at least 10 characters long');
+    }
+    
+    if (castText.trim().length > 140) {
+      return createInvalidCastFrame('Cast must be 140 characters or less');
     }
     
     // Create cast submission
@@ -119,7 +123,10 @@ function createNotParticipantFrame(battle: any) {
   });
 }
 
-function createInvalidCastFrame() {
+function createInvalidCastFrame(errorMessage?: string) {
+  const defaultMessage = 'Your cast is too short. Please provide a more detailed response.';
+  const message = errorMessage || defaultMessage;
+  
   const frameHtml = `
     <!DOCTYPE html>
     <html>
@@ -129,13 +136,17 @@ function createInvalidCastFrame() {
         <meta property="fc:frame:button:1" content="Try Again" />
         <meta property="fc:frame:post_url" content="${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/frame/submit-cast" />
         <meta property="og:title" content="Invalid Cast" />
-        <meta property="og:description" content="Your cast is too short. Please provide a more detailed response." />
+        <meta property="og:description" content="${message}" />
       </head>
       <body>
         <h1>❌ Invalid Cast</h1>
-        <p>Your cast is too short. Please provide a more detailed response.</p>
-        <p><strong>Minimum length:</strong> 10 characters</p>
-        <p>Try again with a more substantial argument!</p>
+        <p>${message}</p>
+        <p><strong>Requirements:</strong></p>
+        <ul>
+          <li>Minimum length: 10 characters</li>
+          <li>Maximum length: 140 characters</li>
+        </ul>
+        <p>Try again with a valid argument!</p>
       </body>
     </html>
   `;

@@ -40,8 +40,11 @@ export async function GET(_request: NextRequest) {
  * Join the current active battle
  */
 export async function POST(request: NextRequest) {
+  let userAddress: string | undefined;
+  
   try {
-    const { userAddress } = await request.json();
+    const body = await request.json();
+    userAddress = body.userAddress;
 
     if (!userAddress) {
       return NextResponse.json({
@@ -66,14 +69,14 @@ export async function POST(request: NextRequest) {
     
     // Handle "already joined" case gracefully
     if (error.message && error.message.includes('already joined')) {
-      console.log(`⚠️ User ${userAddress} attempted to join battle but already joined`);
+      console.log(`⚠️ User ${userAddress || 'unknown'} attempted to join battle but already joined`);
       return NextResponse.json({
         success: false,
         error: error.message
       }, { status: 400 });
     }
     
-    console.log(`❌ User ${userAddress} failed to join battle: ${error.message || 'Unknown error'}`);
+    console.log(`❌ User ${userAddress || 'unknown'} failed to join battle: ${error.message || 'Unknown error'}`);
     return NextResponse.json({
       success: false,
       error: error.message || 'Failed to join battle'
