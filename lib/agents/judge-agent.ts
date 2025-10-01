@@ -47,8 +47,8 @@ class JudgeAgent extends BaseAgent {
         
         case 'hybrid':
         default:
-          winner = await this.selectHybridWinner(battleData, appropriateCasts, moderationResults);
-          judgmentDetails = await this.generateHybridJudgment(battleData, appropriateCasts, winner);
+          winner = await this.selectOptimizedHybridWinner(battleData, appropriateCasts);
+          judgmentDetails = await this.generateOptimizedHybridJudgment(battleData, appropriateCasts, winner);
           break;
       }
 
@@ -413,6 +413,323 @@ Calculate weighted scores and select the winner. Provide detailed scoring breakd
       },
       required: ['winner', 'scoring']
     };
+  }
+
+  // Optimized Hybrid Winner Selection (Non-LLM scoring + Group-based top-3)
+  async selectOptimizedHybridWinner(battleData, casts) {
+    this.logActivity('Starting optimized hybrid winner selection', {
+      battleId: battleData.id,
+      castCount: casts.length
+    });
+
+    try {
+      // Step 1: Calculate non-LLM scores for all casts
+      const castsWithScores = casts.map(cast => ({
+        ...cast,
+        qualityScore: this.calculateQualityScore(cast.content),
+        relevanceScore: this.calculateRelevanceScore(cast.content, battleData),
+        engagementScore: this.calculateEngagementScore(cast.content),
+        totalScore: 0 // Will be calculated below
+      }));
+
+      // Step 2: Calculate weighted total scores
+      castsWithScores.forEach(cast => {
+        cast.totalScore = (
+          cast.qualityScore * 0.4 +
+          cast.relevanceScore * 0.3 +
+          cast.engagementScore * 0.2 +
+          this.calculateOriginalityScore(cast.content, casts) * 0.1
+        );
+      });
+
+      // Step 3: Group casts by side
+      const supportCasts = castsWithScores.filter(cast => cast.side === 'SUPPORT');
+      const opposeCasts = castsWithScores.filter(cast => cast.side === 'OPPOSE');
+
+      // Step 4: Determine winning group
+      const supportScore = this.calculateGroupScore(supportCasts);
+      const opposeScore = this.calculateGroupScore(opposeCasts);
+      
+      const winningGroup = supportScore > opposeScore ? supportCasts : opposeCasts;
+      const winningSide = supportScore > opposeScore ? 'SUPPORT' : 'OPPOSE';
+
+      // Step 5: Select top 3 from winning group
+      const top3 = winningGroup
+        .sort((a, b) => b.totalScore - a.totalScore)
+        .slice(0, 3);
+
+      // Step 6: Randomly select winner from top 3
+      const randomIndex = Math.floor(Math.random() * top3.length);
+      const winner = top3[randomIndex];
+
+      this.logActivity('Successfully selected optimized hybrid winner', {
+        winningSide,
+        top3Count: top3.length,
+        winnerId: winner.id,
+        winnerScore: winner.totalScore.toFixed(2)
+      });
+
+      return {
+        ...winner,
+        selectionMethod: 'optimized-hybrid',
+        selectionReason: `Selected from top 3 of ${winningSide} group (${top3.length} candidates)`,
+        groupAnalysis: {
+          winningSide,
+          supportScore: supportScore.toFixed(2),
+          opposeScore: opposeScore.toFixed(2),
+          top3Candidates: top3.map(c => ({
+            id: c.id,
+            score: c.totalScore.toFixed(2),
+            content: c.content.substring(0, 50) + '...'
+          }))
+        }
+      };
+
+    } catch (error) {
+      this.logActivity('Error in optimized hybrid winner selection', { error: error.message });
+      // Fallback to random selection
+      return this.selectRandomWinner(casts);
+    }
+  }
+
+  // Non-LLM Quality Score Calculation
+  calculateQualityScore(content) {
+    let score = 5; // Base score
+
+    // Length factor (optimal range: 50-120 characters)
+    const length = content.length;
+    if (length >= 50 && length <= 120) {
+      score += 2;
+    } else if (length >= 30 && length <= 140) {
+      score += 1;
+    }
+
+    // Readability factors
+    const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    const avgWordsPerSentence = content.split(/\s+/).length / sentences.length;
+    
+    if (avgWordsPerSentence >= 8 && avgWordsPerSentence <= 15) {
+      score += 1;
+    }
+
+    // Evidence indicators
+    const evidenceWords = ['because', 'since', 'due to', 'evidence', 'data', 'study', 'research', 'proves', 'shows'];
+    const hasEvidence = evidenceWords.some(word => content.toLowerCase().includes(word));
+    if (hasEvidence) score += 1;
+
+    // Argument structure
+    const argumentWords = ['however', 'although', 'despite', 'furthermore', 'moreover', 'therefore', 'thus'];
+    const hasStructure = argumentWords.some(word => content.toLowerCase().includes(word));
+    if (hasStructure) score += 1;
+
+    return Math.min(Math.max(score, 1), 10);
+  }
+
+  // Non-LLM Relevance Score Calculation
+  calculateRelevanceScore(content, battleData) {
+    let score = 5; // Base score
+
+    // Extract keywords from battle topic and description
+    const topicKeywords = this.extractKeywords(battleData.title + ' ' + battleData.description);
+    const contentKeywords = this.extractKeywords(content);
+
+    // Calculate keyword overlap
+    const overlap = topicKeywords.filter(keyword => 
+      contentKeywords.some(contentKeyword => 
+        contentKeyword.includes(keyword) || keyword.includes(contentKeyword)
+      )
+    ).length;
+
+    const overlapRatio = overlap / Math.max(topicKeywords.length, 1);
+    
+    if (overlapRatio >= 0.3) {
+      score += 3;
+    } else if (overlapRatio >= 0.1) {
+      score += 2;
+    } else if (overlapRatio >= 0.05) {
+      score += 1;
+    }
+
+    // Check for off-topic indicators
+    const offTopicWords = ['unrelated', 'random', 'whatever', 'idk', 'lol', 'haha'];
+    const hasOffTopic = offTopicWords.some(word => content.toLowerCase().includes(word));
+    if (hasOffTopic) score -= 2;
+
+    return Math.min(Math.max(score, 1), 10);
+  }
+
+  // Non-LLM Engagement Score Calculation
+  calculateEngagementScore(content) {
+    let score = 5; // Base score
+
+    // Question marks (encourage discussion)
+    const questionCount = (content.match(/\?/g) || []).length;
+    score += Math.min(questionCount, 2);
+
+    // Exclamation points (show passion)
+    const exclamationCount = (content.match(/!/g) || []).length;
+    score += Math.min(exclamationCount, 1);
+
+    // Numbers and statistics (add credibility)
+    const numberCount = (content.match(/\d+/g) || []).length;
+    if (numberCount > 0) score += 1;
+
+    // Controversial indicators
+    const controversialWords = ['wrong', 'right', 'should', 'must', 'never', 'always', 'best', 'worst'];
+    const hasControversial = controversialWords.some(word => content.toLowerCase().includes(word));
+    if (hasControversial) score += 1;
+
+    // Call to action
+    const actionWords = ['think', 'consider', 'imagine', 'suppose', 'believe'];
+    const hasAction = actionWords.some(word => content.toLowerCase().includes(word));
+    if (hasAction) score += 1;
+
+    return Math.min(Math.max(score, 1), 10);
+  }
+
+  // Non-LLM Originality Score Calculation
+  calculateOriginalityScore(content, allCasts) {
+    let score = 5; // Base score
+
+    // Check for uniqueness against other casts
+    const contentWords = this.extractKeywords(content);
+    let similarityCount = 0;
+
+    allCasts.forEach(otherCast => {
+      if (otherCast.id !== content.id) {
+        const otherWords = this.extractKeywords(otherCast.content);
+        const commonWords = contentWords.filter(word => 
+          otherWords.some(otherWord => 
+            word.includes(otherWord) || otherWord.includes(word)
+          )
+        );
+        similarityCount += commonWords.length;
+      }
+    });
+
+    const avgSimilarity = similarityCount / Math.max(allCasts.length - 1, 1);
+    
+    if (avgSimilarity < 2) {
+      score += 3; // Very original
+    } else if (avgSimilarity < 4) {
+      score += 2; // Moderately original
+    } else if (avgSimilarity < 6) {
+      score += 1; // Somewhat original
+    }
+
+    return Math.min(Math.max(score, 1), 10);
+  }
+
+  // Calculate group score (average of all casts in group)
+  calculateGroupScore(groupCasts) {
+    if (groupCasts.length === 0) return 0;
+    
+    const totalScore = groupCasts.reduce((sum, cast) => sum + cast.totalScore, 0);
+    return totalScore / groupCasts.length;
+  }
+
+  // Extract keywords from text
+  extractKeywords(text) {
+    return text
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .split(/\s+/)
+      .filter(word => word.length > 3)
+      .filter(word => !this.isStopWord(word));
+  }
+
+  // Check if word is a stop word
+  isStopWord(word) {
+    const stopWords = ['the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 'her', 'was', 'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'its', 'may', 'new', 'now', 'old', 'see', 'two', 'way', 'who', 'boy', 'did', 'she', 'use', 'man', 'oil', 'sit', 'set', 'run', 'eat', 'say', 'let', 'put', 'end', 'why', 'try', 'ask', 'men', 'few', 'any', 'own', 'same', 'tell', 'move', 'turn', 'come', 'made', 'live', 'here', 'give', 'name', 'very', 'just', 'form', 'much', 'great', 'think', 'help', 'low', 'line', 'before', 'move', 'right', 'boy', 'old', 'too', 'does', 'tell', 'sentence', 'three', 'want', 'air', 'well', 'also', 'play', 'small', 'end', 'put', 'home', 'read', 'hand', 'port', 'large', 'spell', 'add', 'even', 'land', 'here', 'must', 'big', 'high', 'such', 'follow', 'act', 'why', 'ask', 'men', 'change', 'went', 'light', 'kind', 'off', 'need', 'house', 'picture', 'try', 'us', 'again', 'animal', 'point', 'mother', 'world', 'near', 'build', 'self', 'earth', 'father', 'head', 'stand', 'own', 'page', 'should', 'country', 'found', 'answer', 'school', 'grow', 'study', 'still', 'learn', 'plant', 'cover', 'food', 'sun', 'four', 'between', 'state', 'keep', 'eye', 'never', 'last', 'let', 'thought', 'city', 'tree', 'cross', 'farm', 'hard', 'start', 'might', 'story', 'saw', 'far', 'sea', 'draw', 'left', 'late', 'run', 'dont', 'while', 'press', 'close', 'night', 'real', 'life', 'few', 'north', 'open', 'seem', 'together', 'next', 'white', 'children', 'begin', 'got', 'walk', 'example', 'ease', 'paper', 'group', 'always', 'music', 'those', 'both', 'mark', 'often', 'letter', 'until', 'mile', 'river', 'car', 'feet', 'care', 'second', 'book', 'carry', 'took', 'science', 'eat', 'room', 'friend', 'began', 'idea', 'fish', 'mountain', 'stop', 'once', 'base', 'hear', 'horse', 'cut', 'sure', 'watch', 'color', 'face', 'wood', 'main', 'enough', 'plain', 'girl', 'usual', 'young', 'ready', 'above', 'ever', 'red', 'list', 'though', 'feel', 'talk', 'bird', 'soon', 'body', 'dog', 'family', 'direct', 'pose', 'leave', 'song', 'measure', 'door', 'product', 'black', 'short', 'numeral', 'class', 'wind', 'question', 'happen', 'complete', 'ship', 'area', 'half', 'rock', 'order', 'fire', 'south', 'problem', 'piece', 'told', 'knew', 'pass', 'since', 'top', 'whole', 'king', 'space', 'heard', 'best', 'hour', 'better', 'during', 'hundred', 'five', 'remember', 'step', 'early', 'hold', 'west', 'ground', 'interest', 'reach', 'fast', 'verb', 'sing', 'listen', 'six', 'table', 'travel', 'less', 'morning', 'ten', 'simple', 'several', 'vowel', 'toward', 'war', 'lay', 'against', 'pattern', 'slow', 'center', 'love', 'person', 'money', 'serve', 'appear', 'road', 'map', 'rain', 'rule', 'govern', 'pull', 'cold', 'notice', 'voice', 'unit', 'power', 'town', 'fine', 'certain', 'fly', 'fall', 'lead', 'cry', 'dark', 'machine', 'note', 'wait', 'plan', 'figure', 'star', 'box', 'noun', 'field', 'rest', 'correct', 'able', 'pound', 'done', 'beauty', 'drive', 'stood', 'contain', 'front', 'teach', 'week', 'final', 'gave', 'green', 'oh', 'quick', 'develop', 'ocean', 'warm', 'free', 'minute', 'strong', 'special', 'mind', 'behind', 'clear', 'tail', 'produce', 'fact', 'street', 'inch', 'multiply', 'nothing', 'course', 'stay', 'wheel', 'full', 'force', 'blue', 'object', 'decide', 'surface', 'deep', 'moon', 'island', 'foot', 'system', 'busy', 'test', 'record', 'boat', 'common', 'gold', 'possible', 'plane', 'stead', 'dry', 'wonder', 'laugh', 'thousand', 'ago', 'ran', 'check', 'game', 'shape', 'equate', 'miss', 'brought', 'heat', 'snow', 'tire', 'bring', 'yes', 'distant', 'fill', 'east', 'paint', 'language', 'among'];
+    return stopWords.includes(word);
+  }
+
+  // Generate Optimized Hybrid Judgment
+  async generateOptimizedHybridJudgment(battleData, casts, winner) {
+    this.logActivity('Generating optimized hybrid judgment', {
+      winnerId: winner.id,
+      winningSide: winner.groupAnalysis.winningSide
+    });
+
+    try {
+      // Single LLM call for insights generation
+      const insights = await this.generateInsightsFromTop3(winner.groupAnalysis.top3Candidates, battleData);
+      
+      const judgment = {
+        method: 'optimized-hybrid',
+        summary: `The ${winner.groupAnalysis.winningSide} side won with an average score of ${winner.groupAnalysis.winningSide === 'SUPPORT' ? winner.groupAnalysis.supportScore : winner.groupAnalysis.opposeScore}. Winner selected from top 3 candidates using optimized scoring.`,
+        fairness: 'Selection based on objective scoring criteria and group performance',
+        transparency: 'Non-LLM scoring with transparent criteria, random selection from top performers',
+        insights: insights,
+        groupAnalysis: winner.groupAnalysis,
+        scoringMethod: 'Non-LLM quality, relevance, engagement, and originality scoring',
+        selectionMethod: 'Random selection from top 3 of winning group'
+      };
+
+      this.logActivity('Successfully generated optimized hybrid judgment', {
+        insightsGenerated: !!insights,
+        groupAnalysis: winner.groupAnalysis.winningSide
+      });
+
+      return judgment;
+
+    } catch (error) {
+      this.logActivity('Error generating optimized hybrid judgment', { error: error.message });
+      
+      // Fallback judgment
+      return {
+        method: 'optimized-hybrid',
+        summary: `Winner selected using optimized hybrid approach from ${winner.groupAnalysis.winningSide} group.`,
+        fairness: 'Selection based on objective scoring criteria',
+        transparency: 'Non-LLM scoring with transparent criteria',
+        insights: null,
+        groupAnalysis: winner.groupAnalysis,
+        scoringMethod: 'Non-LLM quality, relevance, engagement, and originality scoring',
+        selectionMethod: 'Random selection from top 3 of winning group'
+      };
+    }
+  }
+
+  // Generate insights from top 3 candidates (Single LLM call)
+  async generateInsightsFromTop3(top3Candidates, battleData) {
+    this.logActivity('Generating insights from top 3 candidates');
+
+    try {
+      const prompt = `Analyze the top 3 debate contributions and generate insights about the winning arguments.
+
+BATTLE TOPIC: "${battleData.title}"
+BATTLE DESCRIPTION: "${battleData.description}"
+
+TOP 3 CONTRIBUTIONS:
+${top3Candidates.map((candidate, index) => `
+${index + 1}. Score: ${candidate.score}/10
+   Content: "${candidate.content}"
+`).join('\n')}
+
+TASK: Generate insights about:
+1. What made these arguments successful?
+2. Common themes or patterns?
+3. Key insights about the debate topic?
+4. What can we learn from the winning side?
+
+Provide a concise but insightful analysis (max 200 words).`;
+
+      const result = await this.generateTextContent(prompt, 0.6);
+
+      if (!result.success || !result.data) {
+        throw new Error('Failed to generate insights');
+      }
+
+      this.logActivity('Successfully generated insights from top 3', {
+        insightsLength: result.data.length
+      });
+
+      return result.data;
+
+    } catch (error) {
+      this.logActivity('Error generating insights from top 3', { error: error.message });
+      return null;
+    }
   }
 
   // Generate battle statistics

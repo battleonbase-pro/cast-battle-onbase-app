@@ -139,8 +139,8 @@ export class BattleManagerDB {
             title: currentBattle.title
           });
           
-          // Complete the expired battle
-          await this.db.completeBattle(currentBattle.id, []);
+          // Complete the expired battle with AI-powered judging
+          await this.completeBattleWithJudging(currentBattle.id);
           
           // Create a new battle immediately
           try {
@@ -341,6 +341,74 @@ export class BattleManagerDB {
 
     console.log(`Automatic battle generation scheduled every ${this.config.battleDurationHours} hours`);
     console.log(`Battle status checks every 5 minutes to avoid API spam`);
+  }
+
+  /**
+   * Complete battle with AI-powered judging using optimized hybrid method
+   */
+  private async completeBattleWithJudging(battleId: string): Promise<void> {
+    try {
+      console.log(`🏆 Starting AI-powered battle completion for battle ${battleId}`);
+      
+      // Get battle data and casts
+      const battle = await this.db.getBattleById(battleId);
+      if (!battle) {
+        console.log(`❌ Battle ${battleId} not found`);
+        return;
+      }
+
+      const casts = await this.db.getCastsForBattle(battleId);
+      if (casts.length === 0) {
+        console.log(`⚠️ No casts found for battle ${battleId}, completing without winners`);
+        await this.db.completeBattle(battleId, []);
+        return;
+      }
+
+      console.log(`📊 Found ${casts.length} casts for battle ${battleId}`);
+
+      // Use Agent Orchestrator for AI-powered judging
+      const { AgentOrchestrator } = await import('../agents/agent-orchestrator');
+      const orchestrator = new AgentOrchestrator(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
+      
+      // Complete battle with optimized hybrid method
+      const result = await orchestrator.completeBattle(battle, casts, 'hybrid');
+      
+      if (result && result.judgment && result.judgment.winner) {
+        const winner = result.judgment.winner;
+        const winners = [{
+          userId: winner.userId,
+          position: 1,
+          prize: 'Winner of the battle'
+        }];
+
+        // Complete battle with winners
+        await this.db.completeBattle(battleId, winners);
+        
+        console.log(`✅ Battle ${battleId} completed successfully`);
+        console.log(`🏆 Winner: ${winner.userId} (${winner.selectionMethod})`);
+        console.log(`📈 Winning side: ${winner.groupAnalysis?.winningSide || 'Unknown'}`);
+        console.log(`💡 Insights generated: ${result.judgment.insights ? 'Yes' : 'No'}`);
+        
+        // Log insights if available
+        if (result.judgment.insights) {
+          console.log(`🔍 Battle insights: ${result.judgment.insights.substring(0, 100)}...`);
+        }
+      } else {
+        console.log(`⚠️ AI judging failed for battle ${battleId}, completing without winners`);
+        await this.db.completeBattle(battleId, []);
+      }
+
+    } catch (error) {
+      console.error(`❌ Error completing battle ${battleId} with AI judging:`, error);
+      
+      // Fallback: complete battle without winners
+      try {
+        await this.db.completeBattle(battleId, []);
+        console.log(`⚠️ Battle ${battleId} completed without winners due to error`);
+      } catch (fallbackError) {
+        console.error(`❌ Failed to complete battle ${battleId} even with fallback:`, fallbackError);
+      }
+    }
   }
 
   /**

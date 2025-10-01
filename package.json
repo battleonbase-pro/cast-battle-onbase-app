@@ -42,6 +42,7 @@
     "test:similarity-integration": "npx tsx scripts/test-similarity-integration.js",
     "test:retry-strategy": "npx tsx scripts/test-retry-strategy.js",
     "test:cache-key": "npx tsx scripts/test-cache-key.js",
+    "test:optimized-judging": "npx tsx scripts/test-optimized-judging.js",
     "force:battle-transition": "npx tsx scripts/force-battle-transition.js"
   },
   "dependencies": {
