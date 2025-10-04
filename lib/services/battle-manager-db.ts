@@ -328,21 +328,7 @@ export class BattleManagerDB {
       }
     }, intervalMs);
 
-    // Set up a less frequent check to avoid API spam
-    // Check every 5 minutes instead of 30 seconds to reduce API calls
-    console.log('🔄 Setting up battle status check every 5 minutes');
-    setInterval(async () => {
-      console.log('🔍 Battle status check triggered');
-      try {
-        await this.checkAndCreateBattle();
-      } catch (error) {
-        console.error('Error in battle status check:', error);
-        // Don't retry immediately - wait for next interval
-      }
-    }, 300000); // 5 minutes instead of 30 seconds
-
     console.log(`Automatic battle generation scheduled every ${this.config.battleDurationHours} hours`);
-    console.log(`Battle status checks every 5 minutes to avoid API spam`);
   }
 
   /**
