@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-console.log('🚀 Setting up Cast Battle OnchainKit project...\n');
+console.log('🚀 Setting up NewsCast Battle OnchainKit project...\n');
 
 // Create .env.local file
 const envPath = path.join(__dirname, '..', '.env.local');

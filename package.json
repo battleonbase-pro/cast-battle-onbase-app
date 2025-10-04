@@ -1,5 +1,5 @@
 {
-  "name": "cast-battle-onbase",
+  "name": "newscast-battle-onbase",
   "version": "1.0.0",
   "description": "AI-Powered Debate Battles on Base Network with Farcaster Frames",
   "private": true,
@@ -15,7 +15,7 @@
     "ai",
     "onchainkit"
   ],
-  "author": "Cast Battle Team",
+  "author": "NewsCast Battle Team",
   "license": "MIT",
   "scripts": {
     "dev": "next dev",

@@ -127,7 +127,7 @@ export default function Home() {
         setSdk(baseSDK);
         
         // Check for existing authentication
-        const savedUser = localStorage.getItem('cast-battle-user');
+        const savedUser = localStorage.getItem('newscast-battle-user');
         if (savedUser) {
           const userData = JSON.parse(savedUser);
           setUser(userData);
@@ -437,7 +437,7 @@ export default function Home() {
           setHasSubmittedCast(!!userCast);
         } else {
           // Check localStorage for user data if state is not ready
-          const savedUser = localStorage.getItem('cast-battle-user');
+          const savedUser = localStorage.getItem('newscast-battle-user');
           if (savedUser) {
             const userData = JSON.parse(savedUser);
             const userCast = data.casts.find((cast: Cast) => 
@@ -590,7 +590,7 @@ export default function Home() {
       setUser(userData);
       
       // Save to localStorage for persistence
-      localStorage.setItem('cast-battle-user', JSON.stringify(userData));
+      localStorage.setItem('newscast-battle-user', JSON.stringify(userData));
       
       // Refetch current battle to check if user already joined
       await fetchCurrentBattle();
@@ -604,7 +604,7 @@ export default function Home() {
     setUser(null);
     setBattleJoined(false);
     setHasSubmittedCast(false);
-    localStorage.removeItem('cast-battle-user');
+    localStorage.removeItem('newscast-battle-user');
   };
 
   const formatTimeRemaining = (seconds: number) => {
