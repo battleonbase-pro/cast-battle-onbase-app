@@ -36,7 +36,7 @@ export class BattleManagerDB {
 
   constructor() {
     this.config = {
-      battleDurationHours: parseFloat(process.env.BATTLE_DURATION_HOURS || '24'),
+      battleDurationHours: parseFloat(process.env.BATTLE_DURATION_HOURS || '0.05'), // 3 minutes
       maxParticipants: parseInt(process.env.BATTLE_MAX_PARTICIPANTS || '1000'),
       enabled: process.env.BATTLE_GENERATION_ENABLED === 'true'
     };
@@ -235,7 +235,9 @@ export class BattleManagerDB {
         throw new Error('Failed to generate battle topic');
       }
 
-      const endTime = new Date(now.getTime() + (this.config.battleDurationHours * 60 * 60 * 1000));
+      // Calculate battle timing AFTER AI generation completes
+      const actualStartTime = new Date();
+      const endTime = new Date(actualStartTime.getTime() + (this.config.battleDurationHours * 60 * 60 * 1000));
 
       const battle = await this.db.createBattle({
         title: topic.title,
@@ -243,7 +245,7 @@ export class BattleManagerDB {
         category: topic.category,
         source: topic.source,
         sourceUrl: topic.articleUrl || topic.sourceUrl,
-        startTime: now,
+        startTime: actualStartTime,
         endTime: endTime,
         durationHours: this.config.battleDurationHours,
         maxParticipants: this.config.maxParticipants,
@@ -383,6 +385,17 @@ export class BattleManagerDB {
 
         // Complete battle with winners
         await this.db.completeBattle(battleId, winners);
+        
+        // Award 100 points to the winner
+        try {
+          const winnerUser = await this.db.getUserById(winner.userId);
+          if (winnerUser) {
+            const newPoints = await this.db.awardParticipationPoints(winnerUser.address, 100);
+            console.log(`🎉 Winner ${winnerUser.address} awarded 100 points! Total points: ${newPoints}`);
+          }
+        } catch (error) {
+          console.error(`❌ Failed to award winner points:`, error);
+        }
         
         console.log(`✅ Battle ${battleId} completed successfully`);
         console.log(`🏆 Winner: ${winner.userId} (${winner.selectionMethod})`);

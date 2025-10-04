@@ -55,10 +55,42 @@
   gap: 12px;
 }
 
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
 .userAddress {
   font-size: 0.875rem;
   color: #6b7280;
   font-family: 'SF Mono', 'Monaco', monospace;
+}
+
+.userPoints {
+  font-size: 0.75rem;
+  color: #0000ff;
+  font-weight: 600;
+  padding: 2px 8px;
+  background: #eff6ff;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.pointsAnimated {
+  animation: pointsPulse 0.6s ease-in-out;
+  background: #fef3c7;
+  color: #f59e0b;
+}
+
+@keyframes pointsPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
 }
 
 /* Base-style Button Components */

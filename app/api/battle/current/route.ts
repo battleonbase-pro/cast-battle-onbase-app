@@ -56,12 +56,18 @@ export async function POST(request: NextRequest) {
     const battleManager = await BattleManagerDB.getInstance();
     await battleManager.joinBattle(userAddress);
 
+    // Get user's updated points
+    const db = await import('@/lib/services/database').then(m => m.default);
+    const userPoints = await db.getUserPoints(userAddress);
+
     // Log user joining battle
-    console.log(`🎯 User ${userAddress} joined battle`);
+    console.log(`🎯 User ${userAddress} joined battle and now has ${userPoints} points`);
 
     return NextResponse.json({
       success: true,
-      message: 'Successfully joined battle'
+      message: 'Successfully joined battle',
+      points: userPoints,
+      pointsAwarded: 10
     });
 
   } catch (error) {

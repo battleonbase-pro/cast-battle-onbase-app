@@ -98,6 +98,8 @@ export default function Home() {
     message: string;
     newBattle?: any;
   }>({ isTransitioning: false, message: '' });
+  const [userPoints, setUserPoints] = useState<number>(0);
+  const [pointsAnimation, setPointsAnimation] = useState(false);
 
   useEffect(() => {
     initializeApp();
@@ -131,6 +133,8 @@ export default function Home() {
         if (savedUser) {
           const userData = JSON.parse(savedUser);
           setUser(userData);
+          // Fetch user points when they're authenticated
+          fetchUserPoints(userData.address);
         }
       } catch (error) {
         console.error('Failed to initialize Base Account SDK:', error);
@@ -465,6 +469,19 @@ export default function Home() {
     }
   }, []);
 
+  const fetchUserPoints = async (address: string) => {
+    try {
+      const response = await fetch(`/api/user/points?address=${address}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setUserPoints(data.points);
+      }
+    } catch (error) {
+      console.error('Failed to fetch user points:', error);
+    }
+  };
+
   // Initialize app after functions are defined
   useEffect(() => {
     const initApp = async () => {
@@ -496,6 +513,13 @@ export default function Home() {
       if (data.success) {
         setBattleJoined(true);
         setError(null);
+        
+        // Update points and show animation
+        if (data.points !== undefined) {
+          setUserPoints(data.points);
+          setPointsAnimation(true);
+          setTimeout(() => setPointsAnimation(false), 2000);
+        }
       } else {
         if (data.error.includes('already joined')) {
           setBattleJoined(true);
@@ -591,6 +615,9 @@ export default function Home() {
       
       // Save to localStorage for persistence
       localStorage.setItem('newscast-battle-user', JSON.stringify(userData));
+      
+      // Fetch user points
+      await fetchUserPoints(account);
       
       // Refetch current battle to check if user already joined
       await fetchCurrentBattle();
@@ -743,7 +770,12 @@ export default function Home() {
           </div>
           {user ? (
             <div className={styles.userCompact}>
-              <span className={styles.userAddress}>{user.address.slice(0, 6)}...{user.address.slice(-4)}</span>
+              <div className={styles.userInfo}>
+                <span className={styles.userAddress}>{user.address.slice(0, 6)}...{user.address.slice(-4)}</span>
+                <span className={`${styles.userPoints} ${pointsAnimation ? styles.pointsAnimated : ''}`}>
+                  ⭐ {userPoints} pts
+                </span>
+              </div>
               <button 
                 onClick={handleSignOut}
                 className={styles.signOutBtn}

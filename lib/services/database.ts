@@ -138,8 +138,14 @@ export class DatabaseService {
     });
 
     if (battle) {
-      await prisma.battleHistory.create({
-        data: {
+      await prisma.battleHistory.upsert({
+        where: { battleId },
+        update: {
+          totalParticipants: battle.participants.length,
+          totalCasts: battle.casts.length,
+          winnerAddress: battle.winners[0]?.user.address || null,
+        },
+        create: {
           battleId,
           totalParticipants: battle.participants.length,
           totalCasts: battle.casts.length,
@@ -209,6 +215,12 @@ export class DatabaseService {
     });
   }
 
+  async getUserById(userId: string) {
+    return await prisma.user.findUnique({
+      where: { id: userId },
+    });
+  }
+
   // Battle Participation
   async joinBattle(userId: string, battleId: string) {
     // Check if user already joined
@@ -246,7 +258,7 @@ export class DatabaseService {
     }
 
     // Add participant
-    return await prisma.battleParticipation.create({
+    const participation = await prisma.battleParticipation.create({
       data: {
         userId,
         battleId,
@@ -256,6 +268,11 @@ export class DatabaseService {
         battle: true,
       },
     });
+
+    // Award participation points (10 points for joining a battle)
+    await this.awardParticipationPoints(participation.user.address, 10);
+
+    return participation;
   }
 
   async hasUserJoinedBattle(userId: string, battleId: string) {
@@ -346,6 +363,121 @@ export class DatabaseService {
     return expiredBattles.length;
   }
 
+  // User Points Management
+  async awardParticipationPoints(userAddress: string, points: number = 10): Promise<number> {
+    try {
+      // First, ensure the user exists
+      const user = await prisma.user.upsert({
+        where: { address: userAddress },
+        update: {
+          points: {
+            increment: points
+          }
+        },
+        create: {
+          address: userAddress,
+          points: points
+        }
+      });
+
+      console.log(`✅ Awarded ${points} points to user ${userAddress}. Total points: ${user.points}`);
+      return user.points;
+    } catch (error) {
+      console.error('Error awarding points:', error);
+      throw error;
+    }
+  }
+
+  async getUserPoints(userAddress: string): Promise<number> {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { address: userAddress },
+        select: { points: true }
+      });
+
+      return user?.points || 0;
+    } catch (error) {
+      console.error('Error getting user points:', error);
+      return 0;
+    }
+  }
+
+  async getUserProfile(userAddress: string) {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { address: userAddress },
+        include: {
+          participations: {
+            include: {
+              battle: true
+            },
+            orderBy: {
+              joinedAt: 'desc'
+            },
+            take: 10 // Last 10 participations
+          },
+          wins: {
+            include: {
+              battle: true
+            },
+            orderBy: {
+              position: 'asc'
+            }
+          },
+          casts: {
+            include: {
+              battle: true
+            },
+            orderBy: {
+              createdAt: 'desc'
+            },
+            take: 10 // Last 10 casts
+          }
+        }
+      });
+
+      return user;
+    } catch (error) {
+      console.error('Error getting user profile:', error);
+      return null;
+    }
+  }
+
+  async getLeaderboard(limit: number = 10) {
+    try {
+      const users = await prisma.user.findMany({
+        orderBy: {
+          points: 'desc'
+        },
+        take: limit,
+        select: {
+          address: true,
+          username: true,
+          points: true,
+          createdAt: true,
+          participations: {
+            select: {
+              battle: {
+                select: {
+                  title: true,
+                  category: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      return users.map(user => ({
+        ...user,
+        participationCount: user.participations.length
+      }));
+    } catch (error) {
+      console.error('Error getting leaderboard:', error);
+      return [];
+    }
+  }
+
   // Statistics
   async getBattleStats() {
     const totalBattles = await prisma.battle.count();
@@ -357,6 +489,11 @@ export class DatabaseService {
     });
     const totalUsers = await prisma.user.count();
     const totalCasts = await prisma.cast.count();
+    const totalPointsAwarded = await prisma.user.aggregate({
+      _sum: {
+        points: true
+      }
+    });
 
     return {
       totalBattles,
@@ -364,6 +501,7 @@ export class DatabaseService {
       completedBattles,
       totalUsers,
       totalCasts,
+      totalPointsAwarded: totalPointsAwarded._sum.points || 0,
     };
   }
 
