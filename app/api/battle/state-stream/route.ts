@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { BattleManagerDB } from '@/lib/services/battle-manager-db';
-import { addSSEConnection, markConnectionInactive, getConnectionCount } from '@/lib/services/battle-broadcaster';
+import { addSSEConnection, markConnectionInactive, removeSSEConnectionById } from '@/lib/services/battle-broadcaster';
 
 export async function GET(_request: NextRequest) {
   const connectionId = `conn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -28,7 +28,7 @@ export async function GET(_request: NextRequest) {
       controller.enqueue(encoder.encode(`data: ${JSON.stringify(initialData)}\n\n`));
 
       // Set up battle timer to sync client countdown every 15 seconds
-      const battleTimer = setInterval(async () => {
+      const _battleTimer = setInterval(async () => {
         try {
           // Check if controller is still open before writing
           if (controller.desiredSize === null) {
@@ -58,7 +58,7 @@ export async function GET(_request: NextRequest) {
             
             try {
               controller.enqueue(encoder.encode(`data: ${JSON.stringify(timerData)}\n\n`));
-            } catch (writeError) {
+            } catch {
               // Remove failed connection immediately
               removeSSEConnectionById(connectionId);
               return;
@@ -71,7 +71,7 @@ export async function GET(_request: NextRequest) {
       }, 15000);
 
       // Set up heartbeat every 30 seconds
-      const heartbeatTimer = setInterval(() => {
+      const _heartbeatTimer = setInterval(() => {
         try {
           // Check if controller is still open before writing
           if (controller.desiredSize === null) {
@@ -87,7 +87,7 @@ export async function GET(_request: NextRequest) {
           };
           try {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(heartbeatData)}\n\n`));
-          } catch (writeError) {
+          } catch {
             // Remove failed connection immediately
             removeSSEConnectionById(connectionId);
             return;
