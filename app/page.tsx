@@ -141,7 +141,17 @@ export default function Home() {
   }, [showHelpPopup]);
 
   useEffect(() => {
-    initializeApp();
+    const initApp = async () => {
+      try {
+        await Promise.all([
+          fetchCurrentBattle(),
+          fetchBattleHistory()
+        ]);
+      } catch (error) {
+        console.error('App initialization error:', error);
+      }
+    };
+    initApp();
     const cleanupBattleSSE = setupBattleStateSSE();
     
     // Initialize Base Account SDK on client side only
@@ -230,15 +240,6 @@ export default function Home() {
     }, 1000);
 
     return () => clearInterval(pulseInterval);
-  }, []);
-
-  const initializeApp = useCallback(async () => {
-    try {
-      // Initialize app without calling functions that aren't defined yet
-      console.log('App initialization started');
-    } catch (error) {
-      console.error('App initialization error:', error);
-    }
   }, []);
 
   const setupBattleStateSSE = useCallback(() => {
@@ -491,21 +492,6 @@ export default function Home() {
       console.error('Failed to fetch user points:', error);
     }
   };
-
-  // Initialize app after functions are defined
-  useEffect(() => {
-    const initApp = async () => {
-      try {
-        await Promise.all([
-          fetchCurrentBattle(),
-          fetchBattleHistory()
-        ]);
-      } catch (error) {
-        console.error('App initialization error:', error);
-      }
-    };
-    initApp();
-  }, []);
 
   const joinBattle = async () => {
     if (!user) return;
@@ -847,7 +833,11 @@ export default function Home() {
       {/* Main Content */}
       <main className={styles.main}>
         {loading ? (
-          <div className={styles.loading}>Loading...</div>
+          <div className={styles.loading}>
+            <div className={styles.loadingSpinner}></div>
+            <div className={styles.loadingText}>Loading Battle...</div>
+            <div className={styles.loadingSubtext}>Fetching latest battle data</div>
+          </div>
         ) : error ? (
           <div className={styles.error}>
             <p>⚠️ {error}</p>
@@ -1176,6 +1166,17 @@ export default function Home() {
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Disabled Overlay for Loading States */}
+      {loading && (
+        <div className={styles.disabledOverlay}>
+          <div className={styles.loading}>
+            <div className={styles.loadingSpinner}></div>
+            <div className={styles.loadingText}>Loading...</div>
+            <div className={styles.loadingSubtext}>Please wait while we fetch the latest data</div>
           </div>
         </div>
       )}
