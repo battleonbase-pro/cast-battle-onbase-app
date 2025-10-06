@@ -200,8 +200,8 @@ export default function Home() {
       const remaining = Math.max(0, Math.floor((battleEndTime - now) / 1000));
       setTimeRemaining(remaining);
       
-      // Show status message when timer reaches 0, but only if battle is still active
-      if (remaining === 0 && !battleStatusMessage && currentBattle?.status === 'ACTIVE') {
+      // Show status message when timer reaches 0
+      if (remaining === 0 && !battleStatusMessage) {
         setBattleStatusMessage('⏰ Battle ended! Judging in progress...');
         setBattleStatusType('info');
       }
@@ -209,7 +209,7 @@ export default function Home() {
       // Clear status message when timer is running (new battle started)
       if (remaining > 0 && battleStatusMessage) {
         setBattleStatusMessage(null);
-        setBattleStatusType(null);
+        setBattleStatusType('info'); // Reset to default type
       }
     };
 
@@ -220,7 +220,7 @@ export default function Home() {
     const interval = setInterval(updateCountdown, 1000);
 
     return () => clearInterval(interval);
-  }, [battleEndTime, battleStatusMessage, currentBattle?.status]);
+  }, [battleEndTime, battleStatusMessage]);
 
 
   // Pulse animation effect for chart end points
@@ -274,7 +274,7 @@ export default function Home() {
             case 'BATTLE_STARTED':
               console.log('New battle started:', data.data);
               setBattleStatusMessage(null); // Clear status message
-              setBattleStatusType(null); // Clear status type
+              setBattleStatusType('info'); // Reset to default type
               setBattleTransition({
                 isTransitioning: true,
                 message: 'New battle starting...',
