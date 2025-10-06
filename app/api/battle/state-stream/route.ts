@@ -112,16 +112,31 @@ export async function GET(request: NextRequest) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(eventData)}\n\n`));
       };
 
+      const handleStatusUpdate = (data: any) => {
+        console.log(`📡 Broadcasting status update to ${connections.size} connections`);
+        const eventData = {
+          type: 'STATUS_UPDATE',
+          data: {
+            message: data.message,
+            type: data.type,
+            timestamp: new Date().toISOString()
+          }
+        };
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(eventData)}\n\n`));
+      };
+
       // Register event listeners
       battleEventEmitter.on('battleEnded', handleBattleEnded);
       battleEventEmitter.on('battleStarted', handleBattleStarted);
       battleEventEmitter.on('battleTransition', handleBattleTransition);
+      battleEventEmitter.on('statusUpdate', handleStatusUpdate);
 
       // Cleanup function
       const cleanup = () => {
         battleEventEmitter.off('battleEnded', handleBattleEnded);
         battleEventEmitter.off('battleStarted', handleBattleStarted);
         battleEventEmitter.off('battleTransition', handleBattleTransition);
+        battleEventEmitter.off('statusUpdate', handleStatusUpdate);
         clearInterval(heartbeat);
         clearInterval(battleTimer);
         connections.delete(connection);
@@ -146,13 +161,12 @@ export async function GET(request: NextRequest) {
         }
       }, 30000);
 
-      // Server-side timer management - check battle status every 30 seconds
+      // Server-side timer for client synchronization (not battle management)
       const battleTimer = setInterval(async () => {
         try {
           const battleManager = await BattleManagerDB.getInstance();
-          await battleManager.ensureBattleExists();
-          
           const currentBattle = await battleManager.getCurrentBattle();
+          
           if (currentBattle) {
             const timeRemaining = Math.max(0, Math.floor((new Date(currentBattle.endTime).getTime() - Date.now()) / 1000));
             
@@ -166,12 +180,16 @@ export async function GET(request: NextRequest) {
               },
               timestamp: new Date().toISOString()
             };
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify(timerData)}\n\n`));
+            
+            // Only send if controller is still open
+            if (controller.desiredSize !== null) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(timerData)}\n\n`));
+            }
           }
         } catch (error) {
-          console.error('Battle timer error:', error);
+          console.error('Battle timer sync error:', error);
         }
-      }, 30000); // Check every 30 seconds
+      }, 15000); // Sync every 15 seconds
 
     },
 

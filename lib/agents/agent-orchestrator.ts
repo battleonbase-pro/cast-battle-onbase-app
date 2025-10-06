@@ -373,9 +373,30 @@ class AgentOrchestrator {
 
     try {
       // Test Judge with mock data
-      const mockBattleData = { id: 'test', title: 'Test Battle' };
-      const mockCasts = [{ id: 'cast1', content: 'Test cast', userId: 'user1' }];
-      const mockModerationResults = [{ castId: 'cast1', isAppropriate: true, qualityScore: 8 }];
+      const mockBattleData = { 
+        id: 'test', 
+        title: 'Test Battle Topic',
+        description: 'Test battle description',
+        category: 'test'
+      };
+      const mockCasts = [
+        { 
+          id: 'cast1', 
+          content: 'This is a test cast for the SUPPORT side', 
+          userId: 'user1',
+          side: 'SUPPORT'
+        },
+        { 
+          id: 'cast2', 
+          content: 'This is a test cast for the OPPOSE side', 
+          userId: 'user2',
+          side: 'OPPOSE'
+        }
+      ];
+      const mockModerationResults = [
+        { castId: 'cast1', isAppropriate: true, qualityScore: 8 },
+        { castId: 'cast2', isAppropriate: true, qualityScore: 7 }
+      ];
       const judgment = await this.judge.judgeBattle(mockBattleData, mockCasts, mockModerationResults);
       results.judge = {
         status: 'success',

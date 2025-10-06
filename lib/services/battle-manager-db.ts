@@ -11,7 +11,6 @@ import { DBSharedStateManager } from './db-shared-state';
 export interface BattleConfig {
   battleDurationHours: number;
   maxParticipants: number;
-  enabled: boolean;
 }
 
 // Global singleton to ensure only one instance across all imports and hot reloads
@@ -33,12 +32,13 @@ export class BattleManagerDB {
   private db: DatabaseService;
   private sharedState: DBSharedStateManager;
   private isGeneratingBattle: boolean = false;
+  private isCompletingBattle: boolean = false;
+  private scheduledTimeouts: Set<NodeJS.Timeout> = new Set();
 
   constructor() {
     this.config = {
       battleDurationHours: parseFloat(process.env.BATTLE_DURATION_HOURS || '0.05'), // 3 minutes
-      maxParticipants: parseInt(process.env.BATTLE_MAX_PARTICIPANTS || '1000'),
-      enabled: process.env.BATTLE_GENERATION_ENABLED === 'true'
+      maxParticipants: parseInt(process.env.BATTLE_MAX_PARTICIPANTS || '1000')
     };
     this.db = DatabaseService.getInstance();
     this.sharedState = DBSharedStateManager.getInstance();
@@ -62,11 +62,6 @@ export class BattleManagerDB {
    * Initialize the battle manager
    */
   async initialize(): Promise<void> {
-    if (!this.config.enabled) {
-      console.log('Automatic battle generation is disabled');
-      return;
-    }
-
     console.log(`Battle Manager initialized with ${this.config.battleDurationHours}h intervals`);
     
     // Cleanup any expired battles first
@@ -78,10 +73,7 @@ export class BattleManagerDB {
     // Check for duration configuration changes and complete current battle if needed
     await this.checkForDurationChange();
     
-    // Check if we need to create a new battle
-    await this.checkAndCreateBattle();
-    
-    // Set up automatic generation
+    // Set up automatic generation (this will handle battle creation timing)
     this.setupAutomaticGeneration();
   }
 
@@ -90,11 +82,6 @@ export class BattleManagerDB {
    * This is the main entry point for server-side battle management
    */
   async ensureBattleExists(): Promise<void> {
-    if (!this.config.enabled) {
-      console.log('Automatic battle generation is disabled');
-      return;
-    }
-
     // Cleanup expired battles first
     await this.db.cleanupExpiredBattles();
     
@@ -124,8 +111,15 @@ export class BattleManagerDB {
         console.log('No active battle found, attempting to create new one...');
         try {
           await this.createNewBattle();
-        } catch {
-          console.log('❌ Could not create new battle, will retry later');
+          console.log(`✅ Initial battle created successfully`);
+          
+          // Schedule the next battle after this initial one
+          console.log(`🔄 Scheduling battle completion for initial battle`);
+          await this.scheduleBattleCompletion();
+        } catch (error) {
+          console.log('❌ Could not create new battle, will retry later:', error);
+          // Schedule retry
+          setTimeout(() => this.scheduleBattleCompletion(), 30000);
         }
       } else {
         // Check if current battle has expired
@@ -139,14 +133,36 @@ export class BattleManagerDB {
             title: currentBattle.title
           });
           
-          // Complete the expired battle with AI-powered judging
-          await this.completeBattleWithJudging(currentBattle.id);
+          // Emit status update for judging phase
+          battleEventEmitter.emit('statusUpdate', {
+            message: '🏁 Battle completed! Judging in progress...',
+            type: 'info'
+          });
           
-          // Create a new battle immediately
+          // Complete the expired battle with AI-powered judging
+          console.log(`🔄 Starting battle completion process for ${currentBattle.id}`);
+          await this.completeBattleWithJudging(currentBattle.id);
+          console.log(`✅ Battle completion process finished for ${currentBattle.id}`);
+          
+          // Emit status update for new battle generation
+          battleEventEmitter.emit('statusUpdate', {
+            message: '🔄 Generating new battle...',
+            type: 'info'
+          });
+          
+          // Create a new battle immediately after completion
           try {
+            console.log(`🔄 Creating new battle after completing ${currentBattle.id}`);
             await this.createNewBattle();
-          } catch {
-            console.log('❌ Could not create new battle after completing expired one, will retry later');
+            console.log(`✅ New battle created successfully`);
+            
+            // Schedule the next battle after this new one
+            console.log(`🔄 Scheduling battle completion for new battle`);
+            await this.scheduleBattleCompletion();
+          } catch (error) {
+            console.log('❌ Could not create new battle after completing expired one, will retry later:', error);
+            // Schedule retry
+            setTimeout(() => this.scheduleBattleCompletion(), 30000);
           }
         } else {
           console.log(`Current battle: ${currentBattle.title} (${currentBattle.status}) - ends at ${currentBattle.endTime.toISOString()}`);
@@ -272,6 +288,9 @@ export class BattleManagerDB {
         endTime: battle.endTime
       });
 
+      // Schedule completion for this new battle
+      await this.scheduleBattleCompletion();
+
     } catch (error) {
       console.error('❌ Failed to create new battle:', error.message);
       
@@ -306,35 +325,144 @@ export class BattleManagerDB {
   }
 
   /**
-   * Set up automatic battle generation
+   * Set up battle generation with duration-based scheduling
    */
-  private setupAutomaticGeneration(): void {
-    if (!this.config.enabled) {
-      console.log('⚠️ Automatic battle generation is disabled');
+  private async setupAutomaticGeneration(): Promise<void> {
+    console.log(`🕐 Setting up battle generation with duration-based scheduling`);
+    
+    // Clear any existing timeouts first
+    this.clearScheduledTimeouts();
+    
+    // Check if there's already an active battle
+    const currentBattle = await this.db.getCurrentBattle();
+    
+    if (currentBattle) {
+      console.log(`📊 Found existing active battle: "${currentBattle.title}"`);
+      console.log(`⏰ Battle ends at: ${currentBattle.endTime}`);
+      
+      // Calculate when this battle will end and schedule the next one
+      const timeUntilEnd = new Date(currentBattle.endTime).getTime() - Date.now();
+      if (timeUntilEnd > 0) {
+        console.log(`⏰ Current battle has ${Math.floor(timeUntilEnd / 1000)}s remaining`);
+        // Schedule battle completion for the existing battle
+        await this.scheduleBattleCompletion();
+      } else {
+        // Battle already expired, complete it immediately
+        console.log(`⚠️ Current battle has already expired, completing it now`);
+        await this.handleBattleCompletion(currentBattle.id);
+      }
+    } else {
+      console.log(`📊 No active battle found, creating initial battle`);
+      // No active battle, create one immediately
+      await this.checkAndCreateBattle();
+    }
+  }
+
+  /**
+   * Handle complete battle flow: completion → judging → winner selection → new battle
+   */
+  private async handleBattleCompletion(battleId: string): Promise<void> {
+    // Prevent duplicate completions
+    if (this.isCompletingBattle) {
+      console.log(`🔄 Battle completion already in progress, skipping duplicate for ${battleId}`);
       return;
     }
 
-    const intervalMs = this.config.battleDurationHours * 60 * 60 * 1000;
-    console.log(`🕐 Setting up automatic battle generation every ${this.config.battleDurationHours} hours (${intervalMs}ms)`);
-    
-    // Set up the main interval for battle generation
-    setInterval(async () => {
-      console.log('⏰ Main battle generation interval triggered');
-      try {
-        await this.checkAndCreateBattle();
-      } catch (error) {
-        console.error('Error in automatic battle generation:', error);
-        // Don't retry immediately - wait for next interval
+    try {
+      this.isCompletingBattle = true;
+      console.log(`🏁 Starting complete battle flow for battle ${battleId}`);
+      
+      // Step 1: Complete the battle with AI judging and winner selection
+      const completionResult = await this.completeBattleWithJudging(battleId);
+      
+      // Step 2: Ensure winner selection is fully completed before proceeding
+      if (completionResult.success) {
+        console.log(`✅ Winner selection completed successfully for battle ${battleId}`);
+        
+        // Step 3: Wait a moment to ensure all database operations are committed
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Step 4: Create new battle after completion
+        console.log(`🔄 Creating new battle after completing ${battleId}`);
+        await this.createNewBattle();
+        
+        // Step 5: Schedule the next battle after this new one
+        console.log(`🔄 Scheduling battle completion for new battle`);
+        await this.scheduleBattleCompletion();
+        
+        console.log(`✅ Complete battle flow finished for ${battleId}`);
+      } else {
+        console.log(`⚠️ Winner selection failed for battle ${battleId}, retrying...`);
+        // Retry after a delay
+        setTimeout(() => this.scheduleBattleCompletion(), 30000);
       }
-    }, intervalMs);
+    } catch (error: any) {
+      console.error(`❌ Error in complete battle flow for ${battleId}:`, error);
+      // Schedule retry
+      setTimeout(() => this.scheduleBattleCompletion(), 30000);
+    } finally {
+      this.isCompletingBattle = false;
+    }
+  }
 
-    console.log(`Automatic battle generation scheduled every ${this.config.battleDurationHours} hours`);
+  /**
+   * Schedule battle completion for the current active battle
+   */
+  private async scheduleBattleCompletion(): Promise<void> {
+    // Clear any existing scheduled timeouts to prevent duplicates
+    this.clearScheduledTimeouts();
+    
+    // Get the current active battle
+    const currentBattle = await this.db.getCurrentBattle();
+    if (!currentBattle) {
+      console.log('⚠️ No active battle found to schedule completion for');
+      return;
+    }
+    
+    // Calculate when this battle will expire
+    const battleEndTime = new Date(currentBattle.endTime).getTime();
+    const now = Date.now();
+    const timeUntilEnd = battleEndTime - now;
+    
+    if (timeUntilEnd <= 0) {
+      console.log(`⚠️ Battle ${currentBattle.id} has already expired, completing immediately`);
+      await this.handleBattleCompletion(currentBattle.id);
+      return;
+    }
+    
+    console.log(`⏰ Scheduling battle completion for "${currentBattle.title}" in ${Math.floor(timeUntilEnd / 1000)}s`);
+    
+    const timeoutId = setTimeout(async () => {
+      console.log(`⏰ Battle "${currentBattle.title}" expired, starting completion process`);
+      try {
+        await this.handleBattleCompletion(currentBattle.id);
+      } catch (error) {
+        console.error('Error in scheduled battle completion:', error);
+        // Retry after a short delay
+        setTimeout(() => this.scheduleBattleCompletion(), 30000);
+      }
+    }, timeUntilEnd);
+    
+    // Track the timeout
+    this.scheduledTimeouts.add(timeoutId);
+  }
+
+  /**
+   * Clear all scheduled timeouts to prevent duplicates
+   */
+  private clearScheduledTimeouts(): void {
+    this.scheduledTimeouts.forEach(timeoutId => {
+      clearTimeout(timeoutId);
+    });
+    this.scheduledTimeouts.clear();
+    console.log(`🧹 Cleared ${this.scheduledTimeouts.size} scheduled timeouts`);
   }
 
   /**
    * Complete battle with AI-powered judging using optimized hybrid method
+   * Returns success status to ensure completion before proceeding
    */
-  private async completeBattleWithJudging(battleId: string): Promise<void> {
+  private async completeBattleWithJudging(battleId: string): Promise<{ success: boolean; winner?: any; error?: string }> {
     try {
       console.log(`🏆 Starting AI-powered battle completion for battle ${battleId}`);
       
@@ -342,20 +470,22 @@ export class BattleManagerDB {
       const battle = await this.db.getBattleById(battleId);
       if (!battle) {
         console.log(`❌ Battle ${battleId} not found`);
-        return;
+        return { success: false, error: 'Battle not found' };
       }
 
       const casts = await this.db.getCastsForBattle(battleId);
       if (casts.length === 0) {
-        console.log(`⚠️ No casts found for battle ${battleId}, completing without winners`);
+        console.log(`⚠️ No casts found for battle "${battle.title}" (${battleId})`);
+        console.log(`📊 Battle had ${battle.participants?.length || 0} participants but 0 casts submitted`);
+        console.log(`🏁 Completing battle without winners`);
         await this.db.completeBattle(battleId, []);
-        return;
+        return { success: true }; // Successfully completed, just no winner
       }
 
       console.log(`📊 Found ${casts.length} casts for battle ${battleId}`);
 
       // Use Agent Orchestrator for AI-powered judging
-      const { AgentOrchestrator } = await import('../agents/agent-orchestrator');
+      const AgentOrchestrator = (await import('../agents/agent-orchestrator')).default;
       const orchestrator = new AgentOrchestrator(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
       
       // Complete battle with optimized hybrid method
@@ -378,6 +508,12 @@ export class BattleManagerDB {
           if (winnerUser) {
             const newPoints = await this.db.awardParticipationPoints(winnerUser.address, 100);
             console.log(`🎉 Winner ${winnerUser.address} awarded 100 points! Total points: ${newPoints}`);
+            
+            // Emit status update for winner announcement
+            battleEventEmitter.emit('statusUpdate', {
+              message: `🏆 Winner selected! ${winnerUser.address.slice(0, 6)}...${winnerUser.address.slice(-4)} won!`,
+              type: 'success'
+            });
           }
         } catch (error) {
           console.error(`❌ Failed to award winner points:`, error);
@@ -392,9 +528,12 @@ export class BattleManagerDB {
         if (result.judgment.insights) {
           console.log(`🔍 Battle insights: ${result.judgment.insights.substring(0, 100)}...`);
         }
+        
+        return { success: true, winner: winner };
       } else {
         console.log(`⚠️ AI judging failed for battle ${battleId}, completing without winners`);
         await this.db.completeBattle(battleId, []);
+        return { success: true }; // Successfully completed, just no winner
       }
 
     } catch (error) {
@@ -404,8 +543,10 @@ export class BattleManagerDB {
       try {
         await this.db.completeBattle(battleId, []);
         console.log(`⚠️ Battle ${battleId} completed without winners due to error`);
+        return { success: true }; // Successfully completed, just no winner
       } catch (fallbackError) {
         console.error(`❌ Failed to complete battle ${battleId} even with fallback:`, fallbackError);
+        return { success: false, error: fallbackError.message };
       }
     }
   }
@@ -428,10 +569,6 @@ export class BattleManagerDB {
    * Manually trigger battle generation (for testing/admin purposes)
    */
   async triggerBattleGeneration(): Promise<void> {
-    if (!this.config.enabled) {
-      throw new Error('Battle generation is disabled');
-    }
-    
     console.log('Manually triggering battle generation...');
     await this.checkAndCreateBattle();
   }

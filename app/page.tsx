@@ -80,9 +80,14 @@ export default function Home() {
   const [submittingCast, setSubmittingCast] = useState(false);
   const [castContent, setCastContent] = useState('');
   const [castSide, setCastSide] = useState<'SUPPORT' | 'OPPOSE'>('SUPPORT');
-  const [activeTab, setActiveTab] = useState<'battle' | 'arguments' | 'history'>('battle');
+  const [activeTab, setActiveTab] = useState<'battle' | 'arguments' | 'history' | 'leaderboard'>('battle');
   const [hasSubmittedCast, setHasSubmittedCast] = useState(false);
   const [battleHistory, setBattleHistory] = useState<BattleHistory[]>([]);
+  const [leaderboard, setLeaderboard] = useState<Array<{
+    address: string;
+    points: number;
+    rank: number;
+  }>>([]);
   const [sentimentData, setSentimentData] = useState({ support: 0, oppose: 0, supportPercent: 0, opposePercent: 0 });
   const [sentimentHistory, setSentimentHistory] = useState<Array<{
     timestamp: number;
@@ -100,6 +105,40 @@ export default function Home() {
   }>({ isTransitioning: false, message: '' });
   const [userPoints, setUserPoints] = useState<number>(0);
   const [pointsAnimation, setPointsAnimation] = useState(false);
+  const [battleStatusMessage, setBattleStatusMessage] = useState<string | null>(null);
+  const [battleStatusType, setBattleStatusType] = useState<'info' | 'success' | 'warning' | 'error'>('info');
+  const [showHelpPopup, setShowHelpPopup] = useState(false);
+
+  // Mobile-specific handlers
+  const handleHelpPopupClose = () => {
+    setShowHelpPopup(false);
+  };
+
+  const handleHelpOverlayClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      handleHelpPopupClose();
+    }
+  };
+
+  // Prevent body scroll when popup is open (mobile optimization)
+  useEffect(() => {
+    if (showHelpPopup) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    }
+
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    };
+  }, [showHelpPopup]);
 
   useEffect(() => {
     initializeApp();
@@ -161,6 +200,12 @@ export default function Home() {
       const now = Date.now();
       const remaining = Math.max(0, Math.floor((battleEndTime - now) / 1000));
       setTimeRemaining(remaining);
+      
+      // Show status message when timer reaches 0
+      if (remaining === 0 && !battleStatusMessage) {
+        setBattleStatusMessage('⏰ Battle ended! Judging in progress...');
+        setBattleStatusType('info');
+      }
     };
 
     // Update immediately
@@ -170,7 +215,7 @@ export default function Home() {
     const interval = setInterval(updateCountdown, 1000);
 
     return () => clearInterval(interval);
-  }, [battleEndTime]);
+  }, [battleEndTime, battleStatusMessage]);
 
 
   // Pulse animation effect for chart end points
@@ -310,6 +355,8 @@ export default function Home() {
               
             case 'BATTLE_ENDED':
               console.log('Battle ended:', data.data);
+              setBattleStatusMessage('🏁 Battle completed! Judging in progress...');
+              setBattleStatusType('info');
               setBattleTransition({
                 isTransitioning: true,
                 message: 'Battle ending...'
@@ -318,6 +365,7 @@ export default function Home() {
               
             case 'BATTLE_STARTED':
               console.log('New battle started:', data.data);
+              setBattleStatusMessage(null); // Clear status message
               setBattleTransition({
                 isTransitioning: true,
                 message: 'New battle starting...',
@@ -325,17 +373,21 @@ export default function Home() {
               });
               
               // Update the battle data after a short delay for smooth transition
-              setTimeout(() => {
-                setTopic(data.data);
-                setBattleEndTime(new Date(data.data.endTime).getTime());
+              setTimeout(async () => {
+                // Fetch complete battle data to ensure UI is fully updated
+                await fetchCurrentBattle();
                 setBattleTransition({ isTransitioning: false, message: '' });
-                // Refresh casts and other data
-                fetchCasts();
-              }, 1500);
+              }, 1000);
               break;
               
             case 'BATTLE_TRANSITION':
               console.log('Battle transition:', data.data);
+              break;
+              
+            case 'STATUS_UPDATE':
+              console.log('Status update:', data.data);
+              setBattleStatusMessage(data.data.message);
+              setBattleStatusType(data.data.type || 'info');
               break;
               
             case 'TIMER_UPDATE':
@@ -466,6 +518,18 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Failed to fetch battle history:', error);
+    }
+  }, []);
+
+  const fetchLeaderboard = useCallback(async () => {
+    try {
+      const response = await fetch('/api/user/leaderboard?limit=10');
+      const data = await response.json();
+      if (data.success) {
+        setLeaderboard(data.leaderboard);
+      }
+    } catch (error) {
+      console.error('Failed to fetch leaderboard:', error);
     }
   }, []);
 
@@ -765,7 +829,18 @@ export default function Home() {
       <header className={styles.header}>
         <div className={styles.headerTop}>
           <div className={styles.headerLeft}>
-            <h1 className={styles.title}><span className={styles.baseText}>NewsCast</span> Battle</h1>
+            <div className={styles.titleRow}>
+              <h1 className={styles.title}><span className={styles.baseText}>NewsCast</span> Battle</h1>
+              <button 
+                className={styles.helpBtn}
+                onClick={() => setShowHelpPopup(true)}
+                title="How to play"
+                aria-label="Open help popup"
+                type="button"
+              >
+                ?
+              </button>
+            </div>
             <p className={styles.subtitle}>Battle <span className={styles.baseText}>on Base</span></p>
           </div>
           {user ? (
@@ -822,8 +897,16 @@ export default function Home() {
             <div className={styles.battleHeader}>
               <div className={styles.battleStatus}>
                 <span className={`${styles.statusBadge} ${styles.active}`}>ACTIVE</span>
-                {timeRemaining && (
+                {battleStatusMessage ? (
+                  <span className={`${styles.timer} ${styles.statusMessage} ${styles[battleStatusType]}`}>
+                    {battleStatusMessage}
+                  </span>
+                ) : timeRemaining && timeRemaining > 0 ? (
                   <span className={styles.timer}>{formatTimeRemaining(timeRemaining)}</span>
+                ) : (
+                  <span className={`${styles.timer} ${styles.statusMessage} ${styles.info}`}>
+                    ⏰ Battle ended! Judging in progress...
+                  </span>
                 )}
               </div>
               <h2 className={styles.topicTitle}>{topic.title}</h2>
@@ -944,6 +1027,15 @@ export default function Home() {
               >
                 History
               </button>
+              <button 
+                className={`${styles.navBtn} ${activeTab === 'leaderboard' ? styles.active : ''}`}
+                onClick={() => {
+                  setActiveTab('leaderboard');
+                  fetchLeaderboard();
+                }}
+              >
+                Leaderboard
+              </button>
             </nav>
 
             {/* Tab Content */}
@@ -1020,11 +1112,111 @@ export default function Home() {
                 </div>
               </div>
             )}
+
+            {/* Leaderboard Tab */}
+            {activeTab === 'leaderboard' && (
+              <div className={styles.tabContent}>
+                <div className={styles.leaderboardHeader}>
+                  <h3>🏆 Top Players</h3>
+                  <p className={styles.leaderboardSubtitle}>Ranked by total points earned</p>
+                </div>
+                <div className={styles.leaderboardList}>
+                  {leaderboard.length > 0 ? (
+                    leaderboard.map((player, index) => (
+                      <div key={player.address} className={`${styles.leaderboardItem} ${index < 3 ? styles.topThree : ''}`}>
+                        <div className={styles.leaderboardRank}>
+                          {index === 0 && '🥇'}
+                          {index === 1 && '🥈'}
+                          {index === 2 && '🥉'}
+                          {index > 2 && `#${player.rank}`}
+                        </div>
+                        <div className={styles.leaderboardInfo}>
+                          <div className={styles.leaderboardAddress}>
+                            {player.address.slice(0, 6)}...{player.address.slice(-4)}
+                          </div>
+                          <div className={styles.leaderboardPoints}>
+                            ⭐ {player.points} points
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className={styles.loading}>Loading leaderboard...</div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className={styles.loading}>No active battle available.</div>
         )}
       </main>
+
+      {/* Help Popup */}
+      {showHelpPopup && (
+        <div className={styles.helpOverlay} onClick={handleHelpOverlayClick}>
+          <div className={styles.helpPopup} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.helpHeader}>
+              <h2 className={styles.helpTitle}>How to Play NewsCast Battle</h2>
+              <button 
+                className={styles.helpCloseBtn}
+                onClick={handleHelpPopupClose}
+                aria-label="Close help popup"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className={styles.helpContent}>
+              <div className={styles.helpSection}>
+                <h3 className={styles.helpSectionTitle}>🎯 The Game</h3>
+                <p className={styles.helpText}>
+                  NewsCast Battle is an <strong className={styles.aiHighlight}>AI-powered</strong> debate game where you argue about trending news topics. 
+                  Each battle lasts <strong>3 minutes</strong> and features real news articles curated by our <strong className={styles.aiHighlight}>AI agents</strong>.
+                </p>
+              </div>
+
+              <div className={styles.helpSection}>
+                <h3 className={styles.helpSectionTitle}>🤖 AI-Powered Features</h3>
+                <ul className={styles.helpList}>
+                  <li><strong className={styles.aiHighlight}>Smart Topic Selection:</strong> AI finds the most engaging news stories for debates</li>
+                  <li><strong className={styles.aiHighlight}>Balanced Arguments:</strong> AI creates fair debate points for both sides</li>
+                  <li><strong className={styles.aiHighlight}>Fair Judging:</strong> AI evaluates arguments objectively and picks winners</li>
+                  <li><strong className={styles.aiHighlight}>Battle Insights:</strong> AI generates summaries of the best arguments</li>
+                </ul>
+              </div>
+
+              <div className={styles.helpSection}>
+                <h3 className={styles.helpSectionTitle}>🎮 How to Play</h3>
+                <ol className={styles.helpSteps}>
+                  <li><strong>Join Battle:</strong> Click "Join Battle" to participate</li>
+                  <li><strong>Choose Side:</strong> Pick SUPPORT or OPPOSE</li>
+                  <li><strong>Write Argument:</strong> Submit your 140-character argument</li>
+                  <li><strong>Earn Points:</strong> Get 10 points for participating</li>
+                  <li><strong>Win Big:</strong> Winners get 100 bonus points!</li>
+                </ol>
+              </div>
+
+              <div className={styles.helpSection}>
+                <h3 className={styles.helpSectionTitle}>🏆 Winning</h3>
+                <p className={styles.helpText}>
+                  Our <strong className={styles.aiHighlight}>AI judge</strong> analyzes all arguments for quality and relevance. 
+                  It ensures fair competition by evaluating both sides equally, then selects the most compelling arguments 
+                  to determine the winner.
+                </p>
+              </div>
+
+              <div className={styles.helpSection}>
+                <h3 className={styles.helpSectionTitle}>⚡ Real-Time Updates</h3>
+                <p className={styles.helpText}>
+                  Watch live sentiment tracking, see when battles end, get notified when winners are selected, 
+                  and see status updates as new battles are automatically generated.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

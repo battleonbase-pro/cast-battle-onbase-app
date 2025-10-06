@@ -1,6 +1,6 @@
 // lib/agents/news-curator-agent.ts
 import BaseAgent from './base-agent';
-import axios from 'axios';
+import NewsSourceFactory from '../services/news-source-factory';
 
 interface Article {
   title: string;
@@ -17,15 +17,13 @@ interface CachedData {
 }
 
 class NewsCuratorAgent extends BaseAgent {
-  private newsApiKey: string;
-  private baseUrl: string;
+  private newsSourceFactory: NewsSourceFactory;
   private cache: Map<string, CachedData>;
   private cacheTimeout: number;
 
   constructor(apiKey: string) {
     super('News Curator', 'Content Discovery & Filtering', apiKey);
-    this.newsApiKey = process.env.CURRENTS_API_KEY || '';
-    this.baseUrl = 'https://api.currentsapi.services/v1';
+    this.newsSourceFactory = NewsSourceFactory.getInstance();
     this.cache = new Map();
     // Cache timeout based on battle duration
     const battleDurationHours = parseFloat(process.env.BATTLE_DURATION_HOURS || '0.083333');
@@ -112,15 +110,10 @@ class NewsCuratorAgent extends BaseAgent {
         return cached.data;
       }
 
-      // Fetch trending news from multiple sources
-      const [worldNews, politicsNews, cryptoNews] = await Promise.all([
-        this.fetchWorldNews(),
-        this.fetchNewsByCategory('politics', 'us'),
-        this.fetchCryptoNews()
-      ]);
+      // Ultra-optimized: Use single comprehensive query covering all high-impact topics
+      const allArticles = await this.fetchComprehensiveNews();
 
-      // Combine and filter articles
-      const allArticles = [...worldNews, ...politicsNews, ...cryptoNews];
+      // Filter and score articles
       const relevantArticles = this.filterRelevantArticles(allArticles);
       
       // Score and rank articles
@@ -172,37 +165,41 @@ class NewsCuratorAgent extends BaseAgent {
     }
   }
 
+  // Ultra-optimized: Single comprehensive query covering all high-impact topics
+  async fetchComprehensiveNews() {
+    try {
+      console.log('[News Curator] Fetching comprehensive news...');
+      const articles = await this.newsSourceFactory.getComprehensiveNews();
+      console.log(`[News Curator] Found ${articles.length} comprehensive news articles`);
+      return articles;
+    } catch (error: any) {
+      console.error('[News Curator] Error fetching comprehensive news:', error.message);
+      return [];
+    }
+  }
+
   // Fetch high-impact global news
   async fetchWorldNews() {
     try {
-      const response = await axios.get(`${this.baseUrl}/latest-news`, {
-        params: {
-          country: 'us',
-          pageSize: 25,
-          apiKey: this.newsApiKey
-        }
-      });
-      return response.data.news || [];
+      console.log('[News Curator] Fetching world news...');
+      const articles = await this.newsSourceFactory.getWorldNews();
+      console.log(`[News Curator] Found ${articles.length} world news articles`);
+      return articles;
     } catch (error: any) {
-      console.error('Error fetching world news:', error);
+      console.error('[News Curator] Error fetching world news:', error.message);
       return [];
     }
   }
 
   // Fetch news by category
-  async fetchNewsByCategory(category: string, country = 'us') {
+  async fetchNewsByCategory(category: string) {
     try {
-      const response = await axios.get(`${this.baseUrl}/latest-news`, {
-        params: {
-          category,
-          country,
-          pageSize: 15,
-          apiKey: this.newsApiKey
-        }
-      });
-      return response.data.news || [];
+      console.log(`[News Curator] Fetching ${category} news...`);
+      const articles = await this.newsSourceFactory.getNewsByCategory(category);
+      console.log(`[News Curator] Found ${articles.length} ${category} articles`);
+      return articles;
     } catch (error: any) {
-      console.error(`Error fetching ${category} news:`, error);
+      console.error(`[News Curator] Error fetching ${category} news:`, error.message);
       return [];
     }
   }
@@ -210,18 +207,12 @@ class NewsCuratorAgent extends BaseAgent {
   // Fetch high-impact crypto news
   async fetchCryptoNews() {
     try {
-      const response = await axios.get(`${this.baseUrl}/search`, {
-        params: {
-          keywords: 'bitcoin ethereum crypto regulation',
-          pageSize: 20,
-          sortBy: 'published',
-          language: 'en',
-          apiKey: this.newsApiKey
-        }
-      });
-      return response.data.news || [];
+      console.log('[News Curator] Fetching crypto news...');
+      const articles = await this.newsSourceFactory.getCryptoNews();
+      console.log(`[News Curator] Found ${articles.length} crypto articles`);
+      return articles;
     } catch (error: any) {
-      console.error('Error fetching crypto news:', error);
+      console.error('[News Curator] Error fetching crypto news:', error.message);
       return [];
     }
   }

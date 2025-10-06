@@ -16,7 +16,7 @@ async function testBattleGeneration() {
     if (initData.success) {
       console.log('✅ Battle manager initialized successfully');
       console.log(`   Duration: ${initData.config.battleDurationHours} hours`);
-      console.log(`   Enabled: ${initData.config.enabled}`);
+      console.log(`   Max Participants: ${initData.config.maxParticipants}`);
     } else {
       console.log('❌ Failed to initialize battle manager');
       return;
@@ -82,7 +82,9 @@ async function testBattleGeneration() {
     console.log('\n📋 Summary:');
     console.log('- Battle manager should be initialized');
     console.log('- Automatic generation should be running');
-    console.log('- Battles should be created every 5 minutes (0.083333 hours)');
+    console.log('- Battles should be created based on duration (3 minutes = 0.05 hours)');
+    console.log('- New battles start automatically after previous battle ends');
+    console.log('- Winner selection and completion happen automatically');
     console.log('- Status checks should run every 30 seconds');
     console.log('- Expired battles should be completed and new ones created immediately');
 

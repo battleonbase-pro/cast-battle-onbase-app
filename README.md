@@ -109,11 +109,20 @@ cp .env.sample .env
 
 Required API keys in `.env`:
 
-#### 1. Currents API Key
+#### 1. News API Key (Choose One)
+
+**Option A: Currents API (Default)**
 - Visit [Currents API](https://currentsapi.services/)
 - Sign up for a free account
 - Get your API key from the dashboard
 - Add it to `CURRENTS_API_KEY` in your `.env` file
+
+**Option B: Serper API (Alternative)**
+- Visit [Serper API](https://serper.dev/)
+- Sign up for a free account (100 free searches/month)
+- Get your API key from the dashboard
+- Add it to `SERPER_API_KEY` in your `.env` file
+- Set `NEWS_SOURCE=serper` to use Serper instead of Currents
 
 #### 2. Other Required Keys
 
@@ -121,8 +130,10 @@ Required API keys in `.env`:
 # OnchainKit Configuration
 NEXT_PUBLIC_ONCHAINKIT_API_KEY=your_alchemy_api_key
 
-# Currents API Configuration  
+# News API Configuration (Choose One)
 CURRENTS_API_KEY=your_currents_api_key
+SERPER_API_KEY=your_serper_api_key
+NEWS_SOURCE=currents  # Options: 'currents' or 'serper'
 
 # AI Configuration
 GOOGLE_GENERATIVE_AI_API_KEY=your_google_gemini_api_key
