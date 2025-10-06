@@ -26,16 +26,17 @@ export function addSSEConnection(connection: {
     lastActivity: new Date(),
     isActive: true
   });
-  console.log(`📡 SSE connection added. Total connections: ${connections.size}`);
+  const activeCount = Array.from(connections.values()).filter(conn => conn.isActive).length;
+  console.log(`📡 SSE connection added. Active connections: ${activeCount}`);
 }
 
 export function removeSSEConnectionById(connectionId: string) {
   const connectionToRemove = connections.get(connectionId);
   if (connectionToRemove) {
     connections.delete(connectionId);
-    console.log(`📡 SSE connection ${connectionId} removed. Total connections: ${connections.size}`);
+    const activeCount = Array.from(connections.values()).filter(conn => conn.isActive).length;
+    console.log(`📡 SSE connection removed. Active connections: ${activeCount}`);
   }
-  // Don't log "attempted to remove non-existent connection" - this is normal
 }
 
 export function markConnectionInactive(connectionId: string) {
@@ -48,11 +49,11 @@ export function markConnectionInactive(connectionId: string) {
 }
 
 export function broadcastBattleEvent(type: string, data: any) {
-  const activeConnections = Array.from(connections.values()).filter(conn => conn.isActive).length;
-  console.log(`📡 Broadcasting ${type} event to ${connections.size} total connections (${activeConnections} active)`);
+  const activeConnections = Array.from(connections.values()).filter(conn => conn.isActive);
+  console.log(`📡 Broadcasting ${type} event to ${activeConnections.length} active connections`);
   
-  if (connections.size === 0) {
-    console.log(`⚠️ No connections to broadcast to!`);
+  if (activeConnections.length === 0) {
+    console.log(`⚠️ No active connections to broadcast to!`);
     return;
   }
   
@@ -65,40 +66,32 @@ export function broadcastBattleEvent(type: string, data: any) {
   
   const message = `data: ${JSON.stringify(eventData)}\n\n`;
   
-  // Send to all connections
+  // Send to all active connections
   let successCount = 0;
   let failureCount = 0;
   
-  connections.forEach((connection, connectionId) => {
-           try {
-             // Check if controller is still writable
-             if (connection.controller.desiredSize === null) {
-               console.log(`🔌 Controller closed for connection ${connectionId}, but keeping connection alive`);
-               // Don't mark as inactive - keep connection alive for potential reconnection
-               failureCount++;
-               return;
-             }
-             
-             connection.controller.enqueue(encoder.encode(message));
-             connection.lastActivity = new Date();
-             successCount++;
-             console.log(`✅ Successfully sent ${type} to connection ${connectionId}`);
-           } catch (error) {
-             console.error(`❌ Error broadcasting to connection ${connectionId}, but keeping connection alive:`, error);
-             // Don't mark as inactive - keep connection alive for potential reconnection
-             failureCount++;
-           }
+  activeConnections.forEach((connection) => {
+    const connectionId = Array.from(connections.entries()).find(([_, conn]) => conn === connection)?.[0];
+    if (!connectionId) return;
+    
+    try {
+      // Check if controller is still writable
+      if (connection.controller.desiredSize === null) {
+        // Remove failed connection immediately
+        connections.delete(connectionId);
+        failureCount++;
+        return;
+      }
+      
+      connection.controller.enqueue(encoder.encode(message));
+      connection.lastActivity = new Date();
+      successCount++;
+    } catch (error) {
+      // Remove failed connection immediately
+      connections.delete(connectionId);
+      failureCount++;
+    }
   });
   
-  console.log(`📡 Broadcast complete: ${successCount} successful, ${failureCount} failed`);
-  
-  // Clean up inactive connections after a delay
-  setTimeout(() => {
-    connections.forEach((connection, connectionId) => {
-      if (!connection.isActive) {
-        connections.delete(connectionId);
-        console.log(`🧹 Cleaned up inactive connection ${connectionId}`);
-      }
-    });
-  }, 5000); // 5 second delay
+  console.log(`📡 Broadcast complete: ${successCount} successful, ${failureCount} removed`);
 }

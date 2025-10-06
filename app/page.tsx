@@ -157,6 +157,17 @@ export default function Home() {
     // Initialize Base Account SDK on client side only
     if (typeof window !== 'undefined') {
       try {
+        // Suppress analytics-related console errors
+        const originalConsoleError = console.error;
+        console.error = (...args) => {
+          const message = args.join(' ');
+          if (message.includes('Analytics SDK') || message.includes('AnalyticsSDKApiError')) {
+            // Suppress analytics errors
+            return;
+          }
+          originalConsoleError.apply(console, args);
+        };
+
         // Check if ethereum provider is available
         if (!window.ethereum) {
           console.log('No Ethereum provider found. Wallet connection will not be available.');
@@ -166,7 +177,6 @@ export default function Home() {
 
         const baseSDK = createBaseAccountSDK({
           appName: 'NewsCast Battle on Base',
-          appIcon: '/sphere.svg',
           appUrl: window.location.origin,
           chain: base,
           client: createWalletClient({
@@ -175,6 +185,9 @@ export default function Home() {
           })
         });
         setSdk(baseSDK);
+        
+        // Restore original console.error after SDK initialization
+        console.error = originalConsoleError;
         
         // Check for existing authentication
         const savedUser = localStorage.getItem('newscast-battle-user');
@@ -832,13 +845,7 @@ export default function Home() {
 
       {/* Main Content */}
       <main className={styles.main}>
-        {loading ? (
-          <div className={styles.loading}>
-            <div className={styles.loadingSpinner}></div>
-            <div className={styles.loadingText}>Loading Battle...</div>
-            <div className={styles.loadingSubtext}>Fetching latest battle data</div>
-          </div>
-        ) : error ? (
+        {error ? (
           <div className={styles.error}>
             <p>⚠️ {error}</p>
             <button onClick={fetchCurrentBattle} className={styles.retryBtn}>Retry</button>
@@ -1175,8 +1182,8 @@ export default function Home() {
         <div className={styles.disabledOverlay}>
           <div className={styles.loading}>
             <div className={styles.loadingSpinner}></div>
-            <div className={styles.loadingText}>Loading...</div>
-            <div className={styles.loadingSubtext}>Please wait while we fetch the latest data</div>
+            <div className={styles.loadingText}>Loading NewsCast Battle...</div>
+            <div className={styles.loadingSubtext}>Initializing app and fetching latest battle data</div>
           </div>
         </div>
       )}

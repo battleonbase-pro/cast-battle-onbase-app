@@ -5,7 +5,6 @@ import { addSSEConnection, markConnectionInactive, getConnectionCount } from '@/
 export async function GET(_request: NextRequest) {
   const connectionId = `conn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   console.log(`🔌 NEW CLIENT CONNECTED: ${connectionId}`);
-  console.log(`📊 Total active connections before: ${getConnectionCount()}`);
 
   const encoder = new TextEncoder();
 
@@ -18,7 +17,6 @@ export async function GET(_request: NextRequest) {
         controller
       };
       addSSEConnection(connection);
-      console.log(`📊 Total active connections after: ${getConnectionCount()}`);
 
       // Send initial connection confirmation
       const initialData = {
@@ -61,8 +59,8 @@ export async function GET(_request: NextRequest) {
             try {
               controller.enqueue(encoder.encode(`data: ${JSON.stringify(timerData)}\n\n`));
             } catch (writeError) {
-              console.log(`🔌 Controller write failed for connection ${connectionId}, but keeping connection alive`);
-              // Don't mark as inactive - keep connection alive for potential reconnection
+              // Remove failed connection immediately
+              removeSSEConnectionById(connectionId);
               return;
             }
           }
@@ -90,8 +88,8 @@ export async function GET(_request: NextRequest) {
           try {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(heartbeatData)}\n\n`));
           } catch (writeError) {
-            console.log(`🔌 Controller write failed for connection ${connectionId}, but keeping connection alive`);
-            // Don't mark as inactive - keep connection alive for potential reconnection
+            // Remove failed connection immediately
+            removeSSEConnectionById(connectionId);
             return;
           }
         } catch (error) {
@@ -102,16 +100,16 @@ export async function GET(_request: NextRequest) {
 
       // Store cleanup function
       (controller as ReadableStreamDefaultController & { cleanup?: () => void }).cleanup = () => {
-        console.log(`🔌 CLEANUP CALLED for connection ${connectionId} - User disconnected`);
+        console.log(`🔌 CLEANUP CALLED for connection ${connectionId}`);
         markConnectionInactive(connectionId);
-        // Only mark inactive when user actually disconnects
+        // Keep connection alive for potential reconnection
       };
     },
 
     cancel() {
-      console.log(`🔌 CLIENT DISCONNECTED: ${connectionId} - User closed browser/tab`);
+      console.log(`🔌 CLIENT DISCONNECTED: ${connectionId}`);
       markConnectionInactive(connectionId);
-      // Only mark inactive when user actually disconnects (closes browser/tab)
+      // Keep connection alive for potential reconnection
     }
   });
 
