@@ -1,52 +1,13 @@
 import { NextRequest } from 'next/server';
 import { BattleManagerDB } from '@/lib/services/battle-manager-db';
+import { addSSEConnection, markConnectionInactive, getConnectionCount } from '@/lib/services/battle-broadcaster';
 
-// Store active SSE connections
-const connections = new Set<{
-  id: string;
-  response: Response;
-  controller: ReadableStreamDefaultController;
-}>();
-
-// Event emitter for battle state changes
-class BattleEventEmitter {
-  private listeners = new Map<string, Set<(data: any) => void>>();
-
-  on(event: string, callback: (data: any) => void) {
-    if (!this.listeners.has(event)) {
-      this.listeners.set(event, new Set());
-    }
-    this.listeners.get(event)!.add(callback);
-  }
-
-  off(event: string, callback: (data: any) => void) {
-    const eventListeners = this.listeners.get(event);
-    if (eventListeners) {
-      eventListeners.delete(callback);
-    }
-  }
-
-  emit(event: string, data: any) {
-    const eventListeners = this.listeners.get(event);
-    if (eventListeners) {
-      eventListeners.forEach(callback => {
-        try {
-          callback(data);
-        } catch (error) {
-          console.error('Error in event listener:', error);
-        }
-      });
-    }
-  }
-}
-
-export const battleEventEmitter = new BattleEventEmitter();
-
-export async function GET(request: NextRequest) {
-  console.log('🔌 New SSE connection established');
+export async function GET(_request: NextRequest) {
+  const connectionId = `conn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  console.log(`🔌 NEW CLIENT CONNECTED: ${connectionId}`);
+  console.log(`📊 Total active connections before: ${getConnectionCount()}`);
 
   const encoder = new TextEncoder();
-  const connectionId = `conn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
   const stream = new ReadableStream({
     start(controller) {
@@ -56,7 +17,8 @@ export async function GET(request: NextRequest) {
         response: new Response(),
         controller
       };
-      connections.add(connection);
+      addSSEConnection(connection);
+      console.log(`📊 Total active connections after: ${getConnectionCount()}`);
 
       // Send initial connection confirmation
       const initialData = {
@@ -67,140 +29,89 @@ export async function GET(request: NextRequest) {
       
       controller.enqueue(encoder.encode(`data: ${JSON.stringify(initialData)}\n\n`));
 
-      // Listen for battle events
-      const handleBattleEnded = (data: any) => {
-        console.log(`📡 Broadcasting battle ended event to ${connections.size} connections`);
-        const eventData = {
-          type: 'BATTLE_ENDED',
-          data: {
-            battleId: data.battleId,
-            title: data.title,
-            timestamp: new Date().toISOString()
-          }
-        };
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(eventData)}\n\n`));
-      };
-
-      const handleBattleStarted = (data: any) => {
-        console.log(`📡 Broadcasting battle started event to ${connections.size} connections`);
-        const eventData = {
-          type: 'BATTLE_STARTED',
-          data: {
-            battleId: data.battleId,
-            title: data.title,
-            description: data.description,
-            category: data.category,
-            source: data.source,
-            sourceUrl: data.sourceUrl,
-            endTime: data.endTime,
-            timestamp: new Date().toISOString()
-          }
-        };
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(eventData)}\n\n`));
-      };
-
-      const handleBattleTransition = (data: any) => {
-        console.log(`📡 Broadcasting battle transition event to ${connections.size} connections`);
-        const eventData = {
-          type: 'BATTLE_TRANSITION',
-          data: {
-            fromBattleId: data.fromBattleId,
-            toBattleId: data.toBattleId,
-            timestamp: new Date().toISOString()
-          }
-        };
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(eventData)}\n\n`));
-      };
-
-      const handleStatusUpdate = (data: any) => {
-        console.log(`📡 Broadcasting status update to ${connections.size} connections`);
-        const eventData = {
-          type: 'STATUS_UPDATE',
-          data: {
-            message: data.message,
-            type: data.type,
-            timestamp: new Date().toISOString()
-          }
-        };
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(eventData)}\n\n`));
-      };
-
-      // Register event listeners
-      battleEventEmitter.on('battleEnded', handleBattleEnded);
-      battleEventEmitter.on('battleStarted', handleBattleStarted);
-      battleEventEmitter.on('battleTransition', handleBattleTransition);
-      battleEventEmitter.on('statusUpdate', handleStatusUpdate);
-
-      // Cleanup function
-      const cleanup = () => {
-        battleEventEmitter.off('battleEnded', handleBattleEnded);
-        battleEventEmitter.off('battleStarted', handleBattleStarted);
-        battleEventEmitter.off('battleTransition', handleBattleTransition);
-        battleEventEmitter.off('statusUpdate', handleStatusUpdate);
-        clearInterval(heartbeat);
-        clearInterval(battleTimer);
-        connections.delete(connection);
-        console.log(`🔌 SSE connection ${connectionId} closed`);
-      };
-
-      // Handle connection close
-      request.signal.addEventListener('abort', cleanup);
-      
-      // Send heartbeat every 30 seconds
-      const heartbeat = setInterval(() => {
-        try {
-          const heartbeatData = {
-            type: 'HEARTBEAT',
-            timestamp: new Date().toISOString()
-          };
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(heartbeatData)}\n\n`));
-        } catch (error) {
-          console.error('Heartbeat error:', error);
-          clearInterval(heartbeat);
-          cleanup();
-        }
-      }, 30000);
-
-      // Server-side timer for client synchronization (not battle management)
+      // Set up battle timer to sync client countdown every 15 seconds
       const battleTimer = setInterval(async () => {
         try {
-          const battleManager = await BattleManagerDB.getInstance();
+          // Check if controller is still open before writing
+          if (controller.desiredSize === null) {
+            console.log(`🔌 Controller closed for connection ${connectionId}`);
+            markConnectionInactive(connectionId);
+            // Don't clear intervals, keep connection alive
+            return;
+          }
+
+          const battleManager = new BattleManagerDB();
           const currentBattle = await battleManager.getCurrentBattle();
           
-          if (currentBattle) {
-            const timeRemaining = Math.max(0, Math.floor((new Date(currentBattle.endTime).getTime() - Date.now()) / 1000));
+          if (currentBattle && currentBattle.status === 'ACTIVE') {
+            const now = new Date();
+            const timeRemaining = Math.max(0, Math.floor((currentBattle.endTime.getTime() - now.getTime()) / 1000));
             
             const timerData = {
               type: 'TIMER_UPDATE',
               data: {
                 battleId: currentBattle.id,
                 timeRemaining,
-                endTime: currentBattle.endTime,
+                endTime: currentBattle.endTime.toISOString(),
                 status: currentBattle.status
               },
               timestamp: new Date().toISOString()
             };
             
-            // Only send if controller is still open
-            if (controller.desiredSize !== null) {
+            try {
               controller.enqueue(encoder.encode(`data: ${JSON.stringify(timerData)}\n\n`));
+            } catch (writeError) {
+              console.log(`🔌 Controller write failed for connection ${connectionId}, but keeping connection alive`);
+              // Don't mark as inactive - keep connection alive for potential reconnection
+              return;
             }
           }
         } catch (error) {
-          console.error('Battle timer sync error:', error);
+          console.error('Error in battle timer:', error);
+          // Don't mark as inactive - keep connection alive for potential reconnection
         }
-      }, 15000); // Sync every 15 seconds
+      }, 15000);
 
+      // Set up heartbeat every 30 seconds
+      const heartbeatTimer = setInterval(() => {
+        try {
+          // Check if controller is still open before writing
+          if (controller.desiredSize === null) {
+            console.log(`🔌 Controller closed for connection ${connectionId}`);
+            markConnectionInactive(connectionId);
+            // Don't clear intervals, keep connection alive
+            return;
+          }
+
+          const heartbeatData = {
+            type: 'HEARTBEAT',
+            timestamp: new Date().toISOString()
+          };
+          try {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(heartbeatData)}\n\n`));
+          } catch (writeError) {
+            console.log(`🔌 Controller write failed for connection ${connectionId}, but keeping connection alive`);
+            // Don't mark as inactive - keep connection alive for potential reconnection
+            return;
+          }
+        } catch (error) {
+          console.error('Error in heartbeat timer:', error);
+          // Don't mark as inactive - keep connection alive for potential reconnection
+        }
+      }, 30000);
+
+      // Store cleanup function
+      (controller as ReadableStreamDefaultController & { cleanup?: () => void }).cleanup = () => {
+        console.log(`🔌 CLEANUP CALLED for connection ${connectionId} - User disconnected`);
+        markConnectionInactive(connectionId);
+        // Only mark inactive when user actually disconnects
+      };
     },
 
     cancel() {
-      console.log(`🔌 SSE connection ${connectionId} cancelled`);
-      // Remove connection from set
-      connections.forEach(conn => {
-        if (conn.id === connectionId) {
-          connections.delete(conn);
-        }
-      });
+      console.log(`🔌 CLIENT DISCONNECTED: ${connectionId} - User closed browser/tab`);
+      markConnectionInactive(connectionId);
+      // Only mark inactive when user actually disconnects (closes browser/tab)
     }
   });
 
@@ -210,30 +121,7 @@ export async function GET(request: NextRequest) {
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Cache-Control',
-    },
-  });
-}
-
-// Helper function to broadcast events to all connections
-export function broadcastBattleEvent(type: string, data: any) {
-  console.log(`📡 Broadcasting ${type} event to ${connections.size} connections`);
-  
-  const encoder = new TextEncoder();
-  const eventData = {
-    type,
-    data,
-    timestamp: new Date().toISOString()
-  };
-  
-  const message = `data: ${JSON.stringify(eventData)}\n\n`;
-  
-  connections.forEach(connection => {
-    try {
-      connection.controller.enqueue(encoder.encode(message));
-    } catch (error) {
-      console.error('Error broadcasting to connection:', error);
-      connections.delete(connection);
+      'Access-Control-Allow-Headers': 'Cache-Control'
     }
   });
 }

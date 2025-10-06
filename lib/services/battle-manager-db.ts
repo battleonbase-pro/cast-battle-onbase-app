@@ -5,7 +5,7 @@
 
 import NewsService from './news-service';
 import { DatabaseService } from './database';
-import { battleEventEmitter } from '@/app/api/battle/state-stream/route';
+import { broadcastBattleEvent } from './battle-broadcaster';
 import { DBSharedStateManager } from './db-shared-state';
 
 export interface BattleConfig {
@@ -128,15 +128,18 @@ export class BattleManagerDB {
           console.log(`Current battle "${currentBattle.title}" has expired, completing it and creating new one...`);
           
           // Emit SSE event for battle ending
-          battleEventEmitter.emit('battleEnded', {
+          broadcastBattleEvent('BATTLE_ENDED', {
             battleId: currentBattle.id,
-            title: currentBattle.title
+            title: currentBattle.title,
+            timestamp: new Date().toISOString()
           });
           
           // Emit status update for judging phase
-          battleEventEmitter.emit('statusUpdate', {
+          console.log(`📡 Broadcasting statusUpdate event: Battle completed! Judging in progress...`);
+          broadcastBattleEvent('STATUS_UPDATE', {
             message: '🏁 Battle completed! Judging in progress...',
-            type: 'info'
+            type: 'info',
+            timestamp: new Date().toISOString()
           });
           
           // Complete the expired battle with AI-powered judging
@@ -145,9 +148,11 @@ export class BattleManagerDB {
           console.log(`✅ Battle completion process finished for ${currentBattle.id}`);
           
           // Emit status update for new battle generation
-          battleEventEmitter.emit('statusUpdate', {
+          console.log(`📡 Broadcasting statusUpdate event: Generating new battle...`);
+          broadcastBattleEvent('STATUS_UPDATE', {
             message: '🔄 Generating new battle...',
-            type: 'info'
+            type: 'info',
+            timestamp: new Date().toISOString()
           });
           
           // Create a new battle immediately after completion
@@ -201,10 +206,11 @@ export class BattleManagerDB {
         console.log(`   Completing current battle "${currentBattle.title}" and will create new one with correct duration...`);
         
         // Emit SSE event for battle ending due to duration change
-        battleEventEmitter.emit('battleEnded', {
+        broadcastBattleEvent('BATTLE_ENDED', {
           battleId: currentBattle.id,
           title: currentBattle.title,
-          reason: 'duration_change'
+          reason: 'duration_change',
+          timestamp: new Date().toISOString()
         });
         
         // Complete the current battle immediately
@@ -278,14 +284,16 @@ export class BattleManagerDB {
       console.log(`Automatic battle generation scheduled every ${this.config.battleDurationHours} hours`);
 
       // Emit SSE event for new battle
-      battleEventEmitter.emit('battleStarted', {
+      console.log(`📡 Broadcasting battleStarted event for new battle: ${battle.title} (${battle.id})`);
+      broadcastBattleEvent('BATTLE_STARTED', {
         battleId: battle.id,
         title: battle.title,
         description: battle.description,
         category: battle.category,
         source: battle.source,
         sourceUrl: battle.sourceUrl,
-        endTime: battle.endTime
+        endTime: battle.endTime,
+        timestamp: new Date().toISOString()
       });
 
       // Schedule completion for this new battle
@@ -372,12 +380,44 @@ export class BattleManagerDB {
       this.isCompletingBattle = true;
       console.log(`🏁 Starting complete battle flow for battle ${battleId}`);
       
+      // Get battle info for events before completing it
+      const battleInfo = await this.db.getBattleById(battleId);
+      console.log(`🏁 Battle info for events:`, battleInfo ? { id: battleInfo.id, title: battleInfo.title } : 'No battle found');
+      
+      // Emit SSE event for battle ending
+      if (battleInfo) {
+        console.log(`📡 Broadcasting battleEnded event for battle: ${battleInfo.title} (${battleInfo.id})`);
+        broadcastBattleEvent('BATTLE_ENDED', {
+          battleId: battleInfo.id,
+          title: battleInfo.title,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Emit status update for judging phase
+        console.log(`📡 Broadcasting statusUpdate event: Battle completed! Judging in progress...`);
+        broadcastBattleEvent('STATUS_UPDATE', {
+          message: '🏁 Battle completed! Judging in progress...',
+          type: 'info',
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        console.log(`❌ No battle found for ID ${battleId}, cannot emit battleEnded event`);
+      }
+      
       // Step 1: Complete the battle with AI judging and winner selection
       const completionResult = await this.completeBattleWithJudging(battleId);
       
       // Step 2: Ensure winner selection is fully completed before proceeding
       if (completionResult.success) {
         console.log(`✅ Winner selection completed successfully for battle ${battleId}`);
+        
+        // Emit status update for new battle generation
+        console.log(`📡 Broadcasting statusUpdate event: Generating new battle...`);
+        broadcastBattleEvent('STATUS_UPDATE', {
+          message: '🔄 Generating new battle...',
+          type: 'info',
+          timestamp: new Date().toISOString()
+        });
         
         // Step 3: Wait a moment to ensure all database operations are committed
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -409,6 +449,7 @@ export class BattleManagerDB {
    * Schedule battle completion for the current active battle
    */
   private async scheduleBattleCompletion(): Promise<void> {
+    
     // Clear any existing scheduled timeouts to prevent duplicates
     this.clearScheduledTimeouts();
     
@@ -418,6 +459,7 @@ export class BattleManagerDB {
       console.log('⚠️ No active battle found to schedule completion for');
       return;
     }
+    
     
     // Calculate when this battle will expire
     const battleEndTime = new Date(currentBattle.endTime).getTime();
@@ -510,9 +552,11 @@ export class BattleManagerDB {
             console.log(`🎉 Winner ${winnerUser.address} awarded 100 points! Total points: ${newPoints}`);
             
             // Emit status update for winner announcement
-            battleEventEmitter.emit('statusUpdate', {
+            console.log(`📡 Broadcasting statusUpdate event: Winner selected!`);
+            broadcastBattleEvent('STATUS_UPDATE', {
               message: `🏆 Winner selected! ${winnerUser.address.slice(0, 6)}...${winnerUser.address.slice(-4)} won!`,
-              type: 'success'
+              type: 'success',
+              timestamp: new Date().toISOString()
             });
           }
         } catch (error) {

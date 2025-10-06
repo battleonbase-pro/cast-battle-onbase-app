@@ -6,7 +6,11 @@ interface SerperArticle {
   link: string;
   snippet: string;
   date?: string;
-  source?: string;
+  position?: number;
+  sitelinks?: Array<{
+    title: string;
+    link: string;
+  }>;
 }
 
 interface SerperResponse {
@@ -264,14 +268,67 @@ class SerperNewsService {
   }
 
   private mapSerperArticleToStandard(serperArticle: SerperArticle, category?: string): Article {
+    // Extract source from URL domain
+    const source = this.extractSourceFromUrl(serperArticle.link);
+    
+    // Convert relative date to ISO string
+    const publishedDate = this.convertRelativeDate(serperArticle.date);
+    
     return {
       title: serperArticle.title,
       description: serperArticle.snippet,
       url: serperArticle.link,
-      author: serperArticle.source || 'Unknown',
-      published: serperArticle.date || new Date().toISOString(),
+      author: source,
+      published: publishedDate,
       category: category ? [category] : []
     };
+  }
+
+  private extractSourceFromUrl(url: string): string {
+    try {
+      const domain = new URL(url).hostname;
+      // Remove www. prefix and extract main domain
+      const cleanDomain = domain.replace(/^www\./, '');
+      
+      // Extract the main part of the domain (e.g., "cnn.com" -> "CNN")
+      const parts = cleanDomain.split('.');
+      if (parts.length >= 2) {
+        const mainDomain = parts[0];
+        // Convert to title case
+        return mainDomain.charAt(0).toUpperCase() + mainDomain.slice(1);
+      }
+      
+      return cleanDomain;
+    } catch (error) {
+      console.warn(`[Serper News Service] Failed to extract source from URL: ${url}`);
+      return 'Unknown';
+    }
+  }
+
+  private convertRelativeDate(relativeDate?: string): string {
+    if (!relativeDate) {
+      return new Date().toISOString();
+    }
+
+    const now = new Date();
+    
+    // Handle common relative date formats
+    if (relativeDate.includes('hour')) {
+      const hours = parseInt(relativeDate.match(/\d+/)?.[0] || '0');
+      return new Date(now.getTime() - hours * 60 * 60 * 1000).toISOString();
+    } else if (relativeDate.includes('day')) {
+      const days = parseInt(relativeDate.match(/\d+/)?.[0] || '0');
+      return new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+    } else if (relativeDate.includes('week')) {
+      const weeks = parseInt(relativeDate.match(/\d+/)?.[0] || '0');
+      return new Date(now.getTime() - weeks * 7 * 24 * 60 * 60 * 1000).toISOString();
+    } else if (relativeDate.includes('month')) {
+      const months = parseInt(relativeDate.match(/\d+/)?.[0] || '0');
+      return new Date(now.getTime() - months * 30 * 24 * 60 * 60 * 1000).toISOString();
+    }
+    
+    // If we can't parse it, return current time
+    return new Date().toISOString();
   }
 
   private removeDuplicateArticles(articles: Article[]): Article[] {

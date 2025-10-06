@@ -114,7 +114,7 @@ class AgentOrchestrator {
     try {
       // Step 1: Batch moderate all casts
       this.logWorkflow('Step 1: Batch cast moderation', workflowId);
-      const moderationResults = await this.moderator.moderateBattleCasts(casts, battleData.topic);
+      const moderationResults = await this.moderator.moderateBattleCasts(casts, battleData);
       
       if (moderationResults.results.length === 0) {
         throw new Error('No casts found for moderation');

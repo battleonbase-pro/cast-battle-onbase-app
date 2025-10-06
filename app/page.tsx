@@ -142,7 +142,6 @@ export default function Home() {
 
   useEffect(() => {
     initializeApp();
-    const cleanupSSE = setupSSEConnection();
     const cleanupBattleSSE = setupBattleStateSSE();
     
     // Initialize Base Account SDK on client side only
@@ -201,10 +200,16 @@ export default function Home() {
       const remaining = Math.max(0, Math.floor((battleEndTime - now) / 1000));
       setTimeRemaining(remaining);
       
-      // Show status message when timer reaches 0
-      if (remaining === 0 && !battleStatusMessage) {
+      // Show status message when timer reaches 0, but only if battle is still active
+      if (remaining === 0 && !battleStatusMessage && currentBattle?.status === 'ACTIVE') {
         setBattleStatusMessage('⏰ Battle ended! Judging in progress...');
         setBattleStatusType('info');
+      }
+      
+      // Clear status message when timer is running (new battle started)
+      if (remaining > 0 && battleStatusMessage) {
+        setBattleStatusMessage(null);
+        setBattleStatusType(null);
       }
     };
 
@@ -215,7 +220,7 @@ export default function Home() {
     const interval = setInterval(updateCountdown, 1000);
 
     return () => clearInterval(interval);
-  }, [battleEndTime, battleStatusMessage]);
+  }, [battleEndTime, battleStatusMessage, currentBattle?.status]);
 
 
   // Pulse animation effect for chart end points
@@ -236,104 +241,6 @@ export default function Home() {
     }
   }, []);
 
-  const setupSSEConnection = useCallback(() => {
-    if (typeof window === 'undefined') return;
-
-    // Check if EventSource is supported
-    if (typeof EventSource === 'undefined') {
-      console.log('EventSource not supported, using polling fallback');
-      setConnectionStatus('polling');
-      return setupPollingFallback();
-    }
-
-    try {
-      const eventSource = new EventSource('/api/battle/sentiment-stream');
-      
-      eventSource.onopen = () => {
-        console.log('SSE connection opened');
-        setConnectionStatus('connected');
-      };
-
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          if (data.type === 'sentiment_update') {
-            // Update sentiment data
-            setSentimentData(data.sentiment);
-            
-            // Update sentiment history for chart
-            const historyEntry = {
-              timestamp: data.timestamp,
-              ...data.sentiment
-            };
-            
-            setSentimentHistory(prev => {
-              const newHistory = [...prev, historyEntry];
-              return newHistory.slice(-20); // Keep last 20 data points
-            });
-
-            // Update casts if provided
-            if (data.casts) {
-              setCasts(data.casts);
-            }
-
-            // Update user submission status if provided
-            if (data.userSubmissionStatus !== undefined && user) {
-              setHasSubmittedCast(data.userSubmissionStatus);
-            }
-          } else if (data.type === 'heartbeat') {
-            // Heartbeat received, connection is alive
-            setConnectionStatus('connected');
-          }
-        } catch (error) {
-          console.error('Error parsing SSE data:', error);
-        }
-      };
-
-      eventSource.onerror = (error) => {
-        console.error('SSE connection error:', error);
-        setConnectionStatus('disconnected');
-        
-        // Attempt to reconnect after 5 seconds
-        setTimeout(() => {
-          if (eventSource.readyState === EventSource.CLOSED) {
-            console.log('Attempting to reconnect SSE...');
-            setupSSEConnection();
-          }
-        }, 5000);
-      };
-
-      // Return cleanup function
-      return () => {
-        eventSource.close();
-        setConnectionStatus('disconnected');
-      };
-    } catch (error) {
-      console.error('Failed to setup SSE connection:', error);
-      setConnectionStatus('polling');
-      return setupPollingFallback();
-    }
-  }, []);
-
-  const setupPollingFallback = useCallback(() => {
-    // Fallback polling for browsers that don't support SSE well
-    const pollInterval = setInterval(async () => {
-      try {
-        await fetchCasts();
-        setConnectionStatus('polling');
-      } catch (error) {
-        console.error('Polling error:', error);
-        setConnectionStatus('disconnected');
-      }
-    }, 10000); // Poll every 10 seconds
-
-    // Return cleanup function
-    return () => {
-      clearInterval(pollInterval);
-    };
-  }, []);
-
   const setupBattleStateSSE = useCallback(() => {
     if (typeof window === 'undefined') return;
 
@@ -342,6 +249,7 @@ export default function Home() {
       
       eventSource.onopen = () => {
         console.log('Battle state SSE connection opened');
+        setConnectionStatus('connected');
       };
 
       eventSource.onmessage = (event) => {
@@ -366,6 +274,7 @@ export default function Home() {
             case 'BATTLE_STARTED':
               console.log('New battle started:', data.data);
               setBattleStatusMessage(null); // Clear status message
+              setBattleStatusType(null); // Clear status type
               setBattleTransition({
                 isTransitioning: true,
                 message: 'New battle starting...',
@@ -398,6 +307,33 @@ export default function Home() {
               }
               break;
               
+            case 'SENTIMENT_UPDATE':
+              console.log('Sentiment update received:', data.data);
+              // Update sentiment data
+              setSentimentData(data.data.sentiment);
+              
+              // Update sentiment history for chart
+              const historyEntry = {
+                timestamp: data.data.timestamp,
+                ...data.data.sentiment
+              };
+              
+              setSentimentHistory(prev => {
+                const newHistory = [...prev, historyEntry];
+                return newHistory.slice(-20); // Keep last 20 data points
+              });
+
+              // Update casts if provided
+              if (data.data.casts) {
+                setCasts(data.data.casts);
+              }
+
+              // Update user submission status if provided
+              if (data.data.userSubmissionStatus !== undefined && user) {
+                setHasSubmittedCast(data.data.userSubmissionStatus);
+              }
+              break;
+              
             case 'HEARTBEAT':
               // Keep connection alive
               break;
@@ -411,16 +347,26 @@ export default function Home() {
       };
 
       eventSource.onerror = (error) => {
-        console.error('Battle state SSE error:', error);
-        eventSource.close();
+        console.error('Battle state SSE connection error:', error);
+        setConnectionStatus('disconnected');
+        
+        // Attempt to reconnect after 5 seconds
+        setTimeout(() => {
+          if (eventSource.readyState === EventSource.CLOSED) {
+            console.log('Attempting to reconnect battle state SSE...');
+            setupBattleStateSSE();
+          }
+        }, 5000);
       };
 
       // Return cleanup function
       return () => {
         eventSource.close();
+        setConnectionStatus('disconnected');
       };
     } catch (error) {
       console.error('Failed to setup battle state SSE connection:', error);
+      setConnectionStatus('disconnected');
       return () => {}; // Return empty cleanup function
     }
   }, []);

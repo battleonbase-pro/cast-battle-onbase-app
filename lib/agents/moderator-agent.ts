@@ -64,10 +64,10 @@ class ModeratorAgent extends BaseAgent {
   }
 
   // Batch moderate multiple casts (for battle completion)
-  async moderateBattleCasts(casts, battleTopic) {
+  async moderateBattleCasts(casts, battleData) {
     this.logActivity('Starting batch cast moderation', {
       castCount: casts.length,
-      battleTitle: battleTopic.title
+      battleTitle: battleData.title
     });
 
     try {
@@ -75,7 +75,7 @@ class ModeratorAgent extends BaseAgent {
       
       for (const cast of casts) {
         try {
-          const moderation = await this.moderateCast(cast.content, battleTopic);
+          const moderation = await this.moderateCast(cast.content, battleData);
           moderationResults.push({
             ...moderation,
             castId: cast.id,
@@ -123,13 +123,13 @@ class ModeratorAgent extends BaseAgent {
   }
 
   // Create moderation prompt
-  createModerationPrompt(castContent, battleTopic) {
+  createModerationPrompt(castContent, battleData) {
     return `You are a content moderator for a social media debate platform. Your job is to assess cast content for quality, appropriateness, and relevance.
 
 BATTLE TOPIC:
-- Title: "${battleTopic.title}"
-- Description: "${battleTopic.description}"
-- Category: "${battleTopic.category}"
+- Title: "${battleData.title}"
+- Description: "${battleData.description}"
+- Category: "${battleData.category}"
 
 CAST CONTENT TO MODERATE:
 "${castContent}"
