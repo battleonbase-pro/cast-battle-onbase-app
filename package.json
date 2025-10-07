@@ -46,7 +46,15 @@
     "test:retry-strategy": "npx tsx scripts/test-retry-strategy.js",
     "test:cache-key": "npx tsx scripts/test-cache-key.js",
     "test:optimized-judging": "npx tsx scripts/test-optimized-judging.js",
-    "force:battle-transition": "npx tsx scripts/force-battle-transition.js"
+    "force:battle-transition": "npx tsx scripts/force-battle-transition.js",
+    "db:setup": "./setup-local-dev.sh",
+    "db:start": "docker-compose up -d postgres",
+    "db:stop": "docker-compose down",
+    "db:logs": "docker-compose logs postgres",
+    "db:migrate": "npx prisma migrate dev",
+    "db:generate": "npx prisma generate",
+    "db:studio": "npx prisma studio",
+    "db:reset": "npx prisma migrate reset"
   },
   "dependencies": {
     "@ai-sdk/google": "^2.0.14",
