@@ -2,9 +2,9 @@
   "version": "1.0.0",
   "name": "NewsCast Debate",
   "description": "AI-powered news debates on Base blockchain. Join intelligent discussions, earn points, and compete with others.",
-  "icon": "https://news-debate-onbase-app.vercel.app/Base_basemark_blue.png",
+  "icon": "https://news-debate-onbase-app.vercel.app/icon.png",
   "splash": {
-    "imageUrl": "https://news-debate-onbase-app.vercel.app/Base_basemark_blue.png",
+    "imageUrl": "https://news-debate-onbase-app.vercel.app/icon.png",
     "backgroundColor": "#ffffff"
   },
   "url": "https://news-debate-onbase-app.vercel.app",

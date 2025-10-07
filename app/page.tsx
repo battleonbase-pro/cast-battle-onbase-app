@@ -4,7 +4,7 @@ import { SignInWithBaseButton } from '@base-org/account-ui/react';
 import { createBaseAccountSDK } from '@base-org/account';
 import { createWalletClient, custom } from 'viem';
 import { base } from 'viem/chains';
-import sdk from '@farcaster/frame-sdk';
+import { sdk } from '@farcaster/miniapp-sdk';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -174,17 +174,21 @@ export default function Home() {
   useEffect(() => {
     const callReady = async () => {
       try {
-        // Wait for app to be fully initialized before calling ready()
-        await sdk.actions.ready();
-        console.log('Farcaster app is ready');
+        // Check if we're in Farcaster environment
+        if (typeof window !== 'undefined' && window.location !== window.parent.location) {
+          // Wait for app to be fully initialized before calling ready()
+          await sdk.actions.ready();
+          console.log('✅ Farcaster app is ready');
+        } else {
+          console.log('ℹ️ Not in Farcaster environment');
+        }
       } catch (error) {
-        // SDK not available or already called
-        console.log('Farcaster ready() not needed');
+        console.log('⚠️ Farcaster ready() failed:', error);
       }
     };
 
     // Call ready() after a short delay to ensure app is loaded
-    const timer = setTimeout(callReady, 1000);
+    const timer = setTimeout(callReady, 2000);
     return () => clearTimeout(timer);
   }, []);
 
