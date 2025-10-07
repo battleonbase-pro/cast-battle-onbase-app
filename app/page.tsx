@@ -893,6 +893,7 @@ export default function Home() {
                 variant="solid"
                 colorScheme="light"
                 onClick={handleSignIn}
+                className={styles.signInButton}
               />
             </div>
           ) : (

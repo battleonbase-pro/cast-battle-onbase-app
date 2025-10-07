@@ -182,6 +182,52 @@
   font-size: 0.875rem !important;
 }
 
+/* Mobile responsive styling for SignInWithBaseButton */
+@media (max-width: 768px) {
+  .signInWrapper :global(.-base-ui-sign-in-button) {
+    min-width: 60px !important;
+    padding: 4px 8px !important;
+    font-size: 0.75rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .signInWrapper :global(.-base-ui-sign-in-button) {
+    min-width: 50px !important;
+    padding: 3px 6px !important;
+    font-size: 0.7rem !important;
+    height: auto !important;
+    min-height: 32px !important;
+    white-space: normal !important;
+    line-height: 1.1 !important;
+  }
+}
+
+.signInButton {
+  /* Base button styling */
+}
+
+/* Additional mobile optimization for button content */
+@media (max-width: 480px) {
+  .signInWrapper :global(.-base-ui-sign-in-button-content) {
+    gap: 6px !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+  }
+  
+  .signInWrapper :global(.-base-ui-sign-in-button-content span) {
+    font-size: 0.65rem !important;
+    line-height: 1.1 !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+}
+
 .signInWrapper :global(.-base-ui-sign-in-button-content) {
   justify-content: center !important;
 }
