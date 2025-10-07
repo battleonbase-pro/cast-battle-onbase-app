@@ -1166,7 +1166,7 @@ export default function Home() {
                               <div className={styles.recentWinsLabel}>Recent wins:</div>
                               {player.recentWins.slice(0, 2).map((win, winIndex) => (
                                 <div key={winIndex} className={styles.recentWinItem}>
-                                  🥇 {win.battleTitle.slice(0, 30)}...
+                                  {win.position === 1 ? '🥇' : win.position === 2 ? '🥈' : '🥉'} {win.battleTitle}
                                 </div>
                               ))}
                             </div>
