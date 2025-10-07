@@ -890,6 +890,34 @@ export default function Home() {
 
       {/* Main Content */}
       <main className={styles.main}>
+        {/* Hero Section */}
+        <div className={styles.heroSection}>
+          <div className={styles.heroContent}>
+            <h2 className={styles.heroTitle}>
+              Experience the Future of <span className={styles.aiHighlight}>Agentic AI</span> Debate
+            </h2>
+            <p className={styles.heroDescription}>
+              Join the world's first <strong>autonomous AI-powered debate platform</strong> where intelligent agents 
+              curate trending news, generate balanced arguments, and judge with superhuman objectivity. 
+              Compete for points and rewards on the Base blockchain.
+            </p>
+            <div className={styles.heroFeatures}>
+              <div className={styles.heroFeature}>
+                <span className={styles.featureIcon}>🤖</span>
+                <span className={styles.featureText}>Autonomous AI Agents</span>
+              </div>
+              <div className={styles.heroFeature}>
+                <span className={styles.featureIcon}>⚡</span>
+                <span className={styles.featureText}>Real-Time Intelligence</span>
+              </div>
+              <div className={styles.heroFeature}>
+                <span className={styles.featureIcon}>🏆</span>
+                <span className={styles.featureText}>Blockchain Rewards</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {error ? (
           <div className={styles.error}>
             <p>⚠️ {error}</p>
