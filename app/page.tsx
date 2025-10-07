@@ -210,7 +210,7 @@ export default function Home() {
         }
 
         const baseSDK = createBaseAccountSDK({
-          appName: 'Agentic AI NewsCast Debate on Base',
+          appName: 'Agentic AI NewsCast Debate on Base (Beta)',
           appUrl: window.location.origin,
           chain: base,
           client: createWalletClient({
@@ -653,7 +653,7 @@ export default function Home() {
       }
 
       // Sign authentication message (following documentation pattern)
-      const message = `Join Agentic AI NewsCast Debate on Base at ${Date.now()}`;
+      const message = `Join Agentic AI NewsCast Debate on Base (Beta) at ${Date.now()}`;
       const signature = await client.signMessage({ 
         account,
         message,
@@ -821,7 +821,13 @@ export default function Home() {
         <div className={styles.headerTop}>
           <div className={styles.headerLeft}>
             <div className={styles.titleRow}>
-              <h1 className={styles.title}><span className={styles.baseText}>NewsCast</span> Debate</h1>
+              <h1 className={styles.title}>
+                <span className={styles.baseText}>NewsCast</span> 
+                <span className={styles.debateContainer}>
+                  <span className={styles.betaLabel}>Beta</span>
+                  <span className={styles.debateText}>Debate</span>
+                </span>
+              </h1>
               <button 
                 className={styles.helpBtn}
                 onClick={() => setShowHelpPopup(true)}
@@ -1218,7 +1224,7 @@ export default function Home() {
         <div className={styles.helpOverlay} onClick={handleHelpOverlayClick}>
           <div className={styles.helpPopup} onClick={(e) => e.stopPropagation()}>
             <div className={styles.helpHeader}>
-              <h2 className={styles.helpTitle}>Master Agentic AI-Powered NewsCast Debate</h2>
+              <h2 className={styles.helpTitle}>Master Agentic AI-Powered NewsCast Debate (Beta)</h2>
               <button 
                 className={styles.helpCloseBtn}
                 onClick={handleHelpPopupClose}
@@ -1232,7 +1238,7 @@ export default function Home() {
               <div className={styles.helpSection}>
                 <h3 className={styles.helpSectionTitle}>🎯 The Game</h3>
                 <p className={styles.helpText}>
-                  NewsCast Debate is an <strong className={styles.aiHighlight}>Agentic AI-powered</strong> debate platform where you engage in intelligent discussions about trending news topics. 
+                  NewsCast Debate (Beta) is an <strong className={styles.aiHighlight}>Agentic AI-powered</strong> debate platform where you engage in intelligent discussions about trending news topics. 
                   Each battle lasts <strong>4 hours</strong> and features real news articles autonomously curated by our <strong className={styles.aiHighlight}>advanced AI agents</strong>.
                 </p>
               </div>

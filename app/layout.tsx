@@ -12,7 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "NewsCast Debate - AI-Powered News Debates on Base",
+  title: "NewsCast Debate (Beta) - AI-Powered News Debates on Base",
   description: "Join engaging AI-powered debates on trending news topics. Earn points, compete with others, and win rewards on the Base blockchain. Experience the future of social news discussion.",
   keywords: "news debate, AI debates, Base blockchain, cryptocurrency, social media, news discussion, blockchain rewards, decentralized social",
   authors: [{ name: "NewsCast Debate Team" }],
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   publisher: "Base",
   robots: "index, follow",
   openGraph: {
-    title: "NewsCast Debate - AI-Powered News Debates on Base",
+    title: "NewsCast Debate (Beta) - AI-Powered News Debates on Base",
     description: "Join engaging AI-powered debates on trending news topics. Earn points, compete with others, and win rewards on the Base blockchain.",
     type: "website",
     locale: "en_US",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "NewsCast Debate - AI-Powered News Debates on Base",
+    title: "NewsCast Debate (Beta) - AI-Powered News Debates on Base",
     description: "Join engaging AI-powered debates on trending news topics. Earn points, compete with others, and win rewards on the Base blockchain.",
     creator: "@base",
   },
@@ -61,7 +61,7 @@ export default function RootLayout({
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "WebApplication",
-              "name": "NewsCast Debate",
+              "name": "NewsCast Debate (Beta)",
               "description": "AI-powered news debates on Base blockchain",
               "url": "https://newscast-debate.vercel.app",
               "applicationCategory": "SocialNetworkingApplication",
