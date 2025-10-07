@@ -39,9 +39,9 @@ async function forceBattleTransition() {
 
     // 3. Show what should happen after restart
     console.log('\n3. After server restart, the system will:');
-    console.log('   ✅ Read BATTLE_DURATION_HOURS=0.083333 (5 minutes)');
+    console.log('   ✅ Read BATTLE_DURATION_HOURS=4 (4 hours)');
     console.log('   ✅ Complete any expired battles automatically');
-    console.log('   ✅ Create new battles with 5-minute duration');
+    console.log('   ✅ Create new battles with 4-hour duration');
     console.log('   ✅ Check battle status every 30 seconds');
 
     console.log('\n🎯 Next Steps:');

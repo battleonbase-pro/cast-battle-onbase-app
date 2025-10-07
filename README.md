@@ -142,7 +142,7 @@ GOOGLE_GENERATIVE_AI_API_KEY=your_google_gemini_api_key
 NEXT_PUBLIC_BATTLE_TOKEN_ADDRESS=
 
 # Battle Configuration (Optional)
-BATTLE_DURATION_HOURS=0.033333  # 2 minutes (configurable)
+BATTLE_DURATION_HOURS=4  # 4 hours (configurable)
 BATTLE_MAX_PARTICIPANTS=1000
 BATTLE_GENERATION_ENABLED=true
 ```
@@ -157,6 +157,7 @@ The battle duration is fully configurable via environment variables:
 | 5 minutes | `0.083333` | Quick battles |
 | 30 minutes | `0.5` | Standard battles |
 | 1 hour | `1` | Extended battles |
+| 4 hours | `4` | Default battles |
 | 24 hours | `24` | Daily battles |
 
 

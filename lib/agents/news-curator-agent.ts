@@ -26,7 +26,7 @@ class NewsCuratorAgent extends BaseAgent {
     this.newsSourceFactory = NewsSourceFactory.getInstance();
     this.cache = new Map();
     // Cache timeout based on battle duration
-    const battleDurationHours = parseFloat(process.env.BATTLE_DURATION_HOURS || '0.083333');
+    const battleDurationHours = parseFloat(process.env.BATTLE_DURATION_HOURS || '4');
     this.cacheTimeout = battleDurationHours * 60 * 60 * 1000; // Battle duration in milliseconds
   }
 
@@ -438,7 +438,7 @@ class NewsCuratorAgent extends BaseAgent {
   // Cache management
   getCacheKey() {
     const now = new Date();
-    const battleDurationHours = parseFloat(process.env.BATTLE_DURATION_HOURS || '0.083333'); // Default 5 minutes
+    const battleDurationHours = parseFloat(process.env.BATTLE_DURATION_HOURS || '4'); // Default 4 hours
     const battleDurationMs = battleDurationHours * 60 * 60 * 1000;
     
     // Calculate which battle cycle we're in based on battle duration

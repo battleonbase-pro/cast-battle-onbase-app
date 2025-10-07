@@ -11,7 +11,7 @@ dotenv.config();
 
 function getCacheKey() {
   const now = new Date();
-  const battleDurationHours = parseFloat(process.env.BATTLE_DURATION_HOURS || '0.083333'); // Default 5 minutes
+  const battleDurationHours = parseFloat(process.env.BATTLE_DURATION_HOURS || '4'); // Default 4 hours
   const battleDurationMs = battleDurationHours * 60 * 60 * 1000;
   
   // Calculate which battle cycle we're in based on battle duration
