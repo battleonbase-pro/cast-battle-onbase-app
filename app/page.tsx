@@ -210,7 +210,7 @@ export default function Home() {
         }
 
         const baseSDK = createBaseAccountSDK({
-          appName: 'NewsCast Debate on Base',
+          appName: 'Agentic AI NewsCast Debate on Base',
           appUrl: window.location.origin,
           chain: base,
           client: createWalletClient({
@@ -652,7 +652,7 @@ export default function Home() {
       }
 
       // Sign authentication message (following documentation pattern)
-      const message = `Sign in to NewsCast Debate on Base at ${Date.now()}`;
+      const message = `Join Agentic AI NewsCast Debate on Base at ${Date.now()}`;
       const signature = await client.signMessage({ 
         account,
         message,
@@ -1208,7 +1208,7 @@ export default function Home() {
         <div className={styles.helpOverlay} onClick={handleHelpOverlayClick}>
           <div className={styles.helpPopup} onClick={(e) => e.stopPropagation()}>
             <div className={styles.helpHeader}>
-              <h2 className={styles.helpTitle}>How to Play NewsCast Debate</h2>
+              <h2 className={styles.helpTitle}>Master Agentic AI-Powered NewsCast Debate</h2>
               <button 
                 className={styles.helpCloseBtn}
                 onClick={handleHelpPopupClose}
@@ -1222,18 +1222,18 @@ export default function Home() {
               <div className={styles.helpSection}>
                 <h3 className={styles.helpSectionTitle}>🎯 The Game</h3>
                 <p className={styles.helpText}>
-                  NewsCast Debate is an <strong className={styles.aiHighlight}>AI-powered</strong> debate game where you argue about trending news topics. 
-                  Each battle lasts <strong>3 minutes</strong> and features real news articles curated by our <strong className={styles.aiHighlight}>AI agents</strong>.
+                  NewsCast Debate is an <strong className={styles.aiHighlight}>Agentic AI-powered</strong> debate platform where you engage in intelligent discussions about trending news topics. 
+                  Each battle lasts <strong>4 hours</strong> and features real news articles autonomously curated by our <strong className={styles.aiHighlight}>advanced AI agents</strong>.
                 </p>
               </div>
 
               <div className={styles.helpSection}>
-                <h3 className={styles.helpSectionTitle}>🤖 AI-Powered Features</h3>
+                <h3 className={styles.helpSectionTitle}>🤖 Agentic AI Features</h3>
                 <ul className={styles.helpList}>
-                  <li><strong className={styles.aiHighlight}>Smart Topic Selection:</strong> AI finds the most engaging news stories for debates</li>
-                  <li><strong className={styles.aiHighlight}>Balanced Arguments:</strong> AI creates fair debate points for both sides</li>
-                  <li><strong className={styles.aiHighlight}>Fair Judging:</strong> AI evaluates arguments objectively and picks winners</li>
-                  <li><strong className={styles.aiHighlight}>Battle Insights:</strong> AI generates summaries of the best arguments</li>
+                  <li><strong className={styles.aiHighlight}>Intelligent Topic Curation:</strong> Agentic AI autonomously discovers trending news stories and selects the most debate-worthy topics</li>
+                  <li><strong className={styles.aiHighlight}>Dynamic Argument Generation:</strong> Advanced AI creates balanced, compelling debate points for both sides in real-time</li>
+                  <li><strong className={styles.aiHighlight}>Autonomous Judging System:</strong> Agentic AI evaluates arguments with superhuman objectivity and selects winners based on merit</li>
+                  <li><strong className={styles.aiHighlight}>Intelligent Battle Analytics:</strong> AI generates deep insights and summaries of winning strategies</li>
                 </ul>
               </div>
 
@@ -1249,19 +1249,21 @@ export default function Home() {
               </div>
 
               <div className={styles.helpSection}>
-                <h3 className={styles.helpSectionTitle}>🏆 Winning</h3>
+                <h3 className={styles.helpSectionTitle}>🏆 Autonomous Judging</h3>
                 <p className={styles.helpText}>
-                  Our <strong className={styles.aiHighlight}>AI judge</strong> analyzes all arguments for quality and relevance. 
-                  It ensures fair competition by evaluating both sides equally, then selects the most compelling arguments 
+                  Our <strong className={styles.aiHighlight}>Agentic AI Judge</strong> operates with superhuman analytical capabilities, 
+                  evaluating all arguments for quality, relevance, and persuasive power. It ensures completely fair competition 
+                  by analyzing both sides with perfect objectivity, then autonomously selects the most compelling arguments 
                   to determine the winner.
                 </p>
               </div>
 
               <div className={styles.helpSection}>
-                <h3 className={styles.helpSectionTitle}>⚡ Real-Time Updates</h3>
+                <h3 className={styles.helpSectionTitle}>⚡ Intelligent Automation</h3>
                 <p className={styles.helpText}>
-                  Watch live sentiment tracking, see when battles end, get notified when winners are selected, 
-                  and see status updates as new battles are automatically generated.
+                  Experience <strong className={styles.aiHighlight}>autonomous battle management</strong> with live sentiment tracking, 
+                  instant winner notifications, and seamless transitions as our <strong className={styles.aiHighlight}>Agentic AI</strong> 
+                  automatically generates new battles and manages the entire debate ecosystem.
                 </p>
               </div>
             </div>
@@ -1274,8 +1276,8 @@ export default function Home() {
         <div className={styles.disabledOverlay}>
           <div className={styles.loading}>
             <div className={styles.loadingSpinner}></div>
-               <div className={styles.loadingText}>Loading NewsCast Debate...</div>
-               <div className={styles.loadingSubtext}>Initializing app and fetching latest debate data</div>
+               <div className={styles.loadingText}>Initializing Agentic AI Debate Platform...</div>
+               <div className={styles.loadingSubtext}>Activating AI agents and synchronizing debate ecosystem</div>
           </div>
         </div>
       )}
