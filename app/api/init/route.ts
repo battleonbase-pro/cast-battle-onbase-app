@@ -7,7 +7,7 @@ import { BattleManagerDB } from '@/lib/services/battle-manager-db';
  */
 export async function POST(_request: NextRequest) {
   try {
-    console.log('Initializing NewsCast Battle application...');
+    console.log('Initializing NewsCast Debate application...');
     
     // Initialize battle manager
     const battleManager = await BattleManagerDB.getInstance();

@@ -131,7 +131,7 @@ const qualityFilters = {
 
 ## 🎯 Battle-Specific Strategies
 
-### **For NewsCast Battle, we want:**
+### **For NewsCast Debate, we want:**
 
 1. **Controversial Topics**: Issues with clear pro/con sides
 2. **Recent Relevance**: Topics people are talking about now
@@ -216,4 +216,4 @@ const score = (
 - Measure battle participation rates
 - Track topic diversity over time
 
-This strategic approach ensures we get high-quality, diverse, and engaging news topics for NewsCast Battle! 🎯✨
+This strategic approach ensures we get high-quality, diverse, and engaging news topics for NewsCast Debate! 🎯✨

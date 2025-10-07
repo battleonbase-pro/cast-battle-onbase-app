@@ -199,7 +199,7 @@ export default function Home() {
         }
 
         const baseSDK = createBaseAccountSDK({
-          appName: 'NewsCast Battle on Base',
+          appName: 'NewsCast Debate on Base',
           appUrl: window.location.origin,
           chain: base,
           client: createWalletClient({
@@ -641,7 +641,7 @@ export default function Home() {
       }
 
       // Sign authentication message (following documentation pattern)
-      const message = `Sign in to NewsCast Battle on Base at ${Date.now()}`;
+      const message = `Sign in to NewsCast Debate on Base at ${Date.now()}`;
       const signature = await client.signMessage({ 
         account,
         message,
@@ -1197,7 +1197,7 @@ export default function Home() {
         <div className={styles.helpOverlay} onClick={handleHelpOverlayClick}>
           <div className={styles.helpPopup} onClick={(e) => e.stopPropagation()}>
             <div className={styles.helpHeader}>
-              <h2 className={styles.helpTitle}>How to Play NewsCast Battle</h2>
+              <h2 className={styles.helpTitle}>How to Play NewsCast Debate</h2>
               <button 
                 className={styles.helpCloseBtn}
                 onClick={handleHelpPopupClose}
@@ -1211,7 +1211,7 @@ export default function Home() {
               <div className={styles.helpSection}>
                 <h3 className={styles.helpSectionTitle}>🎯 The Game</h3>
                 <p className={styles.helpText}>
-                  NewsCast Battle is an <strong className={styles.aiHighlight}>AI-powered</strong> debate game where you argue about trending news topics. 
+                  NewsCast Debate is an <strong className={styles.aiHighlight}>AI-powered</strong> debate game where you argue about trending news topics. 
                   Each battle lasts <strong>3 minutes</strong> and features real news articles curated by our <strong className={styles.aiHighlight}>AI agents</strong>.
                 </p>
               </div>

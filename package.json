@@ -15,7 +15,7 @@
     "ai",
     "onchainkit"
   ],
-  "author": "NewsCast Battle Team",
+  "author": "NewsCast Debate Team",
   "license": "MIT",
   "scripts": {
     "dev": "next dev",

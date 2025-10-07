@@ -1,4 +1,4 @@
-# NewsCast Battle
+# NewsCast Debate
 
 <div align="center">
   <img src="./public/Base_basemark_blue.png" alt="Base Logo" width="200"/>
@@ -13,14 +13,14 @@
 
 ## Overview
 
-NewsCast Battle transforms trending global news into engaging debate battles on the Base network. Users participate through Farcaster Frames, submit their arguments, and compete for $BATTLE tokens. Our sophisticated multi-agent AI system curates high-impact news, generates balanced debate topics, and moderates content quality in real-time.
+NewsCast Debate transforms trending global news into engaging debate discussions on the Base network. Users participate through Farcaster Frames, submit their arguments, and compete for $BATTLE tokens. Our sophisticated multi-agent AI system curates high-impact news, generates balanced debate topics, and moderates content quality in real-time.
 
 ## Screenshot
 
 <div align="center">
-  <img src="./public/screenshot.png" alt="NewsCast Battle Application Screenshot" width="800"/>
+  <img src="./public/screenshot.png" alt="NewsCast Debate Application Screenshot" width="800"/>
   
-  *NewsCast Battle - AI-Powered News Debate Platform*
+  *NewsCast Debate - AI-Powered News Debate Platform*
 </div>
 
 ## Architecture

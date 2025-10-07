@@ -30,11 +30,11 @@ export async function GET(_request: NextRequest) {
           <meta property="fc:frame:button:3" content="Change Topic" />
           <meta property="fc:frame:button:4" content="View Leaderboard" />
           <meta property="fc:frame:post_url" content="${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/frame/join-battle" />
-          <meta property="og:title" content="NewsCast Battle: ${battle.topic}" />
+          <meta property="og:title" content="NewsCast Debate: ${battle.topic}" />
           <meta property="og:description" content="Join the daily NewsCast battle and win BATTLE tokens! Source: ${battle.source}" />
         </head>
         <body>
-          <h1>NewsCast Battle: ${battle.topic}</h1>
+          <h1>NewsCast Debate: ${battle.topic}</h1>
           <p>Source: ${battle.source}</p>
           <p>Category: ${battle.category}</p>
           <p>Battle ID: ${battle.id}</p>
