@@ -1076,6 +1076,11 @@
     margin-bottom: 10px;
     padding-left: 16px;
   }
+  
+  .navBtn {
+    font-size: 0.8rem;
+    padding: 6px 6px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1158,8 +1163,8 @@
   }
   
   .navBtn {
-    font-size: 0.85rem;
-    padding: 6px 8px;
+    font-size: 0.75rem;
+    padding: 6px 4px;
   }
   
   .argumentContent {
