@@ -896,11 +896,6 @@ export default function Home() {
             <h2 className={styles.heroTitle}>
               Experience the Future of <span className={styles.aiHighlight}>Agentic AI</span> Debate
             </h2>
-            <p className={styles.heroDescription}>
-              Join the world's first <strong>autonomous AI-powered debate platform</strong> where intelligent agents 
-              curate trending news, generate balanced arguments, and judge with superhuman objectivity. 
-              Compete for points and rewards on the Base blockchain.
-            </p>
           </div>
         </div>
 
