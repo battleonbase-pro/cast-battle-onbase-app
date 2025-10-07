@@ -809,7 +809,7 @@ export default function Home() {
         <div className={styles.headerTop}>
           <div className={styles.headerLeft}>
             <div className={styles.titleRow}>
-              <h1 className={styles.title}><span className={styles.baseText}>NewsCast</span> Battle</h1>
+              <h1 className={styles.title}><span className={styles.baseText}>NewsCast</span> Debate</h1>
               <button 
                 className={styles.helpBtn}
                 onClick={() => setShowHelpPopup(true)}
