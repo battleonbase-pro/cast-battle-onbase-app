@@ -839,7 +839,7 @@ export default function Home() {
               <div className={styles.userInfo}>
                 <span className={styles.userAddress}>{user.address.slice(0, 6)}...{user.address.slice(-4)}</span>
                 <span className={`${styles.userPoints} ${pointsAnimation ? styles.pointsAnimated : ''}`}>
-                  ⭐ {userPoints} pts
+                  🔵 {userPoints} pts
                 </span>
               </div>
               <button 
@@ -1182,7 +1182,7 @@ export default function Home() {
                           </div>
                           <div className={styles.leaderboardStats}>
                             <div className={styles.leaderboardPoints}>
-                              ⭐ {player.points} points
+                              🔵 {player.points} points
                             </div>
                             <div className={styles.leaderboardMeta}>
                               🏆 {player.winCount} wins • 🎯 {player.participationCount} debates
