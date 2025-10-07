@@ -901,20 +901,6 @@ export default function Home() {
               curate trending news, generate balanced arguments, and judge with superhuman objectivity. 
               Compete for points and rewards on the Base blockchain.
             </p>
-            <div className={styles.heroFeatures}>
-              <div className={styles.heroFeature}>
-                <span className={styles.featureIcon}>🤖</span>
-                <span className={styles.featureText}>Autonomous AI Agents</span>
-              </div>
-              <div className={styles.heroFeature}>
-                <span className={styles.featureIcon}>⚡</span>
-                <span className={styles.featureText}>Real-Time Intelligence</span>
-              </div>
-              <div className={styles.heroFeature}>
-                <span className={styles.featureIcon}>🏆</span>
-                <span className={styles.featureText}>Blockchain Rewards</span>
-              </div>
-            </div>
           </div>
         </div>
 
