@@ -93,7 +93,7 @@ interface BaseSDK {
 }
 
 export default function Home() {
-  const [user, setUser] = useState<User | null>(null);
+  const [isFarcasterEnv, setIsFarcasterEnv] = useState(false);
   const [sdk, setSdk] = useState<BaseSDK | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -156,12 +156,25 @@ export default function Home() {
   };
 
   // Prevent body scroll when popup is open (mobile optimization)
-  // Initialize Farcaster SDK
+  // Initialize Farcaster SDK and Authentication
   useEffect(() => {
     const initializeFarcaster = async () => {
       try {
-        // Don't call ready() immediately - wait for app to be fully loaded
         console.log('Farcaster SDK detected');
+        
+        // Check if we're in Farcaster environment
+        const isInFarcaster = await farcasterSDK.actions.signIn().catch(() => null);
+        
+        if (isInFarcaster) {
+          console.log('✅ User authenticated with Farcaster');
+          setIsFarcasterEnv(true);
+          // Set user data from Farcaster
+          setUser({
+            address: isInFarcaster.address || 'farcaster-user',
+            username: isInFarcaster.username || 'Farcaster User'
+          });
+          setLoading(false);
+        }
       } catch (error) {
         console.log('Farcaster SDK not available (running outside Farcaster)');
       }
@@ -234,10 +247,27 @@ export default function Home() {
           originalConsoleError.apply(console, args);
         };
 
+        // Check if we're in Farcaster environment first
+        try {
+          const farcasterCheck = await farcasterSDK.actions.signIn().catch(() => null);
+          if (farcasterCheck) {
+            console.log('In Farcaster environment - using Farcaster auth');
+            return; // Skip Base SDK initialization
+          }
+        } catch (error) {
+          console.log('Not in Farcaster environment - proceeding with Base SDK');
+        }
+
         // Check if ethereum provider is available
         if (!window.ethereum) {
           console.log('No Ethereum provider found. Wallet connection will not be available.');
           // Continue without wallet - app can still be used for viewing battles
+          return;
+        }
+
+        // Skip Base SDK if we're in Farcaster (use Farcaster auth instead)
+        if (user && user.address === 'farcaster-user') {
+          console.log('Using Farcaster authentication, skipping Base SDK');
           return;
         }
 
@@ -902,6 +932,23 @@ export default function Home() {
                 </svg>
               </button>
         </div>
+          ) : isFarcasterEnv ? (
+            <div className={styles.signInWrapper}>
+              <button 
+                className={styles.farcasterSignInBtn}
+                onClick={async () => {
+                  try {
+                    const authResult = await farcasterSDK.actions.signIn();
+                    console.log('Farcaster sign in result:', authResult);
+                  } catch (error) {
+                    console.log('Farcaster sign in failed:', error);
+                  }
+                }}
+              >
+                <span className={styles.farcasterIcon}>🔗</span>
+                Sign in with Farcaster
+              </button>
+            </div>
           ) : sdk ? (
             <div className={styles.signInWrapper}>
               <SignInWithBaseButton 

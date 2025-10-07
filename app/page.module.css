@@ -166,6 +166,54 @@
   height: 100%;
 }
 
+/* Farcaster Sign In Button */
+.farcasterSignInBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #8B5CF6, #A855F7);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 140px;
+  justify-content: center;
+}
+
+.farcasterSignInBtn:hover {
+  background: linear-gradient(135deg, #7C3AED, #9333EA);
+  transform: translateY(-1px);
+}
+
+.farcasterIcon {
+  font-size: 1rem;
+}
+
+@media (max-width: 768px) {
+  .farcasterSignInBtn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    min-width: 120px;
+  }
+}
+
+@media (max-width: 480px) {
+  .farcasterSignInBtn {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    min-width: 100px;
+    gap: 6px;
+  }
+  
+  .farcasterIcon {
+    font-size: 0.9rem;
+  }
+}
+
 /* Override SignInWithBaseButton default styles */
 .signInWrapper :global(.-base-ui-sign-in-css-reset) {
   display: flex !important;
