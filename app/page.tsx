@@ -1257,7 +1257,7 @@ export default function Home() {
         <div className={styles.helpOverlay} onClick={handleHelpOverlayClick}>
           <div className={styles.helpPopup} onClick={(e) => e.stopPropagation()}>
             <div className={styles.helpHeader}>
-              <h2 className={styles.helpTitle}>Master Agentic AI-Powered NewsCast Debate (Beta)</h2>
+              <h2 className={styles.helpTitle}>Agentic AI-Powered NewsCast Debate (Beta)</h2>
               <button 
                 className={styles.helpCloseBtn}
                 onClick={handleHelpPopupClose}
