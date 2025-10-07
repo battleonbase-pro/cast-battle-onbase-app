@@ -160,14 +160,32 @@ export default function Home() {
   useEffect(() => {
     const initializeFarcaster = async () => {
       try {
-        await sdk.actions.ready();
-        console.log('Farcaster SDK initialized successfully');
+        // Don't call ready() immediately - wait for app to be fully loaded
+        console.log('Farcaster SDK detected');
       } catch (error) {
         console.log('Farcaster SDK not available (running outside Farcaster)');
       }
     };
     
     initializeFarcaster();
+  }, []);
+
+  // Call ready() after app is fully loaded
+  useEffect(() => {
+    const callReady = async () => {
+      try {
+        // Wait for app to be fully initialized before calling ready()
+        await sdk.actions.ready();
+        console.log('Farcaster app is ready');
+      } catch (error) {
+        // SDK not available or already called
+        console.log('Farcaster ready() not needed');
+      }
+    };
+
+    // Call ready() after a short delay to ensure app is loaded
+    const timer = setTimeout(callReady, 1000);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
