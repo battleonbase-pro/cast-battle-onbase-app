@@ -170,27 +170,22 @@ export default function Home() {
     initializeFarcaster();
   }, []);
 
-  // Call ready() after app is fully loaded
+  // Call ready() when app is fully loaded and rendered
   useEffect(() => {
-    const callReady = async () => {
-      try {
-        // Check if we're in Farcaster environment
-        if (typeof window !== 'undefined' && window.location !== window.parent.location) {
-          // Wait for app to be fully initialized before calling ready()
+    if (!loading && !error) {
+      const callReadyWhenLoaded = async () => {
+        try {
           await sdk.actions.ready();
-          console.log('✅ Farcaster app is ready');
-        } else {
-          console.log('ℹ️ Not in Farcaster environment');
+          console.log('✅ Farcaster app is ready (interface loaded)');
+        } catch (error) {
+          console.log('⚠️ Farcaster ready() failed:', error.message);
         }
-      } catch (error) {
-        console.log('⚠️ Farcaster ready() failed:', error);
-      }
-    };
-
-    // Call ready() after a short delay to ensure app is loaded
-    const timer = setTimeout(callReady, 2000);
-    return () => clearTimeout(timer);
-  }, []);
+      };
+      
+      // Ensure DOM is fully rendered before calling ready()
+      setTimeout(callReadyWhenLoaded, 50);
+    }
+  }, [loading, error]);
 
   useEffect(() => {
     if (showHelpPopup) {
