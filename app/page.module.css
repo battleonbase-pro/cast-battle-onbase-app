@@ -358,7 +358,7 @@
 }
 
 .debateSide li {
-  font-size: 1.25rem;
+  font-size: 1rem;
   color: #374151;
   line-height: 1.5;
   margin-bottom: 12px;
@@ -462,7 +462,7 @@
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 12px;
-  font-size: 0.875rem;
+  font-size: 1rem;
   resize: vertical;
   min-height: 80px;
   font-family: inherit;
@@ -489,7 +489,7 @@
   border: 1px solid #0000ff;
   border-radius: 8px;
   padding: 12px 24px;
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
