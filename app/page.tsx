@@ -5,6 +5,10 @@ import { createBaseAccountSDK } from '@base-org/account';
 import { createWalletClient, custom } from 'viem';
 import { base } from 'viem/chains';
 import { sdk as farcasterSDK } from '@farcaster/miniapp-sdk';
+import { WagmiProvider } from 'wagmi';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useAccount, useConnect } from 'wagmi';
+import { config } from '@/lib/wagmi-config';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -92,12 +96,67 @@ interface BaseSDK {
   getAccount: () => Promise<User | null>;
 }
 
-export default function Home() {
+// Create a client
+const queryClient = new QueryClient()
+
+function Home() {
   const [isFarcasterEnv, setIsFarcasterEnv] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [sdk, setSdk] = useState<BaseSDK | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Farcaster Wallet Component
+  function FarcasterWalletComponent() {
+    const { isConnected, address } = useAccount()
+    const { connect, connectors } = useConnect()
+
+    // Update user state when wallet connects
+    useEffect(() => {
+      if (isConnected && address) {
+        setUser({
+          address: address,
+          username: 'Farcaster User'
+        });
+      } else {
+        setUser(null);
+      }
+    }, [isConnected, address]);
+
+    if (isConnected) {
+      return (
+        <div className={styles.userCompact}>
+          <div className={styles.userInfo}>
+            <span className={styles.userAddress}>{address?.slice(0, 6)}...{address?.slice(-4)}</span>
+            <span className={`${styles.userPoints} ${pointsAnimation ? styles.pointsAnimated : ''}`}>
+              🔵 {userPoints} pts
+            </span>
+          </div>
+          <button 
+            className={styles.disconnectBtn}
+            onClick={() => {
+              // Handle disconnect if needed
+              console.log('Disconnect wallet');
+            }}
+          >
+            Disconnect
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <div className={styles.signInWrapper}>
+        <button 
+          className={styles.farcasterSignInBtn}
+          onClick={() => connect({ connector: connectors[0] })}
+        >
+          <span className={styles.farcasterIcon}>🔗</span>
+          Connect Wallet
+        </button>
+      </div>
+    )
+  }
   const [topic, setTopic] = useState<DebateTopic | null>(null);
   const [battleJoined, setBattleJoined] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
@@ -157,35 +216,25 @@ export default function Home() {
   };
 
   // Prevent body scroll when popup is open (mobile optimization)
-  // Initialize Farcaster SDK and Authentication
+  // Detect Farcaster environment
   useEffect(() => {
-    const initializeFarcaster = async () => {
+    const detectFarcasterEnv = () => {
       try {
-        console.log('Farcaster SDK detected');
-        
-        // Check if we're in Farcaster environment using manual signIn
-        try {
-          const authResult = await farcasterSDK.actions.signIn();
-          if (authResult) {
-            console.log('✅ User authenticated with Farcaster');
-            setIsFarcasterEnv(true);
-            
-            // Set user data from Farcaster
-            setUser({
-              address: authResult.address || `farcaster-${authResult.fid || 'user'}`,
-              username: authResult.username || 'Farcaster User'
-            });
-            setLoading(false);
-          }
-        } catch (error) {
-          console.log('Farcaster signIn not available:', error);
+        // Check if we're in Farcaster by trying to access the SDK
+        if (typeof farcasterSDK !== 'undefined') {
+          console.log('✅ Farcaster environment detected');
+          setIsFarcasterEnv(true);
+        } else {
+          console.log('🌐 Regular browser environment');
+          setIsFarcasterEnv(false);
         }
       } catch (error) {
-        console.log('Farcaster SDK not available (running outside Farcaster)');
+        console.log('🌐 Regular browser environment');
+        setIsFarcasterEnv(false);
       }
     };
     
-    initializeFarcaster();
+    detectFarcasterEnv();
   }, []);
 
   // Call ready() when app is fully loaded and rendered
@@ -195,8 +244,8 @@ export default function Home() {
         try {
           await farcasterSDK.actions.ready();
           console.log('✅ Farcaster app is ready (interface loaded)');
-        } catch (error) {
-          console.log('⚠️ Farcaster ready() failed:', error.message);
+        } catch {
+          console.log('⚠️ Farcaster ready() failed');
         }
       };
       
@@ -268,8 +317,6 @@ export default function Home() {
 
         const baseSDK = createBaseAccountSDK({
           appName: 'Agentic AI NewsCast Debate on Base (Beta)',
-          appUrl: window.location.origin,
-          chain: base,
           client: createWalletClient({
             chain: base,
             transport: custom(window.ethereum)
@@ -825,7 +872,7 @@ export default function Home() {
         labels: {
           usePointStyle: true,
           padding: 15,
-          font: { size: 11, weight: '500' as const }
+          font: { size: 11, weight: 'normal' as const }
         }
       },
       tooltip: {
@@ -847,9 +894,10 @@ export default function Home() {
         ticks: { 
           font: { size: 9 }, 
           color: '#6b7280', 
-          callback: (value: number) => {
-            if (value <= 100) {
-              return value + '%';
+          callback: (value: string | number) => {
+            const numValue = typeof value === 'string' ? parseFloat(value) : value;
+            if (numValue <= 100) {
+              return numValue + '%';
             }
             return '';
           },
@@ -928,37 +976,13 @@ export default function Home() {
               </button>
         </div>
           ) : isFarcasterEnv ? (
-            <div className={styles.signInWrapper}>
-              <button 
-                className={styles.farcasterSignInBtn}
-                onClick={async () => {
-                  try {
-                    const authResult = await farcasterSDK.actions.signIn();
-                    console.log('Farcaster sign in result:', authResult);
-                    
-                    if (authResult) {
-                      setUser({
-                        address: authResult.address || `farcaster-${authResult.fid || 'user'}`,
-                        username: authResult.username || 'Farcaster User'
-                      });
-                    }
-                  } catch (error) {
-                    console.log('Farcaster sign in failed:', error);
-                  }
-                }}
-              >
-                <span className={styles.farcasterIcon}>🔗</span>
-                Sign in with Farcaster
-              </button>
-            </div>
+            <FarcasterWalletComponent />
           ) : sdk ? (
             <div className={styles.signInWrapper}>
               <SignInWithBaseButton 
-                size="small"
                 variant="solid"
                 colorScheme="light"
                 onClick={handleSignIn}
-                className={styles.signInButton}
               />
             </div>
           ) : (
@@ -1380,5 +1404,15 @@ export default function Home() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <Home />
+      </QueryClientProvider>
+    </WagmiProvider>
   );
 }
