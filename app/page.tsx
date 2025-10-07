@@ -221,21 +221,32 @@ function Home() {
   useEffect(() => {
     const detectFarcasterEnv = () => {
       try {
-        // Check if we're actually in Farcaster by looking for Farcaster-specific properties
-        if (typeof window !== 'undefined' && 
-            window.location.href.includes('farcaster.xyz') || 
-            window.location.href.includes('warpcast.com') ||
-            (window as Window & { farcaster?: unknown }).farcaster ||
-            (window as Window & { parent?: { location?: { href?: string } } }).parent?.location?.href?.includes('farcaster.xyz') ||
-            (window as Window & { parent?: { location?: { href?: string } } }).parent?.location?.href?.includes('warpcast.com')) {
+        // More comprehensive Farcaster detection
+        const isInFarcaster = typeof window !== 'undefined' && (
+          // Direct URL checks
+          window.location.href.includes('farcaster.xyz') || 
+          window.location.href.includes('warpcast.com') ||
+          // Farcaster object check
+          (window as Window & { farcaster?: unknown }).farcaster ||
+          // Parent frame checks (for embedded apps)
+          (window as Window & { parent?: { location?: { href?: string } } }).parent?.location?.href?.includes('farcaster.xyz') ||
+          (window as Window & { parent?: { location?: { href?: string } } }).parent?.location?.href?.includes('warpcast.com') ||
+          // Check if Farcaster SDK is available
+          typeof farcasterSDK !== 'undefined'
+        );
+        
+        if (isInFarcaster) {
           console.log('✅ Farcaster environment detected');
+          console.log('Current URL:', window.location.href);
+          console.log('Farcaster SDK available:', typeof farcasterSDK !== 'undefined');
           setIsFarcasterEnv(true);
         } else {
           console.log('🌐 Regular browser environment');
+          console.log('Current URL:', window.location.href);
           setIsFarcasterEnv(false);
         }
-      } catch {
-        console.log('🌐 Regular browser environment');
+      } catch (error) {
+        console.log('🌐 Regular browser environment (error):', error);
         setIsFarcasterEnv(false);
       }
     };
@@ -245,18 +256,23 @@ function Home() {
 
   // Call ready() when app is fully loaded and rendered (only in Farcaster)
   useEffect(() => {
+    console.log('Ready effect triggered:', { loading, error, isFarcasterEnv });
+    
     if (!loading && !error && isFarcasterEnv) {
       const callReadyWhenLoaded = async () => {
         try {
+          console.log('Calling farcasterSDK.actions.ready()...');
           await farcasterSDK.actions.ready();
           console.log('✅ Farcaster app is ready (interface loaded)');
-        } catch {
-          console.log('⚠️ Farcaster ready() failed');
+        } catch (error) {
+          console.log('⚠️ Farcaster ready() failed:', error);
         }
       };
       
       // Ensure DOM is fully rendered before calling ready()
       setTimeout(callReadyWhenLoaded, 50);
+    } else {
+      console.log('Skipping ready() call:', { loading, error, isFarcasterEnv });
     }
   }, [loading, error, isFarcasterEnv]);
 
@@ -1195,7 +1211,7 @@ function Home() {
           )}
         </div>
       </div>
-              </div>
+    </div>
             )}
 
             {activeTab === 'arguments' && (
