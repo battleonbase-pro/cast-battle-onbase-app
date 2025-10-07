@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BattleManagerDB } from '@/lib/services/battle-manager-db';
-import { broadcastSentimentUpdate } from '../sentiment-stream/route';
+import { broadcastSentimentUpdate } from '@/lib/services/sentiment-broadcaster';
 
 export async function POST(request: NextRequest) {
   let userAddress: string | undefined;

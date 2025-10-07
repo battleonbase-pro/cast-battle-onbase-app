@@ -80,9 +80,20 @@ interface BattleHistory {
   completedAt: string;
 }
 
+interface User {
+  address: string;
+  username?: string;
+}
+
+interface BaseSDK {
+  connect: () => Promise<void>;
+  disconnect: () => Promise<void>;
+  getAccount: () => Promise<User | null>;
+}
+
 export default function Home() {
-  const [user, setUser] = useState<any>(null);
-  const [sdk, setSdk] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [sdk, setSdk] = useState<BaseSDK | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [topic, setTopic] = useState<DebateTopic | null>(null);
@@ -124,7 +135,7 @@ export default function Home() {
   const [battleTransition, setBattleTransition] = useState<{
     isTransitioning: boolean;
     message: string;
-    newBattle?: any;
+    newBattle?: DebateTopic;
   }>({ isTransitioning: false, message: '' });
   const [userPoints, setUserPoints] = useState<number>(0);
   const [pointsAnimation, setPointsAnimation] = useState(false);
@@ -778,7 +789,7 @@ export default function Home() {
         ticks: { 
           font: { size: 9 }, 
           color: '#6b7280', 
-          callback: (value: any) => {
+          callback: (value: number) => {
             if (value <= 100) {
               return value + '%';
             }
@@ -1229,7 +1240,7 @@ export default function Home() {
               <div className={styles.helpSection}>
                 <h3 className={styles.helpSectionTitle}>🎮 How to Play</h3>
                 <ol className={styles.helpSteps}>
-                  <li><strong>Join Debate:</strong> Click "Join Debate" to participate</li>
+                  <li><strong>Join Debate:</strong> Click &quot;Join Debate&quot; to participate</li>
                   <li><strong>Choose Side:</strong> Pick SUPPORT or OPPOSE</li>
                   <li><strong>Write Argument:</strong> Submit your 140-character argument</li>
                   <li><strong>Earn Points:</strong> Get 10 points for participating</li>
