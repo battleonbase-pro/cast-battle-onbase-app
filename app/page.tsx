@@ -217,28 +217,16 @@ function Home() {
 
   // Prevent body scroll when popup is open (mobile optimization)
   
-  // Detect Farcaster environment
+  // Detect Farcaster environment using official SDK method
   useEffect(() => {
-    const detectFarcasterEnv = () => {
+    const detectFarcasterEnv = async () => {
       try {
-        // More comprehensive Farcaster detection
-        const isInFarcaster = typeof window !== 'undefined' && (
-          // Direct URL checks
-          window.location.href.includes('farcaster.xyz') || 
-          window.location.href.includes('warpcast.com') ||
-          // Farcaster object check
-          (window as Window & { farcaster?: unknown }).farcaster ||
-          // Parent frame checks (for embedded apps)
-          (window as Window & { parent?: { location?: { href?: string } } }).parent?.location?.href?.includes('farcaster.xyz') ||
-          (window as Window & { parent?: { location?: { href?: string } } }).parent?.location?.href?.includes('warpcast.com') ||
-          // Check if Farcaster SDK is available
-          typeof farcasterSDK !== 'undefined'
-        );
+        // Use official Farcaster SDK method for detection
+        const isMiniApp = await farcasterSDK.isInMiniApp();
         
-        if (isInFarcaster) {
-          console.log('✅ Farcaster environment detected');
+        if (isMiniApp) {
+          console.log('✅ Farcaster Mini App environment detected');
           console.log('Current URL:', window.location.href);
-          console.log('Farcaster SDK available:', typeof farcasterSDK !== 'undefined');
           setIsFarcasterEnv(true);
         } else {
           console.log('🌐 Regular browser environment');
