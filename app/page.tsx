@@ -934,7 +934,7 @@ export default function Home() {
         <div className={styles.heroSection}>
           <div className={styles.heroContent}>
             <h2 className={styles.heroTitle}>
-              Agentic AI Debates on <span className={styles.aiHighlight}>Base</span>
+              AI-Powered News Debates on <span className={styles.aiHighlight}>Base</span>
             </h2>
           </div>
         </div>
