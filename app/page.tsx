@@ -99,7 +99,8 @@ interface BaseSDK {
 // Create a client
 const queryClient = new QueryClient()
 
-function Home({ isFarcasterEnv }: { isFarcasterEnv: boolean }) {
+function Home() {
+  const [isFarcasterEnv, setIsFarcasterEnv] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [sdk, setSdk] = useState<BaseSDK | null>(null);
   const [loading, setLoading] = useState(true);
@@ -215,6 +216,32 @@ function Home({ isFarcasterEnv }: { isFarcasterEnv: boolean }) {
   };
 
   // Prevent body scroll when popup is open (mobile optimization)
+  
+  // Detect Farcaster environment
+  useEffect(() => {
+    const detectFarcasterEnv = () => {
+      try {
+        // Check if we're actually in Farcaster by looking for Farcaster-specific properties
+        if (typeof window !== 'undefined' && 
+            window.location.href.includes('farcaster.xyz') || 
+            window.location.href.includes('warpcast.com') ||
+            (window as Window & { farcaster?: unknown }).farcaster ||
+            (window as Window & { parent?: { location?: { href?: string } } }).parent?.location?.href?.includes('farcaster.xyz') ||
+            (window as Window & { parent?: { location?: { href?: string } } }).parent?.location?.href?.includes('warpcast.com')) {
+          console.log('✅ Farcaster environment detected');
+          setIsFarcasterEnv(true);
+        } else {
+          console.log('🌐 Regular browser environment');
+          setIsFarcasterEnv(false);
+        }
+      } catch {
+        console.log('🌐 Regular browser environment');
+        setIsFarcasterEnv(false);
+      }
+    };
+    
+    detectFarcasterEnv();
+  }, []);
 
   // Call ready() when app is fully loaded and rendered (only in Farcaster)
   useEffect(() => {
@@ -1388,50 +1415,11 @@ function Home({ isFarcasterEnv }: { isFarcasterEnv: boolean }) {
 }
 
 export default function App() {
-  const [isFarcasterEnv, setIsFarcasterEnv] = useState<boolean | null>(null); // null = not determined yet
-
-  // Detect Farcaster environment at app level
-  useEffect(() => {
-    const detectFarcasterEnv = () => {
-      try {
-        // Check if we're actually in Farcaster by looking for Farcaster-specific properties
-        if (typeof window !== 'undefined' && 
-            window.location.href.includes('farcaster.xyz') || 
-            window.location.href.includes('warpcast.com') ||
-            (window as Window & { farcaster?: unknown }).farcaster ||
-            (window as Window & { parent?: { location?: { href?: string } } }).parent?.location?.href?.includes('farcaster.xyz') ||
-            (window as Window & { parent?: { location?: { href?: string } } }).parent?.location?.href?.includes('warpcast.com')) {
-          console.log('✅ Farcaster environment detected at app level');
-          setIsFarcasterEnv(true);
-        } else {
-          console.log('🌐 Regular browser environment at app level');
-          setIsFarcasterEnv(false);
-        }
-      } catch {
-        console.log('🌐 Regular browser environment at app level');
-        setIsFarcasterEnv(false);
-      }
-    };
-    
-    detectFarcasterEnv();
-  }, []);
-
-  // Show loading while determining environment
-  if (isFarcasterEnv === null) {
-    return <Home isFarcasterEnv={false} />; // Default to non-Farcaster while detecting
-  }
-
-  // Only wrap with Wagmi providers in Farcaster environment
-  if (isFarcasterEnv) {
-    return (
-      <WagmiProvider config={config}>
-        <QueryClientProvider client={queryClient}>
-          <Home isFarcasterEnv={isFarcasterEnv} />
-        </QueryClientProvider>
-      </WagmiProvider>
-    );
-  }
-
-  // Regular browser environment - no Wagmi providers needed
-  return <Home isFarcasterEnv={isFarcasterEnv} />;
+  return (
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <Home />
+      </QueryClientProvider>
+    </WagmiProvider>
+  );
 }
