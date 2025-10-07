@@ -36,14 +36,14 @@ export const metadata: Metadata = {
   other: {
     "fc:miniapp": JSON.stringify({
       version: "1",
-      imageUrl: "https://newscast-debate.vercel.app/og-image.png",
+      imageUrl: "https://news-debate-onbase-app.vercel.app/og-image.png",
       button: {
         title: "Join Debate",
         action: {
           type: "launch_frame",
           name: "NewsCast Debate",
-          url: "https://newscast-debate.vercel.app",
-          splashImageUrl: "https://newscast-debate.vercel.app/Base_basemark_blue.png",
+          url: "https://news-debate-onbase-app.vercel.app",
+          splashImageUrl: "https://news-debate-onbase-app.vercel.app/Base_basemark_blue.png",
           splashBackgroundColor: "#ffffff"
         }
       }
