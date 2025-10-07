@@ -4,7 +4,7 @@ import { SignInWithBaseButton } from '@base-org/account-ui/react';
 import { createBaseAccountSDK } from '@base-org/account';
 import { createWalletClient, custom } from 'viem';
 import { base } from 'viem/chains';
-import { sdk } from '@farcaster/miniapp-sdk';
+import { sdk as farcasterSDK } from '@farcaster/miniapp-sdk';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -175,7 +175,7 @@ export default function Home() {
     if (!loading && !error) {
       const callReadyWhenLoaded = async () => {
         try {
-          await sdk.actions.ready();
+          await farcasterSDK.actions.ready();
           console.log('✅ Farcaster app is ready (interface loaded)');
         } catch (error) {
           console.log('⚠️ Farcaster ready() failed:', error.message);
