@@ -254,27 +254,27 @@ function Home() {
     detectFarcasterEnv();
   }, []);
 
-  // Call ready() when app is fully loaded and rendered (only in Farcaster)
+  // Call ready() when app is fully loaded and rendered (always call in Farcaster)
   useEffect(() => {
-    console.log('Ready effect triggered:', { loading, error, isFarcasterEnv });
+    console.log('Ready effect triggered:', { loading, error });
     
-    if (!loading && !error && isFarcasterEnv) {
+    if (!loading && !error) {
       const callReadyWhenLoaded = async () => {
         try {
           console.log('Calling farcasterSDK.actions.ready()...');
           await farcasterSDK.actions.ready();
           console.log('✅ Farcaster app is ready (interface loaded)');
         } catch (error) {
-          console.log('⚠️ Farcaster ready() failed:', error);
+          console.log('⚠️ Farcaster ready() failed (expected in non-Farcaster environment):', error);
         }
       };
       
       // Ensure DOM is fully rendered before calling ready()
       setTimeout(callReadyWhenLoaded, 50);
     } else {
-      console.log('Skipping ready() call:', { loading, error, isFarcasterEnv });
+      console.log('Skipping ready() call:', { loading, error });
     }
-  }, [loading, error, isFarcasterEnv]);
+  }, [loading, error]);
 
   useEffect(() => {
     if (showHelpPopup) {
