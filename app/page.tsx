@@ -1289,6 +1289,7 @@ export default function Home() {
               <div className={styles.helpSection}>
                 <h3 className={styles.helpSectionTitle}>🎮 How to Play</h3>
                 <ol className={styles.helpSteps}>
+                  <li><strong>Connect Wallet:</strong> Click &quot;Sign In with Base&quot; to connect your Base wallet</li>
                   <li><strong>Join Debate:</strong> Click &quot;Join Debate&quot; to participate</li>
                   <li><strong>Choose Side:</strong> Pick SUPPORT or OPPOSE</li>
                   <li><strong>Write Argument:</strong> Submit your 140-character argument</li>
