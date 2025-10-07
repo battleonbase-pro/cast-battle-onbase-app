@@ -4,6 +4,7 @@ import { SignInWithBaseButton } from '@base-org/account-ui/react';
 import { createBaseAccountSDK } from '@base-org/account';
 import { createWalletClient, custom } from 'viem';
 import { base } from 'viem/chains';
+import sdk from '@farcaster/frame-sdk';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -155,6 +156,20 @@ export default function Home() {
   };
 
   // Prevent body scroll when popup is open (mobile optimization)
+  // Initialize Farcaster SDK
+  useEffect(() => {
+    const initializeFarcaster = async () => {
+      try {
+        await sdk.actions.ready();
+        console.log('Farcaster SDK initialized successfully');
+      } catch (error) {
+        console.log('Farcaster SDK not available (running outside Farcaster)');
+      }
+    };
+    
+    initializeFarcaster();
+  }, []);
+
   useEffect(() => {
     if (showHelpPopup) {
       document.body.style.overflow = 'hidden';

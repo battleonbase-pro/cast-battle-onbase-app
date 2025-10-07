@@ -1,0 +1,25 @@
+{
+  "version": "1.0.0",
+  "name": "NewsCast Debate",
+  "description": "AI-powered news debates on Base blockchain. Join intelligent discussions, earn points, and compete with others.",
+  "icon": "https://newscast-debate.vercel.app/Base_basemark_blue.png",
+  "splash": {
+    "imageUrl": "https://newscast-debate.vercel.app/Base_basemark_blue.png",
+    "backgroundColor": "#ffffff"
+  },
+  "url": "https://newscast-debate.vercel.app",
+  "category": "social",
+  "tags": ["AI", "Debate", "News", "Base", "Blockchain"],
+  "permissions": {
+    "camera": false,
+    "microphone": false,
+    "location": false
+  },
+  "features": [
+    "AI-powered debate generation",
+    "Real-time news curation", 
+    "Points and rewards system",
+    "Base blockchain integration",
+    "Social competition"
+  ]
+}

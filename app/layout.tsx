@@ -33,6 +33,22 @@ export const metadata: Metadata = {
     description: "Join engaging AI-powered debates on trending news topics. Earn points, compete with others, and win rewards on the Base blockchain.",
     creator: "@base",
   },
+  other: {
+    "fc:miniapp": JSON.stringify({
+      version: "1",
+      imageUrl: "https://newscast-debate.vercel.app/og-image.png",
+      button: {
+        title: "Join Debate",
+        action: {
+          type: "launch_frame",
+          name: "NewsCast Debate",
+          url: "https://newscast-debate.vercel.app",
+          splashImageUrl: "https://newscast-debate.vercel.app/Base_basemark_blue.png",
+          splashBackgroundColor: "#ffffff"
+        }
+      }
+    })
+  }
 };
 
 export const viewport = {
