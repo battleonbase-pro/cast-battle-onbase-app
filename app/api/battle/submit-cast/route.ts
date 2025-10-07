@@ -60,8 +60,12 @@ export async function POST(request: NextRequest) {
     // Create the cast
     const cast = await battleManager.createCast(userAddress, content.trim(), side);
     
+    // Award participation points (10 points for submitting a cast)
+    const db = await import('@/lib/services/database').then(m => m.default);
+    const userPoints = await db.awardParticipationPoints(userAddress, 10);
+    
     // Log user submitting cast
-    console.log(`📝 User ${userAddress} submitted cast (${side}): "${content.trim().substring(0, 50)}${content.trim().length > 50 ? '...' : ''}"`);
+    console.log(`📝 User ${userAddress} submitted cast (${side}) and earned 10 points! Total points: ${userPoints}`);
     
     // Broadcast sentiment update to all connected clients
     await broadcastSentimentUpdate(currentBattle.id, userAddress);
@@ -73,7 +77,9 @@ export async function POST(request: NextRequest) {
         content: cast.content,
         side: cast.side,
         createdAt: cast.createdAt
-      }
+      },
+      points: userPoints,
+      pointsAwarded: 10
     });
     
   } catch (error) {

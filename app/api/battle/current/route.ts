@@ -66,8 +66,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Successfully joined battle',
-      points: userPoints,
-      pointsAwarded: 10
+      points: userPoints
     });
 
   } catch (error) {

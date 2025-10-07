@@ -269,9 +269,6 @@ export class DatabaseService {
       },
     });
 
-    // Award participation points (10 points for joining a battle)
-    await this.awardParticipationPoints(participation.user.address, 10);
-
     return participation;
   }
 

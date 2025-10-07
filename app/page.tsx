@@ -567,13 +567,6 @@ export default function Home() {
       if (data.success) {
         setBattleJoined(true);
         setError(null);
-        
-        // Update points and show animation
-        if (data.points !== undefined) {
-          setUserPoints(data.points);
-          setPointsAnimation(true);
-          setTimeout(() => setPointsAnimation(false), 2000);
-        }
       } else {
         if (data.error.includes('already joined')) {
           setBattleJoined(true);
@@ -610,6 +603,14 @@ export default function Home() {
       if (data.success) {
         setHasSubmittedCast(true);
         setCastContent('');
+        
+        // Update points and show animation
+        if (data.points !== undefined) {
+          setUserPoints(data.points);
+          setPointsAnimation(true);
+          setTimeout(() => setPointsAnimation(false), 2000);
+        }
+        
         await fetchCasts();
       } else {
         setError(data.error);
