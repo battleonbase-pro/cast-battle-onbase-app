@@ -162,18 +162,22 @@ export default function Home() {
       try {
         console.log('Farcaster SDK detected');
         
-        // Check if we're in Farcaster environment
-        const isInFarcaster = await farcasterSDK.actions.signIn().catch(() => null);
-        
-        if (isInFarcaster) {
-          console.log('✅ User authenticated with Farcaster');
-          setIsFarcasterEnv(true);
-          // Set user data from Farcaster
-          setUser({
-            address: isInFarcaster.address || 'farcaster-user',
-            username: isInFarcaster.username || 'Farcaster User'
-          });
-          setLoading(false);
+        // Check if we're in Farcaster environment using manual signIn
+        try {
+          const authResult = await farcasterSDK.actions.signIn();
+          if (authResult) {
+            console.log('✅ User authenticated with Farcaster');
+            setIsFarcasterEnv(true);
+            
+            // Set user data from Farcaster
+            setUser({
+              address: authResult.address || `farcaster-${authResult.fid || 'user'}`,
+              username: authResult.username || 'Farcaster User'
+            });
+            setLoading(false);
+          }
+        } catch (error) {
+          console.log('Farcaster signIn not available:', error);
         }
       } catch (error) {
         console.log('Farcaster SDK not available (running outside Farcaster)');
@@ -940,6 +944,13 @@ export default function Home() {
                   try {
                     const authResult = await farcasterSDK.actions.signIn();
                     console.log('Farcaster sign in result:', authResult);
+                    
+                    if (authResult) {
+                      setUser({
+                        address: authResult.address || `farcaster-${authResult.fid || 'user'}`,
+                        username: authResult.username || 'Farcaster User'
+                      });
+                    }
                   } catch (error) {
                     console.log('Farcaster sign in failed:', error);
                   }
