@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { RootProvider } from "./rootProvider";
+import ServerInitializer from "./components/server-initializer";
 import "./globals.css";
 
 const inter = Inter({
@@ -79,7 +80,10 @@ export default function RootLayout({
             })
           }}
         />
-        <RootProvider>{children}</RootProvider>
+        <RootProvider>
+          <ServerInitializer />
+          {children}
+        </RootProvider>
       </body>
     </html>
   );
