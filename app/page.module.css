@@ -1104,12 +1104,12 @@
   }
   
   .debateSide h4 {
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     margin-bottom: 10px;
   }
   
   .debateSide li {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     margin-bottom: 8px;
     padding-left: 14px;
   }
@@ -1121,12 +1121,91 @@
   }
   
   .topicCategory {
-    font-size: 0.625rem;
+    font-size: 0.55rem;
     padding: 2px 4px;
   }
   
   .topicSource {
-    font-size: 0.625rem;
+    font-size: 0.55rem;
+  }
+  
+  .topicDescription {
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+  
+  .joinBtn {
+    font-size: 0.8rem;
+    padding: 8px 16px;
+  }
+  
+  .sideBtn {
+    font-size: 0.75rem;
+    padding: 6px 12px;
+  }
+  
+  .argumentInput {
+    font-size: 0.8rem;
+  }
+  
+  .charCounter {
+    font-size: 0.7rem;
+  }
+  
+  .submitBtn {
+    font-size: 0.8rem;
+    padding: 8px 16px;
+  }
+  
+  .navBtn {
+    font-size: 0.7rem;
+    padding: 6px 8px;
+  }
+  
+  .argumentContent {
+    font-size: 0.8rem;
+  }
+  
+  .historyTitle {
+    font-size: 0.8rem;
+  }
+  
+  .historyDate {
+    font-size: 0.7rem;
+  }
+  
+  .winnerLabel,
+  .allWinnersLabel {
+    font-size: 0.7rem;
+  }
+  
+  .winnerAddress,
+  .winnerPoints {
+    font-size: 0.7rem;
+  }
+  
+  .leaderboardSubtitle {
+    font-size: 0.7rem;
+  }
+  
+  .leaderboardAddress {
+    font-size: 0.7rem;
+  }
+  
+  .leaderboardPoints {
+    font-size: 0.7rem;
+  }
+  
+  .leaderboardMeta {
+    font-size: 0.65rem;
+  }
+  
+  .recentWinsLabel {
+    font-size: 0.65rem;
+  }
+  
+  .recentWinItem {
+    font-size: 0.65rem;
   }
 }
 
