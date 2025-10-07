@@ -255,12 +255,16 @@ function Home({ isFarcasterEnv }: { isFarcasterEnv: boolean }) {
   useEffect(() => {
     const initApp = async () => {
       try {
+        setLoading(true);
         await Promise.all([
           fetchCurrentBattle(),
           fetchBattleHistory()
         ]);
       } catch (error) {
         console.error('App initialization error:', error);
+        setError('Failed to initialize app');
+      } finally {
+        setLoading(false);
       }
     };
     initApp();
@@ -515,7 +519,6 @@ function Home({ isFarcasterEnv }: { isFarcasterEnv: boolean }) {
 
   const fetchCurrentBattle = useCallback(async () => {
     try {
-      setLoading(true);
       const response = await fetch('/api/battle/current');
       const data = await response.json();
       
@@ -533,8 +536,6 @@ function Home({ isFarcasterEnv }: { isFarcasterEnv: boolean }) {
     } catch (error) {
       console.error('Error fetching battle:', error);
         setError('Failed to fetch debate data');
-    } finally {
-      setLoading(false);
     }
   }, []);
 
@@ -1387,7 +1388,7 @@ function Home({ isFarcasterEnv }: { isFarcasterEnv: boolean }) {
 }
 
 export default function App() {
-  const [isFarcasterEnv, setIsFarcasterEnv] = useState(false);
+  const [isFarcasterEnv, setIsFarcasterEnv] = useState<boolean | null>(null); // null = not determined yet
 
   // Detect Farcaster environment at app level
   useEffect(() => {
@@ -1414,6 +1415,11 @@ export default function App() {
     
     detectFarcasterEnv();
   }, []);
+
+  // Show loading while determining environment
+  if (isFarcasterEnv === null) {
+    return <Home isFarcasterEnv={false} />; // Default to non-Farcaster while detecting
+  }
 
   // Only wrap with Wagmi providers in Farcaster environment
   if (isFarcasterEnv) {
