@@ -94,6 +94,7 @@ interface BaseSDK {
 
 export default function Home() {
   const [isFarcasterEnv, setIsFarcasterEnv] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const [sdk, setSdk] = useState<BaseSDK | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -238,7 +239,8 @@ export default function Home() {
     const cleanupBattleSSE = setupBattleStateSSE();
     
     // Initialize Base Account SDK on client side only
-    if (typeof window !== 'undefined') {
+    // Skip if we're in Farcaster environment
+    if (typeof window !== 'undefined' && !isFarcasterEnv) {
       try {
         // Suppress analytics-related console errors
         const originalConsoleError = console.error;
@@ -251,17 +253,6 @@ export default function Home() {
           originalConsoleError.apply(console, args);
         };
 
-        // Check if we're in Farcaster environment first
-        try {
-          const farcasterCheck = await farcasterSDK.actions.signIn().catch(() => null);
-          if (farcasterCheck) {
-            console.log('In Farcaster environment - using Farcaster auth');
-            return; // Skip Base SDK initialization
-          }
-        } catch (error) {
-          console.log('Not in Farcaster environment - proceeding with Base SDK');
-        }
-
         // Check if ethereum provider is available
         if (!window.ethereum) {
           console.log('No Ethereum provider found. Wallet connection will not be available.');
@@ -270,7 +261,7 @@ export default function Home() {
         }
 
         // Skip Base SDK if we're in Farcaster (use Farcaster auth instead)
-        if (user && user.address === 'farcaster-user') {
+        if (user && user.address && user.address.startsWith('farcaster-')) {
           console.log('Using Farcaster authentication, skipping Base SDK');
           return;
         }
@@ -309,7 +300,7 @@ export default function Home() {
         cleanupBattleSSE();
       }
     };
-  }, []);
+  }, [isFarcasterEnv]);
 
   // Countdown timer effect
   useEffect(() => {
