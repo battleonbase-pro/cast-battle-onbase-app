@@ -93,7 +93,7 @@ export default function Home() {
   const [submittingCast, setSubmittingCast] = useState(false);
   const [castContent, setCastContent] = useState('');
   const [castSide, setCastSide] = useState<'SUPPORT' | 'OPPOSE'>('SUPPORT');
-  const [activeTab, setActiveTab] = useState<'battle' | 'arguments' | 'history' | 'leaderboard'>('battle');
+  const [activeTab, setActiveTab] = useState<'debate' | 'arguments' | 'history' | 'leaderboard'>('debate');
   const [hasSubmittedCast, setHasSubmittedCast] = useState(false);
   const [battleHistory, setBattleHistory] = useState<BattleHistory[]>([]);
   const [leaderboard, setLeaderboard] = useState<Array<{
@@ -297,14 +297,14 @@ export default function Home() {
               
             case 'BATTLE_ENDED':
               console.log('Battle ended:', data.data);
-              setBattleStatusMessage('🏁 Battle completed! Judging in progress...');
+              setBattleStatusMessage('🏁 Debate completed! Judging in progress...');
               setBattleStatusType('info');
               setBattleJoined(false); // Reset join state for next battle
               setHasSubmittedCast(false); // Reset cast submission state
               setError(null); // Clear any errors
               setBattleTransition({
                 isTransitioning: true,
-                message: 'Battle ending...'
+                message: 'Debate ending...'
               });
               break;
               
@@ -317,7 +317,7 @@ export default function Home() {
               setError(null); // Clear any previous errors
               setBattleTransition({
                 isTransitioning: true,
-                message: 'New battle starting...',
+                message: 'New debate starting...',
                 newBattle: data.data
               });
               
@@ -434,11 +434,11 @@ export default function Home() {
         
         await fetchCasts();
       } else {
-        setError(data.error || 'No active battle available');
+        setError(data.error || 'No active debate available');
       }
     } catch (error) {
       console.error('Error fetching battle:', error);
-      setError('Failed to fetch battle data');
+        setError('Failed to fetch debate data');
     } finally {
       setLoading(false);
     }
@@ -573,7 +573,7 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Error joining battle:', error);
-      setError('Failed to join battle');
+      setError('Failed to join debate');
     } finally {
       setLoading(false);
     }
@@ -954,7 +954,7 @@ export default function Home() {
                   className={styles.joinBtn}
                   disabled={!user}
                 >
-                  {user ? 'Join Battle' : 'Sign in to Join Battle'}
+                  {user ? 'Join Debate' : 'Sign in to Join Debate'}
                 </button>
               )}
               {battleJoined && !hasSubmittedCast && (
@@ -1003,10 +1003,10 @@ export default function Home() {
             {/* Compact Navigation */}
             <nav className={styles.compactNav}>
               <button 
-                className={`${styles.navBtn} ${activeTab === 'battle' ? styles.active : ''}`}
-                onClick={() => setActiveTab('battle')}
+                className={`${styles.navBtn} ${activeTab === 'debate' ? styles.active : ''}`}
+                onClick={() => setActiveTab('debate')}
               >
-                Battle
+                Debate
               </button>
               <button 
                 className={`${styles.navBtn} ${activeTab === 'arguments' ? styles.active : ''}`}
@@ -1032,7 +1032,7 @@ export default function Home() {
             </nav>
 
             {/* Tab Content */}
-            {activeTab === 'battle' && (
+            {activeTab === 'debate' && (
               <div className={styles.tabContent}>
                 <div className={styles.compactGraph}>
                   <div className={styles.graphHeader}>
@@ -1131,7 +1131,7 @@ export default function Home() {
                       </div>
                     ))
                   ) : (
-                    <div className={styles.loading}>No previous battles.</div>
+                    <div className={styles.loading}>No previous debates.</div>
                   )}
                 </div>
               </div>
@@ -1164,7 +1164,7 @@ export default function Home() {
                               ⭐ {player.points} points
                             </div>
                             <div className={styles.leaderboardMeta}>
-                              🏆 {player.winCount} wins • 🎯 {player.participationCount} battles
+                              🏆 {player.winCount} wins • 🎯 {player.participationCount} debates
                             </div>
                           </div>
                           {player.recentWins.length > 0 && (
@@ -1188,7 +1188,7 @@ export default function Home() {
             )}
           </div>
         ) : (
-          <div className={styles.loading}>No active battle available.</div>
+          <div className={styles.loading}>No active debate available.</div>
         )}
       </main>
 
@@ -1229,7 +1229,7 @@ export default function Home() {
               <div className={styles.helpSection}>
                 <h3 className={styles.helpSectionTitle}>🎮 How to Play</h3>
                 <ol className={styles.helpSteps}>
-                  <li><strong>Join Battle:</strong> Click "Join Battle" to participate</li>
+                  <li><strong>Join Debate:</strong> Click "Join Debate" to participate</li>
                   <li><strong>Choose Side:</strong> Pick SUPPORT or OPPOSE</li>
                   <li><strong>Write Argument:</strong> Submit your 140-character argument</li>
                   <li><strong>Earn Points:</strong> Get 10 points for participating</li>
@@ -1263,8 +1263,8 @@ export default function Home() {
         <div className={styles.disabledOverlay}>
           <div className={styles.loading}>
             <div className={styles.loadingSpinner}></div>
-            <div className={styles.loadingText}>Loading NewsCast Battle...</div>
-            <div className={styles.loadingSubtext}>Initializing app and fetching latest battle data</div>
+               <div className={styles.loadingText}>Loading NewsCast Debate...</div>
+               <div className={styles.loadingSubtext}>Initializing app and fetching latest debate data</div>
           </div>
         </div>
       )}
