@@ -299,6 +299,9 @@ export default function Home() {
               console.log('Battle ended:', data.data);
               setBattleStatusMessage('🏁 Battle completed! Judging in progress...');
               setBattleStatusType('info');
+              setBattleJoined(false); // Reset join state for next battle
+              setHasSubmittedCast(false); // Reset cast submission state
+              setError(null); // Clear any errors
               setBattleTransition({
                 isTransitioning: true,
                 message: 'Battle ending...'
@@ -309,6 +312,9 @@ export default function Home() {
               console.log('New battle started:', data.data);
               setBattleStatusMessage(null); // Clear status message
               setBattleStatusType('info'); // Reset to default type
+              setBattleJoined(false); // Reset join state for new battle
+              setHasSubmittedCast(false); // Reset cast submission state
+              setError(null); // Clear any previous errors
               setBattleTransition({
                 isTransitioning: true,
                 message: 'New battle starting...',
