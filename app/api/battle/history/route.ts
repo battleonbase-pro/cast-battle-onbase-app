@@ -23,7 +23,20 @@ export async function GET(_request: NextRequest) {
       participants: historyEntry.totalParticipants,
       casts: historyEntry.totalCasts,
       winnerAddress: historyEntry.winnerAddress,
-      winners: historyEntry.battle.winners,
+      winner: historyEntry.battle.winners.length > 0 ? {
+        address: historyEntry.battle.winners[0].user.address,
+        username: historyEntry.battle.winners[0].user.username,
+        position: historyEntry.battle.winners[0].position,
+        prize: historyEntry.battle.winners[0].prize,
+        pointsAwarded: 100 // Winner gets 100 points
+      } : null,
+      winners: historyEntry.battle.winners.map(winner => ({
+        address: winner.user.address,
+        username: winner.user.username,
+        position: winner.position,
+        prize: winner.prize,
+        pointsAwarded: winner.position === 1 ? 100 : winner.position === 2 ? 50 : 25 // Different points for different positions
+      })),
       completedAt: historyEntry.completedAt,
       createdAt: historyEntry.battle.createdAt
     }));

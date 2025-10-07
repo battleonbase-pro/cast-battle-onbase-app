@@ -558,6 +558,18 @@ export class BattleManagerDB {
               type: 'success',
               timestamp: new Date().toISOString()
             });
+
+            // Emit leaderboard update event
+            console.log(`📡 Broadcasting LEADERBOARD_UPDATE event`);
+            broadcastBattleEvent('LEADERBOARD_UPDATE', {
+              message: 'Leaderboard updated with new winner!',
+              winner: {
+                address: winnerUser.address,
+                pointsAwarded: 100,
+                newTotalPoints: newPoints
+              },
+              timestamp: new Date().toISOString()
+            });
           }
         } catch (error) {
           console.error(`❌ Failed to award winner points:`, error);

@@ -733,6 +733,80 @@
   color: #6b7280;
 }
 
+.historyWinner {
+  margin-top: 12px;
+  padding: 8px;
+  background: #f0f9ff;
+  border: 1px solid #0ea5e9;
+  border-radius: 8px;
+}
+
+.winnerLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #0c4a6e;
+  margin-bottom: 4px;
+}
+
+.winnerInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.winnerAddress {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #0c4a6e;
+  font-family: 'SF Mono', 'Monaco', monospace;
+}
+
+.winnerPoints {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #059669;
+}
+
+.historyAllWinners {
+  margin-top: 8px;
+  padding: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.allWinnersLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.winnerItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.winnerPosition {
+  font-size: 0.75rem;
+}
+
+.winnerItem .winnerAddress {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #374151;
+  font-family: 'SF Mono', 'Monaco', monospace;
+  flex: 1;
+}
+
+.winnerItem .winnerPoints {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #059669;
+}
+
 /* Leaderboard Tab */
 .leaderboardHeader {
   margin-bottom: 20px;
@@ -810,6 +884,46 @@
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.leaderboardUsername {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-left: 8px;
+  font-weight: 400;
+}
+
+.leaderboardStats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.leaderboardMeta {
+  font-size: 0.75rem;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.leaderboardRecentWins {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.recentWinsLabel {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.recentWinItem {
+  font-size: 0.75rem;
+  color: #374151;
+  margin-bottom: 2px;
 }
 
 /* Top 3 special styling */

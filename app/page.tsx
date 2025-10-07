@@ -62,8 +62,21 @@ interface BattleHistory {
   createdAt: string;
   endTime: string;
   status: string;
-  winners: any[];
   winnerAddress?: string;
+  winner?: {
+    address: string;
+    username?: string;
+    position: number;
+    prize?: string;
+    pointsAwarded: number;
+  };
+  winners: Array<{
+    address: string;
+    username?: string;
+    position: number;
+    prize?: string;
+    pointsAwarded: number;
+  }>;
   completedAt: string;
 }
 
@@ -85,8 +98,18 @@ export default function Home() {
   const [battleHistory, setBattleHistory] = useState<BattleHistory[]>([]);
   const [leaderboard, setLeaderboard] = useState<Array<{
     address: string;
+    username?: string;
     points: number;
     rank: number;
+    participationCount: number;
+    winCount: number;
+    recentWins: Array<{
+      battleTitle: string;
+      battleCategory: string;
+      position: number;
+      prize?: string;
+      wonAt: string;
+    }>;
   }>>([]);
   const [sentimentData, setSentimentData] = useState({ support: 0, oppose: 0, supportPercent: 0, opposePercent: 0 });
   const [sentimentHistory, setSentimentHistory] = useState<Array<{
@@ -205,9 +228,6 @@ export default function Home() {
 
     // Cleanup function
     return () => {
-      if (cleanupSSE) {
-        cleanupSSE();
-      }
       if (cleanupBattleSSE) {
         cleanupBattleSSE();
       }
@@ -311,6 +331,14 @@ export default function Home() {
               console.log('Status update:', data.data);
               setBattleStatusMessage(data.data.message);
               setBattleStatusType(data.data.type || 'info');
+              break;
+              
+            case 'LEADERBOARD_UPDATE':
+              console.log('📡 Received leaderboard update:', data.data);
+              // Refresh leaderboard when winner is selected
+              if (activeTab === 'leaderboard') {
+                fetchLeaderboard();
+              }
               break;
               
             case 'TIMER_UPDATE':
@@ -1063,6 +1091,37 @@ export default function Home() {
                           <span>{battle.participants} participants</span>
                           <span>{battle.casts} arguments</span>
                         </div>
+                        {battle.winner && (
+                          <div className={styles.historyWinner}>
+                            <div className={styles.winnerLabel}>🏆 Winner:</div>
+                            <div className={styles.winnerInfo}>
+                              <span className={styles.winnerAddress}>
+                                {battle.winner.address.slice(0, 6)}...{battle.winner.address.slice(-4)}
+                              </span>
+                              <span className={styles.winnerPoints}>
+                                +{battle.winner.pointsAwarded} points
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        {battle.winners.length > 1 && (
+                          <div className={styles.historyAllWinners}>
+                            <div className={styles.allWinnersLabel}>All winners:</div>
+                            {battle.winners.map((winner, index) => (
+                              <div key={index} className={styles.winnerItem}>
+                                <span className={styles.winnerPosition}>
+                                  {winner.position === 1 ? '🥇' : winner.position === 2 ? '🥈' : '🥉'}
+                                </span>
+                                <span className={styles.winnerAddress}>
+                                  {winner.address.slice(0, 6)}...{winner.address.slice(-4)}
+                                </span>
+                                <span className={styles.winnerPoints}>
+                                  +{winner.pointsAwarded} pts
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))
                   ) : (
@@ -1092,10 +1151,26 @@ export default function Home() {
                         <div className={styles.leaderboardInfo}>
                           <div className={styles.leaderboardAddress}>
                             {player.address.slice(0, 6)}...{player.address.slice(-4)}
+                            {player.username && <span className={styles.leaderboardUsername}>@{player.username}</span>}
                           </div>
-                          <div className={styles.leaderboardPoints}>
-                            ⭐ {player.points} points
+                          <div className={styles.leaderboardStats}>
+                            <div className={styles.leaderboardPoints}>
+                              ⭐ {player.points} points
+                            </div>
+                            <div className={styles.leaderboardMeta}>
+                              🏆 {player.winCount} wins • 🎯 {player.participationCount} battles
+                            </div>
                           </div>
+                          {player.recentWins.length > 0 && (
+                            <div className={styles.leaderboardRecentWins}>
+                              <div className={styles.recentWinsLabel}>Recent wins:</div>
+                              {player.recentWins.slice(0, 2).map((win, winIndex) => (
+                                <div key={winIndex} className={styles.recentWinItem}>
+                                  🥇 {win.battleTitle.slice(0, 30)}...
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))

@@ -464,13 +464,41 @@ export class DatabaseService {
                 }
               }
             }
+          },
+          wins: {
+            select: {
+              position: true,
+              prize: true,
+              battle: {
+                select: {
+                  title: true,
+                  category: true,
+                  createdAt: true
+                }
+              }
+            },
+            orderBy: {
+              battle: {
+                createdAt: 'desc'
+              }
+            },
+            take: 3 // Show last 3 wins
           }
         }
       });
 
-      return users.map(user => ({
+      return users.map((user, index) => ({
         ...user,
-        participationCount: user.participations.length
+        rank: index + 1,
+        participationCount: user.participations.length,
+        winCount: user.wins.length,
+        recentWins: user.wins.map(win => ({
+          battleTitle: win.battle.title,
+          battleCategory: win.battle.category,
+          position: win.position,
+          prize: win.prize,
+          wonAt: win.battle.createdAt
+        }))
       }));
     } catch (error) {
       console.error('Error getting leaderboard:', error);
