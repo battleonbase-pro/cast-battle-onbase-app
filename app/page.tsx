@@ -871,7 +871,6 @@ export default function Home() {
                 ?
               </button>
             </div>
-            <p className={styles.subtitle}>Battle <span className={styles.baseText}>on Base</span></p>
           </div>
           {user ? (
             <div className={styles.userCompact}>
