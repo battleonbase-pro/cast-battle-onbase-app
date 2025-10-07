@@ -99,8 +99,7 @@ interface BaseSDK {
 // Create a client
 const queryClient = new QueryClient()
 
-function Home() {
-  const [isFarcasterEnv, setIsFarcasterEnv] = useState(false);
+function Home({ isFarcasterEnv }: { isFarcasterEnv: boolean }) {
   const [user, setUser] = useState<User | null>(null);
   const [sdk, setSdk] = useState<BaseSDK | null>(null);
   const [loading, setLoading] = useState(true);
@@ -216,30 +215,10 @@ function Home() {
   };
 
   // Prevent body scroll when popup is open (mobile optimization)
-  // Detect Farcaster environment
-  useEffect(() => {
-    const detectFarcasterEnv = () => {
-      try {
-        // Check if we're in Farcaster by trying to access the SDK
-        if (typeof farcasterSDK !== 'undefined') {
-          console.log('✅ Farcaster environment detected');
-          setIsFarcasterEnv(true);
-        } else {
-          console.log('🌐 Regular browser environment');
-          setIsFarcasterEnv(false);
-        }
-      } catch (error) {
-        console.log('🌐 Regular browser environment');
-        setIsFarcasterEnv(false);
-      }
-    };
-    
-    detectFarcasterEnv();
-  }, []);
 
-  // Call ready() when app is fully loaded and rendered
+  // Call ready() when app is fully loaded and rendered (only in Farcaster)
   useEffect(() => {
-    if (!loading && !error) {
+    if (!loading && !error && isFarcasterEnv) {
       const callReadyWhenLoaded = async () => {
         try {
           await farcasterSDK.actions.ready();
@@ -252,7 +231,7 @@ function Home() {
       // Ensure DOM is fully rendered before calling ready()
       setTimeout(callReadyWhenLoaded, 50);
     }
-  }, [loading, error]);
+  }, [loading, error, isFarcasterEnv]);
 
   useEffect(() => {
     if (showHelpPopup) {
@@ -317,7 +296,7 @@ function Home() {
 
         const baseSDK = createBaseAccountSDK({
           appName: 'Agentic AI NewsCast Debate on Base (Beta)',
-          client: createWalletClient({
+          walletClient: createWalletClient({
             chain: base,
             transport: custom(window.ethereum)
           })
@@ -1408,11 +1387,45 @@ function Home() {
 }
 
 export default function App() {
-  return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <Home />
-      </QueryClientProvider>
-    </WagmiProvider>
-  );
+  const [isFarcasterEnv, setIsFarcasterEnv] = useState(false);
+
+  // Detect Farcaster environment at app level
+  useEffect(() => {
+    const detectFarcasterEnv = () => {
+      try {
+        // Check if we're actually in Farcaster by looking for Farcaster-specific properties
+        if (typeof window !== 'undefined' && 
+            window.location.href.includes('farcaster.xyz') || 
+            window.location.href.includes('warpcast.com') ||
+            (window as Window & { farcaster?: unknown }).farcaster ||
+            (window as Window & { parent?: { location?: { href?: string } } }).parent?.location?.href?.includes('farcaster.xyz') ||
+            (window as Window & { parent?: { location?: { href?: string } } }).parent?.location?.href?.includes('warpcast.com')) {
+          console.log('✅ Farcaster environment detected at app level');
+          setIsFarcasterEnv(true);
+        } else {
+          console.log('🌐 Regular browser environment at app level');
+          setIsFarcasterEnv(false);
+        }
+      } catch {
+        console.log('🌐 Regular browser environment at app level');
+        setIsFarcasterEnv(false);
+      }
+    };
+    
+    detectFarcasterEnv();
+  }, []);
+
+  // Only wrap with Wagmi providers in Farcaster environment
+  if (isFarcasterEnv) {
+    return (
+      <WagmiProvider config={config}>
+        <QueryClientProvider client={queryClient}>
+          <Home isFarcasterEnv={isFarcasterEnv} />
+        </QueryClientProvider>
+      </WagmiProvider>
+    );
+  }
+
+  // Regular browser environment - no Wagmi providers needed
+  return <Home isFarcasterEnv={isFarcasterEnv} />;
 }
