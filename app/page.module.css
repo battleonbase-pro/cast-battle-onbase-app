@@ -317,7 +317,7 @@
 }
 
 .debateSide h4 {
-  font-size: 1rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: #1a1a1a;
   margin: 0 0 16px 0;
@@ -351,8 +351,6 @@
   background: #dc2626;
 }
 
-
-
 .debateSide ul {
   list-style: none;
   padding: 0;
@@ -360,9 +358,9 @@
 }
 
 .debateSide li {
-  font-size: 0.875rem;
+  font-size: 1.1rem;
   color: #374151;
-  line-height: 1.6;
+  line-height: 1.5;
   margin-bottom: 12px;
   padding-left: 20px;
   position: relative;
@@ -1621,7 +1619,7 @@
   }
   
   .heroTitle {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     margin-bottom: 0;
     line-height: 1.2;
   }
