@@ -100,7 +100,6 @@ interface BaseSDK {
 const queryClient = new QueryClient()
 
 function Home() {
-  const [isFarcasterEnv, setIsFarcasterEnv] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [sdk, setSdk] = useState<BaseSDK | null>(null);
   const [loading, setLoading] = useState(true);
@@ -157,6 +156,10 @@ function Home() {
       </div>
     )
   }
+
+  // Check if we're in Farcaster environment using Wagmi
+  const { isConnected } = useAccount();
+  const isFarcasterEnv = isConnected !== undefined; // If Wagmi is working, we're likely in Farcaster
   const [topic, setTopic] = useState<DebateTopic | null>(null);
   const [battleJoined, setBattleJoined] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
@@ -217,52 +220,20 @@ function Home() {
 
   // Prevent body scroll when popup is open (mobile optimization)
   
-  // Detect Farcaster environment using official SDK method
+  // Call ready() immediately when component mounts (as per Farcaster docs)
   useEffect(() => {
-    const detectFarcasterEnv = async () => {
+    const callReady = async () => {
       try {
-        // Use official Farcaster SDK method for detection
-        const isMiniApp = await farcasterSDK.isInMiniApp();
-        
-        if (isMiniApp) {
-          console.log('✅ Farcaster Mini App environment detected');
-          console.log('Current URL:', window.location.href);
-          setIsFarcasterEnv(true);
-        } else {
-          console.log('🌐 Regular browser environment');
-          console.log('Current URL:', window.location.href);
-          setIsFarcasterEnv(false);
-        }
+        console.log('Calling farcasterSDK.actions.ready()...');
+        await farcasterSDK.actions.ready();
+        console.log('✅ Farcaster app is ready');
       } catch (error) {
-        console.log('🌐 Regular browser environment (error):', error);
-        setIsFarcasterEnv(false);
+        console.log('⚠️ Farcaster ready() failed (expected in non-Farcaster environment):', error);
       }
     };
     
-    detectFarcasterEnv();
+    callReady();
   }, []);
-
-  // Call ready() when app is fully loaded and rendered (always call in Farcaster)
-  useEffect(() => {
-    console.log('Ready effect triggered:', { loading, error });
-    
-    if (!loading && !error) {
-      const callReadyWhenLoaded = async () => {
-        try {
-          console.log('Calling farcasterSDK.actions.ready()...');
-          await farcasterSDK.actions.ready();
-          console.log('✅ Farcaster app is ready (interface loaded)');
-        } catch (error) {
-          console.log('⚠️ Farcaster ready() failed (expected in non-Farcaster environment):', error);
-        }
-      };
-      
-      // Ensure DOM is fully rendered before calling ready()
-      setTimeout(callReadyWhenLoaded, 50);
-    } else {
-      console.log('Skipping ready() call:', { loading, error });
-    }
-  }, [loading, error]);
 
   useEffect(() => {
     if (showHelpPopup) {
@@ -302,8 +273,7 @@ function Home() {
     const cleanupBattleSSE = setupBattleStateSSE();
     
     // Initialize Base Account SDK on client side only
-    // Skip if we're in Farcaster environment
-    if (typeof window !== 'undefined' && !isFarcasterEnv) {
+    if (typeof window !== 'undefined') {
       try {
         // Suppress analytics-related console errors
         const originalConsoleError = console.error;
@@ -320,12 +290,6 @@ function Home() {
         if (!window.ethereum) {
           console.log('No Ethereum provider found. Wallet connection will not be available.');
           // Continue without wallet - app can still be used for viewing battles
-          return;
-        }
-
-        // Skip Base SDK if we're in Farcaster (use Farcaster auth instead)
-        if (user && user.address && user.address.startsWith('farcaster-')) {
-          console.log('Using Farcaster authentication, skipping Base SDK');
           return;
         }
 
