@@ -5,11 +5,5 @@
       "destination": "https://api.farcaster.xyz/miniapps/hosted-manifest/0199c011-193b-ca61-a963-36fbfaef8937",
       "permanent": false
     }
-  ],
-  "crons": [
-    {
-      "path": "/api/cron/battle-completion",
-      "schedule": "*/5 * * * *"
-    }
   ]
 }

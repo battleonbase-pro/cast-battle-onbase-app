@@ -1,0 +1,21 @@
+{
+  "name": "battle-completion-worker",
+  "version": "1.0.0",
+  "description": "Worker service for automatic battle completion",
+  "main": "battle-completion-worker.js",
+  "scripts": {
+    "start": "tsx battle-completion-worker.ts",
+    "dev": "tsx watch battle-completion-worker.ts",
+    "build": "tsc battle-completion-worker.ts --outDir dist",
+    "start:prod": "node dist/battle-completion-worker.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.0.0",
+    "prisma": "^5.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}
