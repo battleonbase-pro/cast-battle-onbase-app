@@ -180,24 +180,15 @@ function Home() {
       )
     }
 
-    // In Farcaster environment, don't show any connect UI - just auto-connect silently
+    // In Farcaster environment, don't show any UI - just auto-connect silently
     if (isFarcasterEnv === true) {
-      // Show nothing while connecting - auto-connect happens in background
+      // Show nothing - auto-connect happens in background
       return null;
     }
 
-    // Only show connect button in non-Farcaster environments
-    return (
-      <div className={styles.signInWrapper}>
-        <button 
-          className={styles.farcasterSignInBtn}
-          onClick={() => connect({ connector: connectors[0] })}
-        >
-          <span className={styles.farcasterIcon}>🔗</span>
-          Connect Farcaster Wallet
-        </button>
-      </div>
-    )
+    // This component should never be used in non-Farcaster environments
+    // Non-Farcaster environments use SignInWithBaseButton instead
+    return null;
   }
 
   const [topic, setTopic] = useState<DebateTopic | null>(null);
