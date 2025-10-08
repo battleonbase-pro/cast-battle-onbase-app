@@ -111,6 +111,14 @@ function Home() {
     const { isConnected, address } = useAccount()
     const { connect, connectors } = useConnect()
 
+    // Auto-connect when in Farcaster environment
+    useEffect(() => {
+      if (isFarcasterEnv === true && !isConnected && connectors.length > 0) {
+        console.log('🚀 Auto-connecting Farcaster wallet...');
+        connect({ connector: connectors[0] });
+      }
+    }, [isFarcasterEnv, isConnected, connect, connectors]);
+
     // Update user state when wallet connects
     useEffect(() => {
       if (isConnected && address) {
@@ -118,6 +126,7 @@ function Home() {
           address: address,
           username: 'Farcaster User'
         });
+        console.log('✅ Farcaster wallet connected:', address);
       } else {
         setUser(null);
       }
@@ -132,19 +141,24 @@ function Home() {
               🔵 {userPoints} pts
             </span>
           </div>
-          <button 
-            className={styles.disconnectBtn}
-            onClick={() => {
-              // Handle disconnect if needed
-              console.log('Disconnect wallet');
-            }}
-          >
-            Disconnect
-          </button>
+          {/* No disconnect button in Farcaster environment */}
         </div>
       )
     }
 
+    // Show loading state while auto-connecting
+    if (isFarcasterEnv === true) {
+      return (
+        <div className={styles.signInWrapper}>
+          <div className={styles.farcasterSignInBtn} style={{ opacity: 0.7, cursor: 'default' }}>
+            <span className={styles.farcasterIcon}>🔗</span>
+            Connecting Farcaster Wallet...
+          </div>
+        </div>
+      )
+    }
+
+    // Fallback for non-Farcaster environments (shouldn't reach here)
     return (
       <div className={styles.signInWrapper}>
         <button 
