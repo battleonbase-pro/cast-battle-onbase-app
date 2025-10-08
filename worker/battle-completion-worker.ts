@@ -11,7 +11,7 @@
  */
 
 import { createServer } from 'http';
-import { BattleManagerDB } from '../lib/services/battle-manager-db';
+import { BattleManagerDB } from './lib/services/battle-manager-db';
 
 interface WorkerStatus {
   isRunning: boolean;
@@ -42,6 +42,7 @@ class BattleCompletionWorker {
       });
 
       this.battleManager = await BattleManagerDB.getInstance();
+      await this.battleManager.initialize();
       console.log('✅ Battle Manager initialized successfully');
       
       // Reset retry count on successful initialization
@@ -263,6 +264,18 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // HTTP Server for worker endpoints (optional - for monitoring)
 
+// API Key validation helper
+const validateApiKey = (req: any): boolean => {
+  const apiKey = process.env.WORKER_API_KEY;
+  if (!apiKey) {
+    console.warn('⚠️ WORKER_API_KEY not set - API key validation disabled');
+    return true; // Allow access if no API key is set
+  }
+  
+  const providedKey = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '');
+  return providedKey === apiKey;
+};
+
 const createWorkerServer = () => {
   const server = createServer(async (req, res) => {
     const url = new URL(req.url || '', `http://${req.headers.host}`);
@@ -270,11 +283,18 @@ const createWorkerServer = () => {
     // Set CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key');
     
     if (req.method === 'OPTIONS') {
       res.writeHead(200);
       res.end();
+      return;
+    }
+    
+    // Validate API key for all endpoints except health check
+    if (url.pathname !== '/health' && !validateApiKey(req)) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized - Invalid API key' }));
       return;
     }
     
@@ -317,11 +337,13 @@ const createWorkerServer = () => {
       }
     } catch (error) {
       console.error('❌ Worker HTTP error:', error);
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ 
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      }));
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ 
+          error: 'Internal server error',
+          details: error instanceof Error ? error.message : 'Unknown error'
+        }));
+      }
     }
   });
   
@@ -333,7 +355,7 @@ console.log('🌟 Battle Completion Worker starting...');
 startWorker();
 
 // Start HTTP server for monitoring (optional)
-const port = process.env.WORKER_PORT || 3001;
+const port = process.env.PORT || process.env.WORKER_PORT || 3001;
 const server = createWorkerServer();
 server.listen(port, () => {
   console.log(`🌐 Worker HTTP server running on port ${port}`);

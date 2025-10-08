@@ -45,7 +45,7 @@
     "test:similarity-integration": "npx tsx scripts/test-similarity-integration.js",
     "test:retry-strategy": "npx tsx scripts/test-retry-strategy.js",
     "test:cache-key": "npx tsx scripts/test-cache-key.js",
-    "test:optimized-judging": "npx tsx scripts/test-optimized-judging.js",
+    "test:worker-integration": "npx tsx scripts/test-worker-integration.ts",
     "force:battle-transition": "npx tsx scripts/force-battle-transition.js",
     "db:setup": "./setup-local-dev.sh",
     "db:start": "docker-compose up -d postgres",

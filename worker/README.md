@@ -1,127 +1,164 @@
 # Battle Completion Worker
 
-This worker service automatically completes expired battles and creates new ones. It's designed to run as a separate service since Vercel's free tier only allows 1 cron invocation per day.
+A Google Cloud Run service for automatic battle completion and management in the NewsCast Debate application.
 
-## 🚀 Quick Deploy (Recommended)
+## 🚀 Quick Deployment
 
-### Railway (Free Tier - $5 Credit)
-1. Go to [Railway](https://railway.app)
-2. Click "Deploy from GitHub repo"
-3. Select your repository
-4. Choose "Deploy from folder" and select `worker/` directory
-5. Set environment variables:
-   - `DATABASE_URL` (same as your main app)
-   - `GOOGLE_GENERATIVE_AI_API_KEY`
-   - `SERPER_API_KEY`
-6. Deploy - Railway will automatically run the worker
+### First Time Setup
 
-### Render (Free Tier - 750 hours/month)
-1. Go to [Render](https://render.com)
-2. Create a new "Web Service"
-3. Connect your GitHub repository
-4. Set:
-   - **Build Command**: `cd worker && npm install`
-   - **Start Command**: `cd worker && npm start`
-   - **Root Directory**: `worker`
-5. Set environment variables
-6. Deploy
+1. **Run the setup script** (one-time only):
+   ```bash
+   ./scripts/setup.sh
+   ```
+   This will:
+   - Enable required Google Cloud APIs
+   - Create secrets for environment variables
+   - Set up IAM permissions
 
-### Fly.io (Free Tier - 3 small VMs)
-1. Install Fly CLI: `curl -L https://fly.io/install.sh | sh`
-2. Login: `fly auth login`
-3. In the `worker/` directory, run: `fly launch`
-4. Set environment variables: `fly secrets set DATABASE_URL=...`
-5. Deploy: `fly deploy`
+### Regular Deployments
 
-## 🛠️ Local Development
+After the initial setup, deploying changes is as simple as:
 
 ```bash
-cd worker
+npm run deploy
+```
+
+This single command will:
+- Build and push the Docker image
+- Deploy to Cloud Run
+- Test the deployment
+- Show deployment information
+
+## 📋 Available Commands
+
+### Deployment Commands
+- `npm run deploy` - Full deployment (build + deploy + test)
+- `npm run deploy:build` - Build and push Docker image only
+- `npm run deploy:run` - Deploy to Cloud Run only
+- `npm run deploy:full` - Build and deploy (no testing)
+
+### Testing Commands
+- `npm run test:health` - Test health endpoint
+- `npm run test:status` - Test status endpoint with API key
+
+### Monitoring Commands
+- `npm run logs` - View recent Cloud Run logs
+
+### Development Commands
+- `npm run dev` - Run in development mode with hot reload
+- `npm start` - Run in production mode locally
+
+## 🔧 Manual Script Usage
+
+You can also use the deployment script directly:
+
+```bash
+# Full deployment
+./scripts/deploy.sh deploy
+
+# Build only
+./scripts/deploy.sh build
+
+# Test deployment
+./scripts/deploy.sh test
+
+# View logs
+./scripts/deploy.sh logs
+
+# Show deployment info
+./scripts/deploy.sh info
+```
+
+## 🌐 Service Information
+
+- **Service URL**: `https://battle-completion-worker-733567590021.us-central1.run.app`
+- **API Key**: `92d4cca6-2987-417c-b6bf-36ac4cba6972`
+- **Project**: `battle-worker-phraseflow`
+- **Region**: `us-central1`
+
+## 🔐 API Endpoints
+
+### Health Check (No API key required)
+```bash
+curl https://battle-completion-worker-733567590021.us-central1.run.app/health
+```
+
+### Status Check (API key required)
+```bash
+curl -H "X-API-Key: 92d4cca6-2987-417c-b6bf-36ac4cba6972" \
+  https://battle-completion-worker-733567590021.us-central1.run.app/status
+```
+
+### Initialize Battle Manager (API key required)
+```bash
+curl -X POST -H "X-API-Key: 92d4cca6-2987-417c-b6bf-36ac4cba6972" \
+  https://battle-completion-worker-733567590021.us-central1.run.app/init
+```
+
+### Trigger Manual Check (API key required)
+```bash
+curl -X POST -H "X-API-Key: 92d4cca6-2987-417c-b6bf-36ac4cba6972" \
+  https://battle-completion-worker-733567590021.us-central1.run.app/trigger
+```
+
+## 🛠️ Development
+
+### Prerequisites
+- Node.js 18+
+- Google Cloud CLI
+- Docker (for local testing)
+
+### Local Development
+```bash
+# Install dependencies
 npm install
+
+# Run in development mode
 npm run dev
+
+# Run in production mode
+npm start
 ```
 
-## 📊 Features
+### Environment Variables
+The service uses the following environment variables (set as secrets in Cloud Run):
+- `DATABASE_URL` - PostgreSQL connection string
+- `GOOGLE_GENERATIVE_AI_API_KEY` - Google AI API key
+- `SERPER_API_KEY` - Serper API key for news
+- `CURRENTS_API_KEY` - Currents API key for news
+- `WORKER_API_KEY` - API key for securing endpoints
 
-- ✅ **Automatic Battle Completion**: Checks every 5 minutes
-- ✅ **Error Recovery**: Retry logic with automatic reinitialization
-- ✅ **Health Monitoring**: Comprehensive status reporting
-- ✅ **Graceful Shutdown**: Proper cleanup on termination
-- ✅ **Production Ready**: Optimized for long-running processes
-- ✅ **TypeScript**: Full type safety and better development experience
+## 📊 Monitoring
 
-## 🔧 Environment Variables
-
-The worker needs the same environment variables as your main app:
-
+### View Logs
 ```bash
-DATABASE_URL="postgresql://username:password@host:port/database"
-GOOGLE_GENERATIVE_AI_API_KEY="your-google-api-key"
-SERPER_API_KEY="your-serper-api-key"
-BATTLE_DURATION_HOURS="4"  # Optional, defaults to 4
-NODE_ENV="production"      # Optional
+# Using npm script
+npm run logs
+
+# Using gcloud directly
+gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=battle-completion-worker" --limit=20
 ```
 
-## 📈 Monitoring
-
-The worker provides comprehensive logging and status information:
-
-### Console Logs
-- 🚀 Initialization status
-- 🕐 Battle check timestamps
-- ✅ Success/failure status
-- 📊 Hourly status reports
-- ❌ Error details with retry counts
-
-### Status Endpoint
-Access worker status via the hosting platform's logs or add a simple HTTP endpoint.
-
-## 🔄 How It Works
-
-1. **Initialization**: Worker starts and initializes Battle Manager
-2. **Scheduled Checks**: Every 5 minutes, checks for expired battles
-3. **Battle Completion**: If expired battles found, completes them with AI judging
-4. **New Battle Creation**: Creates new battles immediately after completion
-5. **SSE Broadcasting**: Notifies connected clients via Server-Sent Events (on Vercel)
-6. **Error Recovery**: Handles failures with retry logic and reinitialization
-7. **HTTP Endpoints**: Provides monitoring and management endpoints
-
-## 🌐 HTTP Endpoints
-
-The worker provides HTTP endpoints for monitoring and management:
-
-- `GET /health` - Worker health status and metrics
-- `GET /status` - Battle manager status and current battle info
-- `GET /init` - Get battle manager status
-- `POST /init` - Initialize battle manager
-- `POST /trigger` - Manually trigger battle completion check
-
-## 🚨 Error Handling
-
-- **Retry Logic**: Up to 3 retries before reinitialization
-- **Automatic Recovery**: Reinitializes Battle Manager on persistent failures
-- **Graceful Shutdown**: Proper cleanup on SIGINT/SIGTERM
-- **Uncaught Exception Handling**: Prevents worker crashes
-
-## 📋 Deployment Checklist
-
-- [ ] Environment variables set
-- [ ] Database connection working
-- [ ] API keys configured
-- [ ] Worker starts successfully
-- [ ] Battle completion working
-- [ ] Logs showing regular checks
-- [ ] Monitoring set up (optional)
-
-## 🎯 Expected Behavior
-
-Once deployed, you should see logs like:
+### Check Service Status
+```bash
+gcloud run services describe battle-completion-worker --region=us-central1
 ```
-🌟 Battle Completion Worker starting...
-🚀 Initializing Battle Completion Worker...
-✅ Battle Manager initialized successfully
-🔄 Starting battle completion worker...
-✅ Battle completion worker started (checking every 5 minutes)
-🕐 [2024-01-01T12:00:00.000Z] Starting battle completion check...
-✅ [2024-01-01T12:00:05.000Z] Battle check completed successfully in 5000ms
-```
+
+## 🔄 Workflow for Code Changes
+
+1. **Make your code changes**
+2. **Test locally** (optional):
+   ```bash
+   npm run dev
+   ```
+3. **Deploy to production**:
+   ```bash
+   npm run deploy
+   ```
+4. **Verify deployment**:
+   ```bash
+   npm run test:health
+   npm run test:status
+   ```
+
+That's it! The deployment process is now fully automated and requires just one command.

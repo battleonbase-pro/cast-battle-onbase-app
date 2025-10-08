@@ -7,6 +7,7 @@ import NewsService from './news-service';
 import { DatabaseService } from './database';
 import { broadcastBattleEvent } from './battle-broadcaster';
 import { DBSharedStateManager } from './db-shared-state';
+import { workerClient } from './worker-client';
 
 export interface BattleConfig {
   battleDurationHours: number;
@@ -71,6 +72,16 @@ export class BattleManagerDB {
    */
   async initialize(): Promise<void> {
     console.log(`Battle Manager initialized with ${this.config.battleDurationHours}h intervals`);
+    
+    // Initialize worker service
+    try {
+      console.log('🚀 Initializing worker service...');
+      await workerClient.initialize();
+      console.log('✅ Worker service initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize worker service:', error);
+      console.log('⚠️ Battle manager will continue without worker service (fallback mode)');
+    }
     
     // Cleanup any expired battles first
     const cleanedCount = await this.db.cleanupExpiredBattles();
@@ -603,12 +614,12 @@ export class BattleManagerDB {
   }
 
   /**
-   * Complete battle with AI-powered judging using optimized hybrid method
+   * Complete battle with AI-powered judging using the deployed worker service
    * Returns success status to ensure completion before proceeding
    */
   private async completeBattleWithJudging(battleId: string): Promise<{ success: boolean; winner?: any; error?: string }> {
     try {
-      console.log(`🏆 Starting AI-powered battle completion for battle ${battleId}`);
+      console.log(`🏆 Starting AI-powered battle completion for battle ${battleId} using worker service`);
       
       // Get battle data and casts
       const battle = await this.db.getBattleById(battleId);
@@ -628,68 +639,36 @@ export class BattleManagerDB {
 
       console.log(`📊 Found ${casts.length} casts for battle ${battleId}`);
 
-      // Use Agent Orchestrator for AI-powered judging
-      const AgentOrchestrator = (await import('../agents/agent-orchestrator')).default;
-      const orchestrator = new AgentOrchestrator(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
+      // Use the deployed worker service for AI-powered judging
+      console.log(`🚀 Calling worker service to complete battle ${battleId}`);
       
-      // Complete battle with optimized hybrid method
-      const result = await orchestrator.completeBattle(battle, casts, 'hybrid');
-      
-      if (result && result.judgment && result.judgment.winner) {
-        const winner = result.judgment.winner;
-        const winners = [{
-          userId: winner.userId,
-          position: 1,
-          prize: 'Winner of the battle'
-        }];
-
-        // Complete battle with winners
-        await this.db.completeBattle(battleId, winners);
+      try {
+        // Trigger the worker service to complete the battle
+        const result = await workerClient.triggerCheck();
         
-        // Award 100 points to the winner
-        try {
-          const winnerUser = await this.db.getUserById(winner.userId);
-          if (winnerUser) {
-            const newPoints = await this.db.awardParticipationPoints(winnerUser.address, 100);
-            console.log(`🎉 Winner ${winnerUser.address} awarded 100 points! Total points: ${newPoints}`);
-            
-            // Emit status update for winner announcement
-            console.log(`📡 Broadcasting statusUpdate event: Winner selected!`);
-            broadcastBattleEvent('STATUS_UPDATE', {
-              message: `🏆 Winner selected! ${winnerUser.address.slice(0, 6)}...${winnerUser.address.slice(-4)} won!`,
-              type: 'success',
-              timestamp: new Date().toISOString()
-            });
-
-            // Emit leaderboard update event
-            console.log(`📡 Broadcasting LEADERBOARD_UPDATE event`);
-            broadcastBattleEvent('LEADERBOARD_UPDATE', {
-              message: 'Leaderboard updated with new winner!',
-              winner: {
-                address: winnerUser.address,
-                pointsAwarded: 100,
-                newTotalPoints: newPoints
-              },
-              timestamp: new Date().toISOString()
-            });
-          }
-        } catch (error) {
-          console.error(`❌ Failed to award winner points:`, error);
+        if (result && result.success) {
+          console.log(`✅ Worker service successfully completed battle ${battleId}`);
+          console.log(`📊 Worker response:`, result.message);
+          
+          // The worker service handles all the battle completion logic including:
+          // - AI judging
+          // - Winner selection
+          // - Database updates
+          // - Points awarding
+          
+          return { success: true };
+        } else {
+          console.log(`⚠️ Worker service failed to complete battle ${battleId}`);
+          console.log(`📊 Worker response:`, result);
+          
+          // Fallback: complete battle without winners
+          await this.db.completeBattle(battleId, []);
+          return { success: true }; // Successfully completed, just no winner
         }
+      } catch (workerError) {
+        console.error(`❌ Worker service error for battle ${battleId}:`, workerError);
         
-        console.log(`✅ Battle ${battleId} completed successfully`);
-        console.log(`🏆 Winner: ${winner.userId} (${winner.selectionMethod})`);
-        console.log(`📈 Winning side: ${winner.groupAnalysis?.winningSide || 'Unknown'}`);
-        console.log(`💡 Insights generated: ${result.judgment.insights ? 'Yes' : 'No'}`);
-        
-        // Log insights if available
-        if (result.judgment.insights) {
-          console.log(`🔍 Battle insights: ${result.judgment.insights.substring(0, 100)}...`);
-        }
-        
-        return { success: true, winner: winner };
-      } else {
-        console.log(`⚠️ AI judging failed for battle ${battleId}, completing without winners`);
+        // Fallback: complete battle without winners
         await this.db.completeBattle(battleId, []);
         return { success: true }; // Successfully completed, just no winner
       }
