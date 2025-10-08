@@ -96,8 +96,47 @@ export class BattleManagerDB {
     // Check for duration configuration changes and complete current battle if needed
     await this.checkForDurationChange();
     
+    // Check if current battle has expired and complete it if needed
+    await this.checkAndCompleteExpiredBattle();
+    
     // Check if we need to create a new battle
     await this.checkAndCreateBattle();
+  }
+
+  /**
+   * Check if current battle has expired and complete it if needed
+   * This is Edge Runtime compatible - no setTimeout required
+   */
+  private async checkAndCompleteExpiredBattle(): Promise<void> {
+    try {
+      const currentBattle = await this.db.getCurrentBattle();
+      
+      if (currentBattle && currentBattle.status === 'ACTIVE') {
+        const now = new Date();
+        if (now > currentBattle.endTime) {
+          console.log(`⏰ Battle "${currentBattle.title}" has expired, completing it now`);
+          
+          // Emit SSE event for battle ending
+          broadcastBattleEvent('BATTLE_ENDED', {
+            battleId: currentBattle.id,
+            title: currentBattle.title,
+            timestamp: new Date().toISOString()
+          });
+          
+          // Emit status update for judging phase
+          broadcastBattleEvent('STATUS_UPDATE', {
+            message: '🏁 Battle completed! Judging in progress...',
+            type: 'info',
+            timestamp: new Date().toISOString()
+          });
+          
+          // Complete the expired battle
+          await this.handleBattleCompletion(currentBattle.id);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking for expired battle:', error);
+    }
   }
 
   /**
@@ -121,13 +160,11 @@ export class BattleManagerDB {
           await this.createNewBattle();
           console.log(`✅ Initial battle created successfully`);
           
-          // Schedule the next battle after this initial one
-          console.log(`🔄 Scheduling battle completion for initial battle`);
-          await this.scheduleBattleCompletion();
+          // Note: Battle completion will be checked automatically on next API call
+          console.log(`🔄 Battle completion will be checked automatically on next API call`);
         } catch (error) {
-          console.log('❌ Could not create new battle, will retry later:', error);
-          // Schedule retry
-          setTimeout(() => this.scheduleBattleCompletion(), 30000);
+          console.log('❌ Could not create new battle, will retry on next API call:', error);
+          // Note: Retry will happen automatically on next API call via ensureBattleExists()
         }
       } else {
         // Check if current battle has expired
@@ -169,13 +206,11 @@ export class BattleManagerDB {
             await this.createNewBattle();
             console.log(`✅ New battle created successfully`);
             
-            // Schedule the next battle after this new one
-            console.log(`🔄 Scheduling battle completion for new battle`);
-            await this.scheduleBattleCompletion();
+            // Note: Battle completion will be checked automatically on next API call
+            console.log(`🔄 Battle completion will be checked automatically on next API call`);
           } catch (error) {
-            console.log('❌ Could not create new battle after completing expired one, will retry later:', error);
-            // Schedule retry
-            setTimeout(() => this.scheduleBattleCompletion(), 30000);
+            console.log('❌ Could not create new battle after completing expired one, will retry on next API call:', error);
+            // Note: Retry will happen automatically on next API call via ensureBattleExists()
           }
         } else {
           console.log(`Current battle: ${currentBattle.title} (${currentBattle.status}) - ends at ${currentBattle.endTime.toISOString()}`);
@@ -342,9 +377,10 @@ export class BattleManagerDB {
 
   /**
    * Set up battle generation with duration-based scheduling
+   * Edge Runtime compatible - no setTimeout required
    */
   private async setupAutomaticGeneration(): Promise<void> {
-    console.log(`🕐 Setting up battle generation with duration-based scheduling`);
+    console.log(`🕐 Setting up battle generation with Edge Runtime compatible scheduling`);
     
     // Clear any existing timeouts first
     this.clearScheduledTimeouts();
@@ -356,16 +392,14 @@ export class BattleManagerDB {
       console.log(`📊 Found existing active battle: "${currentBattle.title}"`);
       console.log(`⏰ Battle ends at: ${currentBattle.endTime}`);
       
-      // Calculate when this battle will end and schedule the next one
-      const timeUntilEnd = new Date(currentBattle.endTime).getTime() - Date.now();
-      if (timeUntilEnd > 0) {
-        console.log(`⏰ Current battle has ${Math.floor(timeUntilEnd / 1000)}s remaining`);
-        // Schedule battle completion for the existing battle
-        await this.scheduleBattleCompletion();
-      } else {
-        // Battle already expired, complete it immediately
+      // Check if battle has expired
+      const now = new Date();
+      if (now > currentBattle.endTime) {
         console.log(`⚠️ Current battle has already expired, completing it now`);
         await this.handleBattleCompletion(currentBattle.id);
+      } else {
+        console.log(`⏰ Current battle has ${Math.floor((currentBattle.endTime.getTime() - now.getTime()) / 1000)}s remaining`);
+        console.log(`🔄 Battle will be completed automatically when API is called after expiration`);
       }
     } else {
       console.log(`📊 No active battle found, creating initial battle`);
@@ -434,20 +468,33 @@ export class BattleManagerDB {
         console.log(`🔄 Creating new battle after completing ${battleId}`);
         await this.createNewBattle();
         
-        // Step 5: Schedule the next battle after this new one
-        console.log(`🔄 Scheduling battle completion for new battle`);
-        await this.scheduleBattleCompletion();
+        // Step 5: Note that battle completion will be checked on next API call
+        console.log(`🔄 Battle completion will be checked automatically on next API call`);
+        
+        // Step 6: Emit event to notify clients that new battle is ready
+        console.log(`📡 Broadcasting BATTLE_STARTED event for new battle`);
+        const newBattle = await this.db.getCurrentBattle();
+        if (newBattle) {
+          broadcastBattleEvent('BATTLE_STARTED', {
+            battleId: newBattle.id,
+            title: newBattle.title,
+            description: newBattle.description,
+            category: newBattle.category,
+            source: newBattle.source,
+            sourceUrl: newBattle.sourceUrl,
+            endTime: newBattle.endTime,
+            timestamp: new Date().toISOString()
+          });
+        }
         
         console.log(`✅ Complete battle flow finished for ${battleId}`);
       } else {
-        console.log(`⚠️ Winner selection failed for battle ${battleId}, retrying...`);
-        // Retry after a delay
-        setTimeout(() => this.scheduleBattleCompletion(), 30000);
+        console.log(`⚠️ Winner selection failed for battle ${battleId}, will retry on next API call`);
+        // Note: Retry will happen automatically on next API call via ensureBattleExists()
       }
     } catch (error: any) {
       console.error(`❌ Error in complete battle flow for ${battleId}:`, error);
-      // Schedule retry
-      setTimeout(() => this.scheduleBattleCompletion(), 30000);
+      // Note: Retry will happen automatically on next API call via ensureBattleExists()
     } finally {
       this.isCompletingBattle = false;
     }
