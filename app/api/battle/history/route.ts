@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BattleManagerDB } from '@/lib/services/battle-manager-db';
 
+// Force Node.js runtime for battle management
+export const runtime = 'nodejs';
+
 /**
  * GET /api/battle/history
  * Get battle history with winners

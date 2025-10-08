@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BattleManagerDB } from '@/lib/services/battle-manager-db';
 
+// Force Node.js runtime for battle management (Edge Runtime has limitations with global state)
+export const runtime = 'nodejs';
+
 /**
  * GET /api/battle/current
  * Get the current active battle

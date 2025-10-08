@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { RootProvider } from "./rootProvider";
-import ServerInitializer from "./components/server-initializer";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
@@ -98,7 +97,6 @@ export default function RootLayout({
           }}
         />
         <RootProvider>
-          <ServerInitializer />
           {children}
         </RootProvider>
         <Analytics />

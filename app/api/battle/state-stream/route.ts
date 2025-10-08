@@ -2,6 +2,9 @@ import { NextRequest } from 'next/server';
 import { BattleManagerDB } from '@/lib/services/battle-manager-db';
 import { addSSEConnection, markConnectionInactive, removeSSEConnectionById } from '@/lib/services/battle-broadcaster';
 
+// Force Node.js runtime for SSE (Edge Runtime has limitations with streaming)
+export const runtime = 'nodejs';
+
 export async function GET(_request: NextRequest) {
   const connectionId = `conn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   console.log(`🔌 NEW CLIENT CONNECTED: ${connectionId}`);

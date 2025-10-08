@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { BattleManagerDB } from '@/lib/services/battle-manager-db';
 import { broadcastSentimentUpdate } from '@/lib/services/sentiment-broadcaster';
 
+// Force Node.js runtime for battle management
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   let userAddress: string | undefined;
   
