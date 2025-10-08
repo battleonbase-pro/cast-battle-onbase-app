@@ -9,9 +9,6 @@
   <!-- Background -->
   <rect width="1200" height="630" fill="url(#bg)"/>
   
-  <!-- Base Logo Area -->
-  <circle cx="150" cy="150" r="80" fill="white" opacity="0.1"/>
-  <text x="150" y="160" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="24" font-weight="bold">BASE</text>
   
   <!-- Main Title -->
   <text x="600" y="200" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="48" font-weight="bold">NewsCast Debate</text>
