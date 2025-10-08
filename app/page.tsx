@@ -113,55 +113,68 @@ function Home() {
     
     // Immediate auto-connect attempt when component mounts in Farcaster
     useEffect(() => {
-      if (isFarcasterEnv === true && connectors.length > 0) {
-        console.log('🎯 Farcaster environment detected, attempting immediate connection...');
-        connect({ connector: connectors[0] }).catch(error => {
-          console.log('⚠️ Immediate connection failed:', error);
-        });
+      try {
+        if (isFarcasterEnv === true && connectors.length > 0) {
+          console.log('🎯 Farcaster environment detected, attempting immediate connection...');
+          connect({ connector: connectors[0] }).catch(error => {
+            console.error('⚠️ Immediate connection failed:', error);
+          });
+        }
+      } catch (error) {
+        console.error('❌ Error in immediate connection attempt:', error);
       }
     }, [isFarcasterEnv, connectors, connect]);
 
     // Auto-connect when in Farcaster environment
     useEffect(() => {
-      if (isFarcasterEnv === true && !isConnected && connectors.length > 0) {
-        console.log('🚀 Auto-connecting Farcaster wallet...', { 
-          isFarcasterEnv, 
-          isConnected, 
-          connectorsCount: connectors.length,
-          connectorName: connectors[0]?.name 
-        });
-        
-        const attemptConnect = async () => {
-          try {
-            console.log('🔄 Attempting to connect with connector:', connectors[0]?.name);
-            await connect({ connector: connectors[0] });
-            console.log('✅ Farcaster wallet connection successful');
-          } catch (error) {
-            console.log('⚠️ Farcaster wallet connection failed:', error);
-            // Retry after a short delay
-            setTimeout(() => {
-              if (!isConnected) {
-                console.log('🔄 Retrying Farcaster wallet connection...');
-                attemptConnect();
-              }
-            }, 2000);
-          }
-        };
-        
-        // Start connection attempt
-        attemptConnect();
+      try {
+        if (isFarcasterEnv === true && !isConnected && connectors.length > 0) {
+          console.log('🚀 Auto-connecting Farcaster wallet...', { 
+            isFarcasterEnv, 
+            isConnected, 
+            connectorsCount: connectors.length,
+            connectorName: connectors[0]?.name 
+          });
+          
+          const attemptConnect = async () => {
+            try {
+              console.log('🔄 Attempting to connect with connector:', connectors[0]?.name);
+              await connect({ connector: connectors[0] });
+              console.log('✅ Farcaster wallet connection successful');
+            } catch (error) {
+              console.error('⚠️ Farcaster wallet connection failed:', error);
+              // Retry after a short delay
+              setTimeout(() => {
+                if (!isConnected) {
+                  console.log('🔄 Retrying Farcaster wallet connection...');
+                  attemptConnect();
+                }
+              }, 2000);
+            }
+          };
+          
+          // Start connection attempt
+          attemptConnect();
+        }
+      } catch (error) {
+        console.error('❌ Error in auto-connect logic:', error);
       }
     }, [isFarcasterEnv, isConnected, connect, connectors]);
 
     // Update user state when wallet connects
     useEffect(() => {
-      if (isConnected && address) {
-        setUser({
-          address: address,
-          username: 'Farcaster User'
-        });
-        console.log('✅ Farcaster wallet connected:', address);
-      } else {
+      try {
+        if (isConnected && address) {
+          setUser({
+            address: address,
+            username: 'Farcaster User'
+          });
+          console.log('✅ Farcaster wallet connected:', address);
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('❌ Error updating user state:', error);
         setUser(null);
       }
     }, [isConnected, address]);
@@ -984,7 +997,7 @@ function Home() {
               </button>
             </div>
           </div>
-          {user && isFarcasterEnv !== true ? (
+          {user && isFarcasterEnv === false ? (
             <div className={styles.userCompact}>
               <div className={styles.userInfo}>
                 <span className={styles.userAddress}>{user.address.slice(0, 6)}...{user.address.slice(-4)}</span>
