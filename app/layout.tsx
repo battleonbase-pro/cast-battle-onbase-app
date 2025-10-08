@@ -35,14 +35,14 @@ export const metadata: Metadata = {
   other: {
     "fc:miniapp": JSON.stringify({
       version: "1",
-      imageUrl: "https://news-debate-onbase-app.vercel.app/og-image.png",
+      imageUrl: "https://cast-battle-onbase-app.vercel.app/og-image.svg",
       button: {
-        title: "Join Debate",
+        title: "Join AI Debate",
         action: {
           type: "launch_frame",
           name: "NewsCast Debate",
-          url: "https://news-debate-onbase-app.vercel.app",
-          splashImageUrl: "https://news-debate-onbase-app.vercel.app/Base_basemark_blue.png",
+          url: "https://cast-battle-onbase-app.vercel.app",
+          splashImageUrl: "https://cast-battle-onbase-app.vercel.app/Base_basemark_blue.png",
           splashBackgroundColor: "#ffffff"
         }
       }
@@ -69,6 +69,13 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="NewsCast Debate" />
+        
+        {/* Farcaster Frame Meta Tags */}
+        <meta name="fc:frame" content='{"version":"next","imageUrl":"https://cast-battle-onbase-app.vercel.app/og-image.svg","button":{"title":"Join AI Debate","action":{"type":"launch_frame","name":"NewsCast Debate","url":"https://cast-battle-onbase-app.vercel.app"}}}' />
+        <meta name="fc:frame:image" content="https://cast-battle-onbase-app.vercel.app/og-image.svg" />
+        <meta name="fc:frame:button:1" content="Join AI Debate" />
+        <meta name="fc:frame:button:1:action" content="launch_frame" />
+        <meta name="fc:frame:button:1:target" content="https://cast-battle-onbase-app.vercel.app" />
       </head>
       <body className={inter.variable}>
         <script

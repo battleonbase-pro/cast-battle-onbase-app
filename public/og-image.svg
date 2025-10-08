@@ -1,0 +1,30 @@
+<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0052FF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0041CC;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  
+  <!-- Base Logo Area -->
+  <circle cx="150" cy="150" r="80" fill="white" opacity="0.1"/>
+  <text x="150" y="160" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="24" font-weight="bold">BASE</text>
+  
+  <!-- Main Title -->
+  <text x="600" y="200" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="48" font-weight="bold">NewsCast Debate</text>
+  
+  <!-- Subtitle -->
+  <text x="600" y="280" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="28" opacity="0.9">AI-Powered News Debates</text>
+  
+  <!-- Features -->
+  <text x="600" y="350" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="20" opacity="0.8">🤖 Intelligent Topic Curation</text>
+  <text x="600" y="390" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="20" opacity="0.8">⚡ Real-time Debates</text>
+  <text x="600" y="430" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="20" opacity="0.8">🏆 Earn Points & Rewards</text>
+  
+  <!-- Call to Action -->
+  <rect x="450" y="500" width="300" height="60" rx="30" fill="white" opacity="0.2"/>
+  <text x="600" y="540" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="24" font-weight="bold">Join AI Debate</text>
+</svg>
