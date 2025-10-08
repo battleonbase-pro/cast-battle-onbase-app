@@ -146,19 +146,13 @@ function Home() {
       )
     }
 
-    // Show loading state while auto-connecting
+    // In Farcaster environment, don't show any connect UI - just auto-connect silently
     if (isFarcasterEnv === true) {
-      return (
-        <div className={styles.signInWrapper}>
-          <div className={styles.farcasterSignInBtn} style={{ opacity: 0.7, cursor: 'default' }}>
-            <span className={styles.farcasterIcon}>🔗</span>
-            Connecting Farcaster Wallet...
-          </div>
-        </div>
-      )
+      // Show nothing while connecting - auto-connect happens in background
+      return null;
     }
 
-    // Fallback for non-Farcaster environments (shouldn't reach here)
+    // Only show connect button in non-Farcaster environments
     return (
       <div className={styles.signInWrapper}>
         <button 
