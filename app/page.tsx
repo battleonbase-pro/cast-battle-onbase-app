@@ -110,12 +110,46 @@ function Home() {
   function FarcasterWalletComponent() {
     const { isConnected, address } = useAccount()
     const { connect, connectors } = useConnect()
+    
+    // Immediate auto-connect attempt when component mounts in Farcaster
+    useEffect(() => {
+      if (isFarcasterEnv === true && connectors.length > 0) {
+        console.log('🎯 Farcaster environment detected, attempting immediate connection...');
+        connect({ connector: connectors[0] }).catch(error => {
+          console.log('⚠️ Immediate connection failed:', error);
+        });
+      }
+    }, [isFarcasterEnv, connectors, connect]);
 
     // Auto-connect when in Farcaster environment
     useEffect(() => {
       if (isFarcasterEnv === true && !isConnected && connectors.length > 0) {
-        console.log('🚀 Auto-connecting Farcaster wallet...');
-        connect({ connector: connectors[0] });
+        console.log('🚀 Auto-connecting Farcaster wallet...', { 
+          isFarcasterEnv, 
+          isConnected, 
+          connectorsCount: connectors.length,
+          connectorName: connectors[0]?.name 
+        });
+        
+        const attemptConnect = async () => {
+          try {
+            console.log('🔄 Attempting to connect with connector:', connectors[0]?.name);
+            await connect({ connector: connectors[0] });
+            console.log('✅ Farcaster wallet connection successful');
+          } catch (error) {
+            console.log('⚠️ Farcaster wallet connection failed:', error);
+            // Retry after a short delay
+            setTimeout(() => {
+              if (!isConnected) {
+                console.log('🔄 Retrying Farcaster wallet connection...');
+                attemptConnect();
+              }
+            }, 2000);
+          }
+        };
+        
+        // Start connection attempt
+        attemptConnect();
       }
     }, [isFarcasterEnv, isConnected, connect, connectors]);
 
