@@ -22,7 +22,7 @@
   <!-- Features -->
   <text x="600" y="350" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="20" opacity="0.8">🤖 Intelligent Topic Curation</text>
   <text x="600" y="390" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="20" opacity="0.8">⚡ Real-time Debates</text>
-  <text x="600" y="430" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="20" opacity="0.8">🏆 Earn Points & Rewards</text>
+  <text x="600" y="430" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="20" opacity="0.8">🏆 Earn Points &amp; Rewards</text>
   
   <!-- Call to Action -->
   <rect x="450" y="500" width="300" height="60" rx="30" fill="white" opacity="0.2"/>
