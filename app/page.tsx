@@ -152,7 +152,7 @@ function Home() {
           onClick={() => connect({ connector: connectors[0] })}
         >
           <span className={styles.farcasterIcon}>🔗</span>
-          Connect Wallet
+          Connect Farcaster Wallet
         </button>
       </div>
     )
@@ -233,6 +233,17 @@ function Home() {
           try {
             await farcasterSDK.actions.ready();
             console.log('✅ Farcaster app is ready');
+            
+            // Get user context if available
+            try {
+              const context = await farcasterSDK.context;
+              if (context?.user) {
+                console.log('👤 Farcaster user context available:', context.user);
+                // You can use context.user here if needed
+              }
+            } catch (contextError) {
+              console.log('⚠️ Could not get Farcaster context:', contextError);
+            }
           } catch (error) {
             console.log('⚠️ Farcaster ready() failed:', error);
           }
