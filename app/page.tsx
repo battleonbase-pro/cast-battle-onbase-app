@@ -100,6 +100,7 @@ interface BaseSDK {
 const queryClient = new QueryClient()
 
 function Home() {
+  const [isFarcasterEnv, setIsFarcasterEnv] = useState<boolean | null>(null); // null = detecting, true = Farcaster, false = browser
   const [user, setUser] = useState<User | null>(null);
   const [sdk, setSdk] = useState<BaseSDK | null>(null);
   const [loading, setLoading] = useState(true);
@@ -157,9 +158,6 @@ function Home() {
     )
   }
 
-  // Check if we're in Farcaster environment using Wagmi
-  const { isConnected } = useAccount();
-  const isFarcasterEnv = isConnected !== undefined; // If Wagmi is working, we're likely in Farcaster
   const [topic, setTopic] = useState<DebateTopic | null>(null);
   const [battleJoined, setBattleJoined] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
@@ -220,19 +218,35 @@ function Home() {
 
   // Prevent body scroll when popup is open (mobile optimization)
   
-  // Call ready() immediately when component mounts (as per Farcaster docs)
+  // Detect Farcaster environment using official SDK method
   useEffect(() => {
-    const callReady = async () => {
+    const detectEnvironment = async () => {
       try {
-        console.log('Calling farcasterSDK.actions.ready()...');
-        await farcasterSDK.actions.ready();
-        console.log('✅ Farcaster app is ready');
+        console.log('🔍 Detecting environment using sdk.isInMiniApp()...');
+        const isMiniApp = await farcasterSDK.isInMiniApp();
+        
+        if (isMiniApp) {
+          console.log('✅ Farcaster Mini App environment detected');
+          setIsFarcasterEnv(true);
+          
+          // Call ready() immediately after detection
+          try {
+            await farcasterSDK.actions.ready();
+            console.log('✅ Farcaster app is ready');
+          } catch (error) {
+            console.log('⚠️ Farcaster ready() failed:', error);
+          }
+        } else {
+          console.log('🌐 Regular browser environment detected');
+          setIsFarcasterEnv(false);
+        }
       } catch (error) {
-        console.log('⚠️ Farcaster ready() failed (expected in non-Farcaster environment):', error);
+        console.log('🌐 Regular browser environment (error):', error);
+        setIsFarcasterEnv(false);
       }
     };
     
-    callReady();
+    detectEnvironment();
   }, []);
 
   useEffect(() => {
@@ -272,8 +286,8 @@ function Home() {
     initApp();
     const cleanupBattleSSE = setupBattleStateSSE();
     
-    // Initialize Base Account SDK on client side only
-    if (typeof window !== 'undefined') {
+    // Initialize Base Account SDK on client side only (only in non-Farcaster environments)
+    if (typeof window !== 'undefined' && isFarcasterEnv === false) {
       try {
         // Suppress analytics-related console errors
         const originalConsoleError = console.error;
@@ -950,6 +964,13 @@ function Home() {
                 </svg>
               </button>
         </div>
+          ) : isFarcasterEnv === null ? (
+            <div className={styles.signInWrapper}>
+              <div className={styles.loadingSpinner}></div>
+              <span style={{ marginLeft: '8px', fontSize: '0.875rem', color: '#6b7280' }}>
+                Detecting environment...
+              </span>
+            </div>
           ) : isFarcasterEnv ? (
             <FarcasterWalletComponent />
           ) : sdk ? (

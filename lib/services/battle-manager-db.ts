@@ -51,8 +51,16 @@ export class BattleManagerDB {
     
     // Auto-initialize on first access
     if (!global.__battleManagerInitialized) {
-      await global.__battleManagerInstance.initialize();
-      global.__battleManagerInitialized = true;
+      try {
+        console.log('🔄 Auto-initializing battle manager on first access...');
+        await global.__battleManagerInstance.initialize();
+        global.__battleManagerInitialized = true;
+        console.log('✅ Battle manager auto-initialization complete');
+      } catch (error) {
+        console.error('❌ Battle manager auto-initialization failed:', error);
+        // Don't set the flag to true if initialization failed
+        throw error;
+      }
     }
     
     return global.__battleManagerInstance;
