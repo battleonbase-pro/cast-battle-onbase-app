@@ -180,10 +180,17 @@ function Home() {
       )
     }
 
-    // In Farcaster environment, don't show any UI - just auto-connect silently
+    // In Farcaster environment, show loading while connecting
     if (isFarcasterEnv === true) {
-      // Show nothing - auto-connect happens in background
-      return null;
+      // Show loading state while auto-connecting
+      return (
+        <div className={styles.signInWrapper}>
+          <div className={styles.loadingSpinner}></div>
+          <span style={{ marginLeft: '8px', fontSize: '0.875rem', color: '#6b7280' }}>
+            Connecting to Farcaster...
+          </span>
+        </div>
+      );
     }
 
     // This component should never be used in non-Farcaster environments
