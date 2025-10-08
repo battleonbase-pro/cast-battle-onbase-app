@@ -1,18 +1,10 @@
-import { PrismaClient, BattleStatus, CastSide } from '@prisma/client';
-
-// Global Prisma client instance
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
-
-export const prisma = globalForPrisma.prisma ?? new PrismaClient();
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+import { BattleStatus, CastSide } from '@prisma/client';
+import { prisma } from '../../lib/prisma';
 
 // Database service class
 export class DatabaseService {
   private static instance: DatabaseService;
-  public prisma: PrismaClient;
+  public prisma: typeof prisma;
 
   static getInstance(): DatabaseService {
     if (!DatabaseService.instance) {

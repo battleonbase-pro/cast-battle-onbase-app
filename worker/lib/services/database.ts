@@ -1,18 +1,44 @@
 import { PrismaClient, BattleStatus, CastSide } from '@prisma/client';
 
+// Enhanced Prisma client configuration for production
+const createPrismaClient = () => {
+  const databaseUrl = process.env.DATABASE_URL
+  
+  // Add connection pooling parameters if not already present
+  const urlWithPooling = databaseUrl?.includes('?') 
+    ? `${databaseUrl}&connection_limit=20&pool_timeout=20`
+    : `${databaseUrl}?connection_limit=20&pool_timeout=20`
+
+  return new PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    datasources: {
+      db: {
+        url: urlWithPooling,
+      },
+    },
+    // Additional configuration for production stability
+    ...(process.env.NODE_ENV === 'production' && {
+      // Disable query engine logging in production
+      log: ['error'],
+      // Add error formatting
+      errorFormat: 'minimal',
+    }),
+  })
+}
+
 // Global Prisma client instance
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+  prisma: ReturnType<typeof createPrismaClient> | undefined;
 };
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient();
+export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 // Database service class
 export class DatabaseService {
   private static instance: DatabaseService;
-  public prisma: PrismaClient;
+  public prisma: typeof prisma;
 
   static getInstance(): DatabaseService {
     if (!DatabaseService.instance) {

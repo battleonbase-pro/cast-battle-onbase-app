@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     siteName: "NewsCast Debate",
     images: [
       {
-        url: "https://cast-battle-onbase-app.vercel.app/api/og-image",
+        url: "https://news-debate-onbase-app.vercel.app/api/og-image",
         width: 1200,
         height: 630,
         alt: "NewsCast Debate - AI-Powered News Debates on Base",
@@ -39,19 +39,19 @@ export const metadata: Metadata = {
     title: "NewsCast Debate (Beta) - AI-Powered News Debates on Base",
     description: "Join engaging AI-powered debates on trending news topics. Earn points, compete with others, and win rewards on the Base blockchain.",
     creator: "@base",
-    images: ["https://cast-battle-onbase-app.vercel.app/api/og-image"],
+    images: ["https://news-debate-onbase-app.vercel.app/api/og-image"],
   },
   other: {
     "fc:miniapp": JSON.stringify({
       version: "1",
-      imageUrl: "https://cast-battle-onbase-app.vercel.app/og-image.png",
+      imageUrl: "https://news-debate-onbase-app.vercel.app/api/og-image",
       button: {
         title: "Join AI Debate",
         action: {
           type: "launch_frame",
           name: "NewsCast Debate",
-          url: "https://cast-battle-onbase-app.vercel.app",
-          splashImageUrl: "https://cast-battle-onbase-app.vercel.app/Base_basemark_blue.png",
+          url: "https://news-debate-onbase-app.vercel.app",
+          splashImageUrl: "https://news-debate-onbase-app.vercel.app/api/og-image",
           splashBackgroundColor: "#ffffff"
         }
       }
@@ -80,9 +80,9 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="NewsCast Debate" />
         
         {/* Farcaster Mini App Meta Tags */}
-        <meta name="fc:miniapp" content='{"version":"1","imageUrl":"https://cast-battle-onbase-app.vercel.app/api/og-image","button":{"title":"Join AI Debate","action":{"type":"launch_miniapp","name":"NewsCast Debate","url":"https://cast-battle-onbase-app.vercel.app","splashImageUrl":"https://cast-battle-onbase-app.vercel.app/api/og-image","splashBackgroundColor":"#0052FF"}}}' />
+        <meta name="fc:miniapp" content='{"version":"1","imageUrl":"https://news-debate-onbase-app.vercel.app/api/og-image","button":{"title":"Join AI Debate","action":{"type":"launch_miniapp","name":"NewsCast Debate","url":"https://news-debate-onbase-app.vercel.app","splashImageUrl":"https://news-debate-onbase-app.vercel.app/api/og-image","splashBackgroundColor":"#0052FF"}}}' />
         {/* For backward compatibility */}
-        <meta name="fc:frame" content='{"version":"1","imageUrl":"https://cast-battle-onbase-app.vercel.app/api/og-image","button":{"title":"Join AI Debate","action":{"type":"launch_miniapp","name":"NewsCast Debate","url":"https://cast-battle-onbase-app.vercel.app","splashImageUrl":"https://cast-battle-onbase-app.vercel.app/api/og-image","splashBackgroundColor":"#0052FF"}}}' />
+        <meta name="fc:frame" content='{"version":"1","imageUrl":"https://news-debate-onbase-app.vercel.app/api/og-image","button":{"title":"Join AI Debate","action":{"type":"launch_miniapp","name":"NewsCast Debate","url":"https://news-debate-onbase-app.vercel.app","splashImageUrl":"https://news-debate-onbase-app.vercel.app/api/og-image","splashBackgroundColor":"#0052FF"}}}' />
       </head>
       <body className={inter.variable}>
         <script

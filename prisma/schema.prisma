@@ -8,6 +8,10 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  // Connection pooling configuration for production
+  // These settings help prevent connection pool timeouts
+  // connection_limit = 20
+  // pool_timeout = 20
 }
 
 model User {
