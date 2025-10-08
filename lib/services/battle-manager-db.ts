@@ -104,6 +104,53 @@ export class BattleManagerDB {
   }
 
   /**
+   * Check and complete expired battles (for cron jobs)
+   * This method can be called externally to ensure battles complete on time
+   */
+  async checkAndCompleteExpiredBattles(): Promise<void> {
+    try {
+      console.log('🕐 Checking for expired battles...');
+      
+      // Get all active battles that have expired
+      const expiredBattles = await this.db.getExpiredBattles();
+      
+      if (expiredBattles.length === 0) {
+        console.log('✅ No expired battles found');
+        return;
+      }
+      
+      console.log(`📊 Found ${expiredBattles.length} expired battle(s)`);
+      
+      for (const battle of expiredBattles) {
+        console.log(`⏰ Completing expired battle: "${battle.title}" (${battle.id})`);
+        
+        // Emit SSE event for battle ending
+        broadcastBattleEvent('BATTLE_ENDED', {
+          battleId: battle.id,
+          title: battle.title,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Emit status update for judging phase
+        broadcastBattleEvent('STATUS_UPDATE', {
+          message: '🏁 Battle completed! Judging in progress...',
+          type: 'info',
+          timestamp: new Date().toISOString()
+        });
+        
+        // Complete the expired battle
+        await this.handleBattleCompletion(battle.id);
+      }
+      
+      console.log('✅ All expired battles processed');
+      
+    } catch (error) {
+      console.error('❌ Error checking for expired battles:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Check if current battle has expired and complete it if needed
    * This is Edge Runtime compatible - no setTimeout required
    */

@@ -81,6 +81,22 @@ export class DatabaseService {
     });
   }
 
+  async getExpiredBattles() {
+    return prisma.battle.findMany({
+      where: {
+        status: BattleStatus.ACTIVE,
+        endTime: {
+          lt: new Date()
+        }
+      },
+      include: {
+        participants: true,
+        casts: true,
+        winners: true
+      }
+    });
+  }
+
   async getBattleById(id: string) {
     return await prisma.battle.findUnique({
       where: { id },
