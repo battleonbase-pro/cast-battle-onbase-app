@@ -82,8 +82,19 @@ Access worker status via the hosting platform's logs or add a simple HTTP endpoi
 2. **Scheduled Checks**: Every 5 minutes, checks for expired battles
 3. **Battle Completion**: If expired battles found, completes them with AI judging
 4. **New Battle Creation**: Creates new battles immediately after completion
-5. **SSE Broadcasting**: Notifies connected clients via Server-Sent Events
+5. **SSE Broadcasting**: Notifies connected clients via Server-Sent Events (on Vercel)
 6. **Error Recovery**: Handles failures with retry logic and reinitialization
+7. **HTTP Endpoints**: Provides monitoring and management endpoints
+
+## 🌐 HTTP Endpoints
+
+The worker provides HTTP endpoints for monitoring and management:
+
+- `GET /health` - Worker health status and metrics
+- `GET /status` - Battle manager status and current battle info
+- `GET /init` - Get battle manager status
+- `POST /init` - Initialize battle manager
+- `POST /trigger` - Manually trigger battle completion check
 
 ## 🚨 Error Handling
 

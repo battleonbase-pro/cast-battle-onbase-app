@@ -216,33 +216,6 @@ function Home() {
     }
   };
 
-  // Client-side battle completion check (backup for when cron is not available)
-  useEffect(() => {
-    if (!user) return; // Only run when user is connected
-
-    const checkBattleCompletion = async () => {
-      try {
-        // Call the battle completion endpoint to trigger any expired battle completion
-        await fetch('/api/cron/battle-completion', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-      } catch (error) {
-        console.log('Battle completion check failed:', error);
-      }
-    };
-
-    // Check every 5 minutes when user is active
-    const interval = setInterval(checkBattleCompletion, 5 * 60 * 1000);
-
-    // Also check immediately when user connects
-    checkBattleCompletion();
-
-    return () => clearInterval(interval);
-  }, [user]);
-
   // Prevent body scroll when popup is open (mobile optimization)
   
   // Detect Farcaster environment using official SDK method

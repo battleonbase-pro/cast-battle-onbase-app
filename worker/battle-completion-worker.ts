@@ -10,6 +10,7 @@
  * - Comprehensive logging
  */
 
+import { createServer } from 'http';
 import { BattleManagerDB } from '../lib/services/battle-manager-db';
 
 interface WorkerStatus {
@@ -145,6 +146,67 @@ class BattleCompletionWorker {
     console.log('🔧 Manual battle check triggered');
     await this.performBattleCheck();
   }
+
+  // Initialize battle manager (replaces /api/init)
+  async initializeBattleManager(): Promise<any> {
+    if (!this.battleManager) {
+      throw new Error('Battle Manager not initialized');
+    }
+
+    try {
+      await this.battleManager.initialize();
+      const config = this.battleManager.getConfig();
+      const currentBattle = await this.battleManager.getCurrentBattle();
+      
+      console.log('✅ Battle manager initialized successfully');
+      console.log('📊 Battle generation interval:', config.battleDurationHours, 'hours');
+      console.log('📊 Battle generation enabled:', config.enabled);
+      
+      return {
+        success: true,
+        message: 'Battle manager initialized successfully',
+        config,
+        currentBattle: currentBattle ? {
+          id: currentBattle.id,
+          status: currentBattle.status,
+          topic: currentBattle.topic?.title,
+          participants: currentBattle.participants.length,
+          endTime: currentBattle.endTime
+        } : null
+      };
+    } catch (error) {
+      console.error('❌ Failed to initialize battle manager:', error);
+      throw error;
+    }
+  }
+
+  // Get battle manager status (replaces /api/init GET)
+  async getBattleManagerStatus(): Promise<any> {
+    if (!this.battleManager) {
+      throw new Error('Battle Manager not initialized');
+    }
+
+    try {
+      const config = this.battleManager.getConfig();
+      const currentBattle = await this.battleManager.getCurrentBattle();
+      
+      return {
+        success: true,
+        status: 'running',
+        config,
+        currentBattle: currentBattle ? {
+          id: currentBattle.id,
+          status: currentBattle.status,
+          topic: currentBattle.topic?.title,
+          participants: currentBattle.participants.length,
+          endTime: currentBattle.endTime
+        } : null
+      };
+    } catch (error) {
+      console.error('❌ Failed to get battle manager status:', error);
+      throw error;
+    }
+  }
 }
 
 // Create worker instance
@@ -199,8 +261,85 @@ process.on('unhandledRejection', (reason, promise) => {
   gracefulShutdown('unhandledRejection');
 });
 
+// HTTP Server for worker endpoints (optional - for monitoring)
+
+const createWorkerServer = () => {
+  const server = createServer(async (req, res) => {
+    const url = new URL(req.url || '', `http://${req.headers.host}`);
+    
+    // Set CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    if (req.method === 'OPTIONS') {
+      res.writeHead(200);
+      res.end();
+      return;
+    }
+    
+    try {
+      switch (url.pathname) {
+        case '/health':
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(worker.getStatus()));
+          break;
+          
+        case '/status':
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(await worker.getBattleManagerStatus()));
+          break;
+          
+        case '/init':
+          if (req.method === 'POST') {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(await worker.initializeBattleManager()));
+          } else {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(await worker.getBattleManagerStatus()));
+          }
+          break;
+          
+        case '/trigger':
+          if (req.method === 'POST') {
+            await worker.triggerManualCheck();
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, message: 'Manual check triggered' }));
+          } else {
+            res.writeHead(405, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Method not allowed' }));
+          }
+          break;
+          
+        default:
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Not found' }));
+      }
+    } catch (error) {
+      console.error('❌ Worker HTTP error:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }));
+    }
+  });
+  
+  return server;
+};
+
 // Start the worker
 console.log('🌟 Battle Completion Worker starting...');
 startWorker();
+
+// Start HTTP server for monitoring (optional)
+const port = process.env.WORKER_PORT || 3001;
+const server = createWorkerServer();
+server.listen(port, () => {
+  console.log(`🌐 Worker HTTP server running on port ${port}`);
+  console.log(`📊 Health check: http://localhost:${port}/health`);
+  console.log(`📊 Status: http://localhost:${port}/status`);
+  console.log(`🔧 Manual trigger: POST http://localhost:${port}/trigger`);
+});
 
 export default worker;
