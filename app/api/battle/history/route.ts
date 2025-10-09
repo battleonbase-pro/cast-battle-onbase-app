@@ -11,7 +11,7 @@ export const runtime = 'nodejs';
 export async function GET(_request: NextRequest) {
   try {
     const battleManager = await BattleManagerDB.getInstance();
-    const battleHistory = await battleManager.getBattleHistory();
+    const battleHistory = await battleManager.getBattleHistory(5); // Limit to latest 5 battles
 
     // Format battle history for frontend
     const formattedHistory = battleHistory.map(historyEntry => ({

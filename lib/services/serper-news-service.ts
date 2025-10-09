@@ -75,13 +75,21 @@ class SerperNewsService {
   }
 
   async getComprehensiveNews(): Promise<Article[]> {
-    // Dynamic query generation with randomized order for diverse results
-    const query = this.generateDynamicQuery();
-    
     try {
-      console.log(`[Serper News Service] Searching with dynamic query: "${query}"`);
+      // Use balanced dynamic query for diverse results
+      const query = this.generateDynamicQuery();
+      console.log(`[Serper News Service] Searching with balanced dynamic query: "${query}"`);
+      
       const articles = await this.searchNews(query);
       console.log(`[Serper News Service] Total comprehensive news articles: ${articles.length}`);
+      
+      // If we get too few articles, try a fallback approach
+      if (articles.length < 5) {
+        console.log(`[Serper News Service] Low article count (${articles.length}), trying fallback approach...`);
+        const fallbackArticles = await this.getFallbackNews();
+        return [...articles, ...fallbackArticles].slice(0, 25); // Limit total results
+      }
+      
       return articles;
     } catch (error) {
       console.warn(`[Serper News Service] Failed to fetch comprehensive news:`, error);
@@ -89,33 +97,71 @@ class SerperNewsService {
     }
   }
 
+  private async getFallbackNews(): Promise<Article[]> {
+    // Fallback: try different category-based searches
+    const categories = ['politics', 'world', 'economy', 'technology', 'health'];
+    const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+    
+    try {
+      console.log(`[Serper News Service] Fallback: trying ${randomCategory} category`);
+      return await this.getNewsByCategory(randomCategory);
+    } catch (error) {
+      console.warn(`[Serper News Service] Fallback also failed:`, error);
+      return [];
+    }
+  }
+
   private generateDynamicQuery(): string {
-    // Core keyword groups for different topics
+    // Core keyword groups for different topics - balanced distribution
     const keywordGroups = {
       breaking: ['breaking news', 'urgent news', 'latest news', 'top news'],
-      politics: ['politics', 'election', 'government', 'president', 'congress'],
-      crypto: ['cryptocurrency', 'bitcoin', 'ethereum', 'blockchain', 'crypto'],
-      world: ['world news', 'international', 'global', 'headlines'],
-      economy: ['economy', 'market', 'finance', 'business'],
-      tech: ['technology', 'AI', 'artificial intelligence', 'tech']
+      politics: ['politics', 'election', 'government', 'president', 'congress', 'policy'],
+      world: ['world news', 'international', 'global', 'headlines', 'foreign affairs'],
+      economy: ['economy', 'market', 'finance', 'business', 'economic policy'],
+      tech: ['technology', 'AI', 'artificial intelligence', 'tech innovation', 'science'],
+      health: ['health news', 'medical', 'healthcare', 'public health', 'medical research'],
+      environment: ['climate', 'environment', 'sustainability', 'green energy', 'climate change'],
+      social: ['social issues', 'society', 'culture', 'education', 'social policy']
     };
 
-    // Select one keyword from each group
-    const selectedKeywords = Object.values(keywordGroups).map(group => 
-      group[Math.floor(Math.random() * group.length)]
-    );
+    // Weighted selection to reduce crypto bias - crypto gets lower weight
+    const weightedGroups = [
+      ...Array(3).fill('breaking'),    // 3x weight
+      ...Array(4).fill('politics'),    // 4x weight  
+      ...Array(4).fill('world'),       // 4x weight
+      ...Array(3).fill('economy'),     // 3x weight
+      ...Array(3).fill('tech'),        // 3x weight
+      ...Array(2).fill('health'),      // 2x weight
+      ...Array(2).fill('environment'), // 2x weight
+      ...Array(2).fill('social'),      // 2x weight
+      'crypto'                         // 1x weight (reduced from equal weight)
+    ];
 
-    // Randomize the order of keywords
-    const shuffledKeywords = this.shuffleArray([...selectedKeywords]);
+    // Select 3-4 random groups with weighted probability
+    const numGroups = Math.floor(Math.random() * 2) + 3; // 3 or 4 groups
+    const selectedGroups = [];
+    
+    for (let i = 0; i < numGroups; i++) {
+      const randomGroup = weightedGroups[Math.floor(Math.random() * weightedGroups.length)];
+      if (!selectedGroups.includes(randomGroup)) {
+        selectedGroups.push(randomGroup);
+      }
+    }
+
+    // Select one keyword from each selected group
+    const selectedKeywords = selectedGroups.map(group => {
+      const keywords = keywordGroups[group];
+      return keywords[Math.floor(Math.random() * keywords.length)];
+    });
 
     // Add time-based keywords
     const timeKeywords = ['today', 'latest', 'recent'];
     const timeKeyword = timeKeywords[Math.floor(Math.random() * timeKeywords.length)];
 
     // Combine keywords with randomization
-    const query = [...shuffledKeywords, timeKeyword].join(' ');
+    const query = [...selectedKeywords, timeKeyword].join(' ');
     
-    console.log(`[Serper News Service] Generated dynamic query: "${query}"`);
+    console.log(`[Serper News Service] Generated balanced dynamic query: "${query}"`);
     return query;
   }
 
