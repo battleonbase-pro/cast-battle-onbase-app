@@ -18,7 +18,11 @@
   },
   "dependencies": {
     "@prisma/client": "^5.0.0",
-    "prisma": "^5.0.0"
+    "prisma": "^5.0.0",
+    "ai": "^5.0.47",
+    "axios": "^1.12.2",
+    "dotenv": "^17.2.2",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "tsx": "^4.0.0",
