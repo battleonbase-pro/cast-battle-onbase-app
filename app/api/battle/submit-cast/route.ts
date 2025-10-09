@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const battleManager = await BattleManagerDB.getInstance();
     
     // Check if user is a participant in the current battle
-    const currentBattle = await battleManager.getCurrentBattle();
+    const currentBattle = await battleManager.getCurrentBattleSafe();
     if (!currentBattle) {
       return NextResponse.json({ 
         error: 'No active battle available' 

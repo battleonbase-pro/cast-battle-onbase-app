@@ -99,6 +99,7 @@ export class BattleManagerDB {
   /**
    * Ensure a battle exists (called by API endpoints)
    * This is the main entry point for server-side battle management
+   * WARNING: This method should NOT be called on every user request as it can interfere with worker timing
    */
   async ensureBattleExists(): Promise<void> {
     // Cleanup expired battles first
@@ -112,6 +113,20 @@ export class BattleManagerDB {
     
     // Check if we need to create a new battle
     await this.checkAndCreateBattle();
+  }
+
+  /**
+   * Get current battle without triggering any management logic
+   * This is safe to call on every user request
+   */
+  async getCurrentBattleSafe(): Promise<any> {
+    try {
+      const currentBattle = await this.db.getCurrentBattle();
+      return currentBattle;
+    } catch (error) {
+      console.error('Error fetching current battle:', error);
+      return null;
+    }
   }
 
   /**

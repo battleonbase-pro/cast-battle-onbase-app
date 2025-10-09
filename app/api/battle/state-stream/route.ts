@@ -42,7 +42,7 @@ export async function GET(_request: NextRequest) {
           }
 
           const battleManager = new BattleManagerDB();
-          const currentBattle = await battleManager.getCurrentBattle();
+          const currentBattle = await battleManager.getCurrentBattleSafe();
           
           if (currentBattle && currentBattle.status === 'ACTIVE') {
             const now = new Date();

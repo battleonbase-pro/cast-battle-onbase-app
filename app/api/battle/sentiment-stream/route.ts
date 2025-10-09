@@ -84,7 +84,7 @@ function calculateSentiment(casts: Array<{ side: string }>) {
 async function sendInitialData(controller: ReadableStreamDefaultController, encoder: TextEncoder) {
   try {
     const battleManager = await BattleManagerDB.getInstance();
-    const currentBattle = await battleManager.getCurrentBattle();
+    const currentBattle = await battleManager.getCurrentBattleSafe();
     
     if (currentBattle) {
       const casts = await battleManager.getCurrentBattleCasts();

@@ -12,10 +12,9 @@ export async function GET(_request: NextRequest) {
   try {
     const battleManager = await BattleManagerDB.getInstance();
     
-    // Ensure battle manager is initialized and battle exists
-    await battleManager.ensureBattleExists();
-    
-    const currentBattle = await battleManager.getCurrentBattle();
+    // Get current battle without triggering management logic
+    // This prevents user requests from interfering with worker battle timing
+    const currentBattle = await battleManager.getCurrentBattleSafe();
 
     if (!currentBattle) {
       return NextResponse.json({
@@ -57,6 +56,16 @@ export async function POST(request: NextRequest) {
     }
 
     const battleManager = await BattleManagerDB.getInstance();
+    
+    // Check if there's an active battle before allowing join
+    const currentBattle = await battleManager.getCurrentBattleSafe();
+    if (!currentBattle) {
+      return NextResponse.json({
+        success: false,
+        error: 'No active battle available to join'
+      }, { status: 400 });
+    }
+    
     await battleManager.joinBattle(userAddress);
 
     // Get user's updated points
