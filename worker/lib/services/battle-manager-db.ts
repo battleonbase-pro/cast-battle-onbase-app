@@ -54,19 +54,22 @@ export class BattleManagerDB {
       
       if (expiredBattles.length === 0) {
         console.log('✅ No expired battles found');
-        return;
-      }
-      
-      console.log(`📊 Found ${expiredBattles.length} expired battle(s)`);
-      
-      for (const battle of expiredBattles) {
-        console.log(`⏰ Completing expired battle: "${battle.title}" (${battle.id})`);
+      } else {
+        console.log(`📊 Found ${expiredBattles.length} expired battle(s)`);
         
-        // Complete the expired battle
-        await this.handleBattleCompletion(battle.id);
+        for (const battle of expiredBattles) {
+          console.log(`⏰ Completing expired battle: "${battle.title}" (${battle.id})`);
+          
+          // Complete the expired battle
+          await this.handleBattleCompletion(battle.id);
+        }
+        
+        console.log('✅ All expired battles processed');
       }
       
-      console.log('✅ All expired battles processed');
+      // After handling expired battles, check if we need to create a new battle
+      console.log('🕐 Checking if new battle needs to be created...');
+      await this.checkAndCreateBattle();
       
     } catch (error) {
       console.error('❌ Error checking for expired battles:', error);
