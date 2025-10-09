@@ -148,40 +148,7 @@ class BattleCompletionWorker {
     await this.performBattleCheck();
   }
 
-  // Initialize battle manager (replaces /api/init)
-  async initializeBattleManager(): Promise<any> {
-    if (!this.battleManager) {
-      throw new Error('Battle Manager not initialized');
-    }
-
-    try {
-      await this.battleManager.initialize();
-      const config = this.battleManager.getConfig();
-      const currentBattle = await this.battleManager.getCurrentBattle();
-      
-      console.log('✅ Battle manager initialized successfully');
-      console.log('📊 Battle generation interval:', config.battleDurationHours, 'hours');
-      console.log('📊 Battle generation enabled:', config.enabled);
-      
-      return {
-        success: true,
-        message: 'Battle manager initialized successfully',
-        config,
-        currentBattle: currentBattle ? {
-          id: currentBattle.id,
-          status: currentBattle.status,
-          topic: currentBattle.topic?.title,
-          participants: currentBattle.participants.length,
-          endTime: currentBattle.endTime
-        } : null
-      };
-    } catch (error) {
-      console.error('❌ Failed to initialize battle manager:', error);
-      throw error;
-    }
-  }
-
-  // Get battle manager status (replaces /api/init GET)
+  // Get battle manager status for /status endpoint
   async getBattleManagerStatus(): Promise<any> {
     if (!this.battleManager) {
       throw new Error('Battle Manager not initialized');
@@ -310,15 +277,6 @@ const createWorkerServer = () => {
           res.end(JSON.stringify(await worker.getBattleManagerStatus()));
           break;
           
-        case '/init':
-          if (req.method === 'POST') {
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify(await worker.initializeBattleManager()));
-          } else {
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify(await worker.getBattleManagerStatus()));
-          }
-          break;
           
         case '/trigger':
           if (req.method === 'POST') {
@@ -362,6 +320,7 @@ server.listen(port, () => {
   console.log(`📊 Health check: http://localhost:${port}/health`);
   console.log(`📊 Status: http://localhost:${port}/status`);
   console.log(`🔧 Manual trigger: POST http://localhost:${port}/trigger`);
+  console.log(`🚀 Worker is fully independent - no external initialization required`);
 });
 
 export default worker;

@@ -77,12 +77,6 @@ class WorkerServiceClient {
     return this.makeRequest('/status');
   }
 
-  /**
-   * Initialize battle manager
-   */
-  async initialize(): Promise<any> {
-    return this.makeRequest('/init', 'POST');
-  }
 
   /**
    * Trigger manual battle check

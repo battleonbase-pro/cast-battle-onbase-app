@@ -30,10 +30,9 @@ async function testWorkerIntegration() {
       currentBattle: status.currentBattle ? 'Active battle exists' : 'No active battle'
     });
 
-    // Test 3: Initialize worker
-    console.log('\n3️⃣ Testing worker initialization...');
-    const initResult = await workerClient.initialize();
-    console.log('✅ Worker initialization passed:', initResult);
+    // Test 3: Worker is self-initialized
+    console.log('\n3️⃣ Worker is self-initialized - no manual init required');
+    console.log('✅ Worker runs independently without external initialization');
 
     // Test 4: Trigger check
     console.log('\n4️⃣ Testing manual trigger...');

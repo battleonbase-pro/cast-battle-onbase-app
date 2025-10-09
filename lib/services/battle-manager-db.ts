@@ -7,7 +7,6 @@ import NewsService from './news-service';
 import { DatabaseService } from './database';
 import { broadcastBattleEvent } from './battle-broadcaster';
 import { DBSharedStateManager } from './db-shared-state';
-import { workerClient } from './worker-client';
 
 export interface BattleConfig {
   battleDurationHours: number;
@@ -72,16 +71,6 @@ export class BattleManagerDB {
    */
   async initialize(): Promise<void> {
     console.log(`Battle Manager initialized with ${this.config.battleDurationHours}h intervals`);
-    
-    // Initialize worker service
-    try {
-      console.log('🚀 Initializing worker service...');
-      await workerClient.initialize();
-      console.log('✅ Worker service initialized successfully');
-    } catch (error) {
-      console.error('❌ Failed to initialize worker service:', error);
-      console.log('⚠️ Battle manager will continue without worker service (fallback mode)');
-    }
     
     // Cleanup any expired battles first
     const cleanedCount = await this.db.cleanupExpiredBattles();
