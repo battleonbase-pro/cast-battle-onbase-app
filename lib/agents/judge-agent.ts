@@ -446,12 +446,146 @@ Calculate weighted scores and select the winner. Provide detailed scoring breakd
       const supportCasts = castsWithScores.filter(cast => cast.side === 'SUPPORT');
       const opposeCasts = castsWithScores.filter(cast => cast.side === 'OPPOSE');
 
+      // Handle edge case: Only 1 cast total - that user is always the winner
+      if (casts.length === 1) {
+        const winner = castsWithScores[0];
+        this.logActivity('Edge case: Only 1 cast submitted - automatic winner', {
+          winnerId: winner.id,
+          winnerSide: winner.side,
+          winnerScore: winner.totalScore.toFixed(2)
+        });
+        
+        return {
+          winner: {
+            id: winner.id,
+            castId: winner.id,
+            userId: winner.userId,
+            content: winner.content,
+            side: winner.side,
+            score: winner.totalScore
+          },
+          winnerMethod: 'hybrid',
+          reasoning: 'Only 1 cast submitted - automatic winner',
+          statistics: {
+            totalCasts: 1,
+            supportCasts: supportCasts.length,
+            opposeCasts: opposeCasts.length,
+            winningSide: winner.side
+          }
+        };
+      }
+
+      // Handle edge cases: one side has no casts
+      if (supportCasts.length === 0 && opposeCasts.length > 0) {
+        this.logActivity('Edge case: Only OPPOSE casts found, selecting winner from OPPOSE');
+        const top3 = opposeCasts
+          .sort((a, b) => b.totalScore - a.totalScore)
+          .slice(0, 3);
+        const randomIndex = Math.floor(Math.random() * top3.length);
+        const winner = top3[randomIndex];
+        
+        return {
+          winner: {
+            id: winner.id,
+            castId: winner.id,
+            userId: winner.userId,
+            content: winner.content,
+            side: winner.side,
+            score: winner.totalScore
+          },
+          winnerMethod: 'hybrid',
+          reasoning: 'Only OPPOSE casts submitted',
+          statistics: {
+            totalCasts: casts.length,
+            supportCasts: 0,
+            opposeCasts: opposeCasts.length,
+            winningSide: 'OPPOSE'
+          }
+        };
+      }
+      
+      if (opposeCasts.length === 0 && supportCasts.length > 0) {
+        this.logActivity('Edge case: Only SUPPORT casts found, selecting winner from SUPPORT');
+        const top3 = supportCasts
+          .sort((a, b) => b.totalScore - a.totalScore)
+          .slice(0, 3);
+        const randomIndex = Math.floor(Math.random() * top3.length);
+        const winner = top3[randomIndex];
+        
+        return {
+          winner: {
+            id: winner.id,
+            castId: winner.id,
+            userId: winner.userId,
+            content: winner.content,
+            side: winner.side,
+            score: winner.totalScore
+          },
+          winnerMethod: 'hybrid',
+          reasoning: 'Only SUPPORT casts submitted',
+          statistics: {
+            totalCasts: casts.length,
+            supportCasts: supportCasts.length,
+            opposeCasts: 0,
+            winningSide: 'SUPPORT'
+          }
+        };
+      }
+
       // Step 4: Determine winning group
       const supportScore = this.calculateGroupScore(supportCasts);
       const opposeScore = this.calculateGroupScore(opposeCasts);
       
-      const winningGroup = supportScore > opposeScore ? supportCasts : opposeCasts;
-      const winningSide = supportScore > opposeScore ? 'SUPPORT' : 'OPPOSE';
+      let winningGroup, winningSide;
+      
+      if (supportScore > opposeScore) {
+        winningGroup = supportCasts;
+        winningSide = 'SUPPORT';
+      } else if (opposeScore > supportScore) {
+        winningGroup = opposeCasts;
+        winningSide = 'OPPOSE';
+      } else {
+        // Equal participants on both sides - use quality-based tie-breaking
+        this.logActivity('Equal participants on both sides - using quality-based tie-breaking', {
+          supportCount: supportCasts.length,
+          opposeCount: opposeCasts.length,
+          supportScore: supportScore.toFixed(2),
+          opposeScore: opposeScore.toFixed(2)
+        });
+        
+        // Tie-breaking: Use total quality score across all casts
+        const supportTotalQuality = supportCasts.reduce((sum, cast) => sum + cast.qualityScore, 0);
+        const opposeTotalQuality = opposeCasts.reduce((sum, cast) => sum + cast.qualityScore, 0);
+        
+        if (supportTotalQuality > opposeTotalQuality) {
+          winningGroup = supportCasts;
+          winningSide = 'SUPPORT';
+          this.logActivity('Tie-breaker: SUPPORT wins on quality', {
+            supportTotalQuality: supportTotalQuality.toFixed(2),
+            opposeTotalQuality: opposeTotalQuality.toFixed(2)
+          });
+        } else if (opposeTotalQuality > supportTotalQuality) {
+          winningGroup = opposeCasts;
+          winningSide = 'OPPOSE';
+          this.logActivity('Tie-breaker: OPPOSE wins on quality', {
+            supportTotalQuality: supportTotalQuality.toFixed(2),
+            opposeTotalQuality: opposeTotalQuality.toFixed(2)
+          });
+        } else {
+          // Final tie-breaker: Random selection between sides
+          const randomSide = Math.random() < 0.5 ? 'SUPPORT' : 'OPPOSE';
+          winningGroup = randomSide === 'SUPPORT' ? supportCasts : opposeCasts;
+          winningSide = randomSide;
+          
+          this.logActivity('Tie-breaker: Random selection used (equal quality)', {
+            supportScore: supportScore.toFixed(2),
+            opposeScore: opposeScore.toFixed(2),
+            supportTotalQuality: supportTotalQuality.toFixed(2),
+            opposeTotalQuality: opposeTotalQuality.toFixed(2),
+            selectedSide: winningSide
+          });
+        }
+      }
 
       // Step 5: Select top 3 from winning group
       const top3 = winningGroup

@@ -289,7 +289,7 @@ export class BattleManagerDB {
       console.log(`📊 Found ${casts.length} casts for battle ${battleId}`);
 
       // Use Agent Orchestrator for AI-powered judging
-      const AgentOrchestrator = (await import('./agent-orchestrator')).default;
+      const AgentOrchestrator = (await import('../agents/agent-orchestrator')).default;
       const orchestrator = new AgentOrchestrator(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
       
       // Complete battle with optimized hybrid method
