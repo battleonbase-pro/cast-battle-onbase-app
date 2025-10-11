@@ -95,6 +95,7 @@ function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
 
   // Farcaster Wallet Component
   function FarcasterWalletComponent() {
@@ -898,16 +899,19 @@ function Home() {
         </div>
       )}
       
-      {/* Minimalist Header */}
-      <header className={styles.header}>
+      {/* Compact Expandable Header */}
+      <header className={`${styles.header} ${isHeaderExpanded ? styles.headerExpanded : styles.headerCollapsed}`}>
         <div className={styles.headerTop}>
           <div className={styles.headerLeft}>
             <div className={styles.titleRow}>
-              <h1 className={styles.title}>
+              <h1 className={styles.title} onClick={() => setIsHeaderExpanded(!isHeaderExpanded)}>
                 <span className={styles.baseText}>NewsCast</span> 
                 <span className={styles.debateContainer}>
                   <span className={styles.betaLabel}>Beta</span>
                   <span className={styles.debateText}>Debate</span>
+                </span>
+                <span className={styles.expandIcon}>
+                  {isHeaderExpanded ? '−' : '+'}
                 </span>
               </h1>
               <button 
@@ -920,6 +924,11 @@ function Home() {
                 ?
               </button>
             </div>
+            {isHeaderExpanded && (
+              <div className={styles.headerSubtitle}>
+                AI-Powered News Debates on Base
+              </div>
+            )}
           </div>
           {user && isFarcasterEnv === false ? (
             <div className={styles.userCompact}>
