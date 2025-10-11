@@ -2,6 +2,14 @@
 import { useState } from 'react';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import styles from './MultiWalletConnect.module.css';
+import { 
+  isMobileDevice, 
+  isIOS, 
+  isAndroid, 
+  getAvailableMobileWallets, 
+  openWalletApp,
+  type MobileWallet 
+} from '../lib/utils/mobile-wallet-detection';
 
 // Extend window interface for wallet detection
 declare global {
@@ -26,6 +34,10 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
   const { connect, connectors, isPending } = useConnect();
   const { disconnect } = useDisconnect();
   const [showWalletList, setShowWalletList] = useState(false);
+  
+  // Check if we're on mobile
+  const isMobile = isMobileDevice();
+  const mobileWallets = getAvailableMobileWallets();
 
   const handleConnect = async (connector: any) => {
     try {
@@ -38,6 +50,17 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
     } catch (error: any) {
       console.error('Connection error:', error);
       onError(error.message || 'Failed to connect wallet');
+    }
+  };
+
+  const handleMobileWalletConnect = (wallet: MobileWallet) => {
+    try {
+      console.log('Opening mobile wallet:', wallet.displayName);
+      openWalletApp(wallet, window.location.href);
+      setShowWalletList(false);
+    } catch (error: any) {
+      console.error('Mobile wallet error:', error);
+      onError(`Failed to open ${wallet.displayName}`);
     }
   };
 
@@ -143,23 +166,56 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
             </div>
             
             <div className={styles.walletOptions}>
-              {availableConnectors.map((connector) => (
-                <button
-                  key={connector.uid}
-                  onClick={() => {
-                    handleConnect(connector);
-                    setShowWalletList(false);
-                  }}
-                  className={styles.walletOption}
-                  disabled={isPending}
-                >
+              {isMobile ? (
+                // Mobile wallet options with deep links
+                mobileWallets.map((wallet) => (
+                  <button
+                    key={wallet.name}
+                    onClick={() => handleMobileWalletConnect(wallet)}
+                    className={styles.walletOption}
+                    disabled={isPending}
+                  >
+                    <div className={styles.walletIcon}>
+                      <img 
+                        src={wallet.icon} 
+                        alt={`${wallet.displayName} icon`}
+                        className={styles.walletIconImage}
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          target.nextElementSibling!.textContent = getWalletIconFallback(wallet.name);
+                        }}
+                      />
+                      <span className={styles.walletIconFallback}></span>
+                    </div>
+                    <div className={styles.walletInfo}>
+                      <div className={styles.walletName}>
+                        {wallet.displayName}
+                      </div>
+                      <div className={styles.mobileWalletSubtext}>
+                        {isIOS() ? 'Open in App' : 'Open in App'}
+                      </div>
+                    </div>
+                  </button>
+                ))
+              ) : (
+                // Desktop wallet options with browser extension connectors
+                availableConnectors.map((connector) => (
+                  <button
+                    key={connector.uid}
+                    onClick={() => {
+                      handleConnect(connector);
+                      setShowWalletList(false);
+                    }}
+                    className={styles.walletOption}
+                    disabled={isPending}
+                  >
                     <div className={styles.walletIcon}>
                       <img 
                         src={getWalletIcon(connector.name)} 
                         alt={`${getWalletDisplayName(connector.name)} icon`}
                         className={styles.walletIconImage}
                         onError={(e) => {
-                          // Fallback to emoji if image fails to load
                           const target = e.target as HTMLImageElement;
                           target.style.display = 'none';
                           target.nextElementSibling!.textContent = getWalletIconFallback(connector.name);
@@ -167,17 +223,27 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
                       />
                       <span className={styles.walletIconFallback}></span>
                     </div>
-                  <div className={styles.walletInfo}>
-                    <div className={styles.walletName}>
-                      {getWalletDisplayName(connector.name)}
+                    <div className={styles.walletInfo}>
+                      <div className={styles.walletName}>
+                        {getWalletDisplayName(connector.name)}
+                      </div>
                     </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                ))
+              )}
             </div>
             
               <div className={styles.walletHelp}>
-                <p>Don't have a wallet? <a href="https://metamask.io" target="_blank" rel="noopener noreferrer">Get MetaMask</a>, <a href="https://wallet.coinbase.com/" target="_blank" rel="noopener noreferrer">Get Base Wallet</a>, or <a href="https://phantom.app" target="_blank" rel="noopener noreferrer">Get Phantom</a></p>
+                {isMobile ? (
+                  <p>
+                    Don't have a wallet? 
+                    <a href="https://apps.apple.com/app/metamask/id1438144202" target="_blank" rel="noopener noreferrer"> Get MetaMask</a>, 
+                    <a href="https://apps.apple.com/app/trust-crypto-bitcoin-wallet/id1288339409" target="_blank" rel="noopener noreferrer"> Get Trust Wallet</a>, or 
+                    <a href="https://apps.apple.com/app/coinbase-wallet/id1278383455" target="_blank" rel="noopener noreferrer"> Get Coinbase Wallet</a>
+                  </p>
+                ) : (
+                  <p>Don't have a wallet? <a href="https://metamask.io" target="_blank" rel="noopener noreferrer">Get MetaMask</a>, <a href="https://wallet.coinbase.com/" target="_blank" rel="noopener noreferrer">Get Base Wallet</a>, or <a href="https://phantom.app" target="_blank" rel="noopener noreferrer">Get Phantom</a></p>
+                )}
               </div>
           </div>
         </div>
@@ -213,6 +279,7 @@ function getWalletIconFallback(walletName: string): string {
     case 'metamask':
       return '🦊';
     case 'coinbase wallet':
+    case 'coinbase':
       return '🔵';
     case 'rabby':
       return '🐰';
@@ -223,6 +290,8 @@ function getWalletIconFallback(walletName: string): string {
     case 'trust':
     case 'trust wallet':
       return '🔒';
+    case 'rainbow':
+      return '🌈';
     case 'injected wallet':
       return '💳';
     default:
