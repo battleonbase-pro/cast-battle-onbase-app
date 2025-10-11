@@ -84,6 +84,11 @@ class ErrorHandler {
         wallets.push({ type: 'rainbow', provider: window.ethereum });
       }
 
+      // Check for Rabby Wallet
+      if (window.ethereum?.isRabby) {
+        wallets.push({ type: 'rabby', provider: window.ethereum });
+      }
+
       // Check for Base Sign-In
       if (window.base) {
         wallets.push({ type: 'base', provider: window.base });

@@ -38,5 +38,9 @@ export const config = createConfig({
     injected({
       target: 'metaMask',
     }),
+    // Rabby Wallet connector
+    injected({
+      target: 'rabby',
+    }),
   ],
 })

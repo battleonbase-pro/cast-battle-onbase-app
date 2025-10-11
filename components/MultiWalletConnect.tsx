@@ -117,6 +117,8 @@ function getWalletIcon(walletName: string): string {
       return '🔵';
     case 'walletconnect':
       return '📱';
+    case 'rabby':
+      return '🐰';
     case 'injected':
       return '🔌';
     default:
@@ -132,6 +134,8 @@ function getWalletDisplayName(walletName: string): string {
       return 'Coinbase Wallet';
     case 'walletconnect':
       return 'WalletConnect';
+    case 'rabby':
+      return 'Rabby Wallet';
     case 'injected':
       return 'Browser Wallet';
     default:
@@ -147,6 +151,8 @@ function getWalletDescription(walletName: string): string {
       return 'Connect using Coinbase Wallet';
     case 'walletconnect':
       return 'Connect using mobile wallet via QR code';
+    case 'rabby':
+      return 'Connect using Rabby Wallet browser extension';
     case 'injected':
       return 'Connect using browser wallet';
     default:
