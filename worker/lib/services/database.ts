@@ -10,7 +10,7 @@ const createPrismaClient = () => {
     : `${databaseUrl}?connection_limit=20&pool_timeout=20`
 
   return new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    log: ['error', 'warn'], // Only log errors and warnings, no queries
     datasources: {
       db: {
         url: urlWithPooling,
