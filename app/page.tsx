@@ -158,10 +158,13 @@ function Home() {
     useEffect(() => {
       try {
         if (isConnected && address) {
-          setUser({
+          const userData = {
             address: address,
             username: 'Farcaster User'
-          });
+          };
+          setUser(userData);
+          localStorage.setItem('newscast-battle-user', JSON.stringify(userData));
+          fetchUserPoints(address);
           console.log('✅ Farcaster wallet connected:', address);
         } else {
           setUser(null);
@@ -172,13 +175,13 @@ function Home() {
       }
     }, [isConnected, address]);
 
-    if (isConnected) {
+    if (isConnected && address) {
       return (
         <div className={styles.userCompact}>
           <div className={styles.userInfo}>
             <span className={styles.userAddress}>{address?.slice(0, 6)}...{address?.slice(-4)}</span>
-            <span className={`${styles.userPoints} ${pointsAnimation ? styles.pointsAnimated : ''}`}>
-              🔵 {userPoints} pts
+            <span className={styles.userPoints}>
+              🔵 {user?.points || 0} pts
             </span>
           </div>
           {/* No disconnect button in Farcaster environment */}
