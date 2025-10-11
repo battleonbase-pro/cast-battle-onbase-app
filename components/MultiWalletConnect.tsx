@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import styles from './MultiWalletConnect.module.css';
 import { 
@@ -76,6 +76,11 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
 
   const handleMobileWalletConnect = async (wallet: MobileWallet) => {
     try {
+      // Only use mobile wallet logic on actual mobile devices
+      if (!isMobile) {
+        throw new Error('Mobile wallet connection only available on mobile devices');
+      }
+      
       console.log('Connecting to mobile wallet:', wallet.displayName);
       
       // Create a callback session
@@ -148,72 +153,73 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
     disconnect();
   };
 
-  // Filter to show only specific wallets and remove duplicates
-  const availableConnectors = connectors.filter(connector => {
-    const walletName = connector.name.toLowerCase();
-    console.log('Available connector:', walletName, connector.type);
-    // Only include specific wallet types, avoiding generic injected connectors
-    return (
-      walletName === 'metamask' ||
-      walletName === 'coinbase wallet' ||
-      walletName === 'rabby' ||
-      walletName === 'walletconnect' ||
-      walletName === 'phantom' ||
-      walletName === 'trust' ||
-      walletName === 'trust wallet' ||
-      walletName === 'injected wallet' // Generic injected connector
-    );
-  }).reduce((unique, connector) => {
-    const walletName = connector.name.toLowerCase();
-    
-    // For injected wallet, try to detect the actual wallet
-    if (walletName === 'injected wallet' && typeof window !== 'undefined' && window.ethereum) {
-      // Check for Rabby first (it injects isRabby property)
-      if (window.ethereum.isRabby) {
-        connector.name = 'Rabby Wallet';
-      } else if (window.ethereum.isPhantom) {
-        connector.name = 'Phantom Wallet';
-      } else if (window.ethereum.isTrust) {
-        connector.name = 'Trust Wallet';
-      } else if (window.ethereum.isMetaMask && !window.ethereum.isRabby) {
-        // Skip if MetaMask is already handled by dedicated connector
-        // But only if it's not Rabby (Rabby can have both isRabby and isMetaMask)
-        return unique;
-      } else if (window.ethereum.isCoinbaseWallet) {
-        // Skip if Coinbase Wallet is already handled by dedicated connector
-        return unique;
-      } else {
-        connector.name = 'Browser Wallet';
-      }
-    }
-    
-    // Use a more specific key to avoid duplicates
-    const walletKey = walletName.includes('metamask') ? 'metamask' :
-                     walletName.includes('coinbase') ? 'coinbase' :
-                     walletName.includes('rabby') ? 'rabby' :
-                     walletName.includes('walletconnect') ? 'walletconnect' :
-                     walletName.includes('phantom') ? 'phantom' :
-                     walletName.includes('trust') ? 'trust' :
-                     walletName.includes('injected') ? 'injected' : walletName;
-    
-    const existingIndex = unique.findIndex(c => {
-      const existingName = c.name.toLowerCase();
+  // Filter to show only specific wallets and remove duplicates (memoized to prevent repeated execution)
+  const availableConnectors = useMemo(() => {
+    return connectors.filter(connector => {
+      const walletName = connector.name.toLowerCase();
+      // Only include specific wallet types, avoiding generic injected connectors
       return (
-        (walletKey === 'metamask' && existingName.includes('metamask')) ||
-        (walletKey === 'coinbase' && existingName.includes('coinbase')) ||
-        (walletKey === 'rabby' && existingName.includes('rabby')) ||
-        (walletKey === 'walletconnect' && existingName.includes('walletconnect')) ||
-        (walletKey === 'phantom' && existingName.includes('phantom')) ||
-        (walletKey === 'trust' && existingName.includes('trust')) ||
-        (walletKey === 'injected' && existingName.includes('injected'))
+        walletName === 'metamask' ||
+        walletName === 'coinbase wallet' ||
+        walletName === 'rabby' ||
+        walletName === 'walletconnect' ||
+        walletName === 'phantom' ||
+        walletName === 'trust' ||
+        walletName === 'trust wallet' ||
+        walletName === 'injected wallet' // Generic injected connector
       );
-    });
-    
-    if (existingIndex === -1) {
-      unique.push(connector);
-    }
-    return unique;
-  }, [] as typeof connectors);
+    }).reduce((unique, connector) => {
+      const walletName = connector.name.toLowerCase();
+      
+      // For injected wallet, try to detect the actual wallet
+      if (walletName === 'injected wallet' && typeof window !== 'undefined' && window.ethereum) {
+        // Check for Rabby first (it injects isRabby property)
+        if (window.ethereum.isRabby) {
+          connector.name = 'Rabby Wallet';
+        } else if (window.ethereum.isPhantom) {
+          connector.name = 'Phantom Wallet';
+        } else if (window.ethereum.isTrust) {
+          connector.name = 'Trust Wallet';
+        } else if (window.ethereum.isMetaMask && !window.ethereum.isRabby) {
+          // Skip if MetaMask is already handled by dedicated connector
+          // But only if it's not Rabby (Rabby can have both isRabby and isMetaMask)
+          return unique;
+        } else if (window.ethereum.isCoinbaseWallet) {
+          // Skip if Coinbase Wallet is already handled by dedicated connector
+          return unique;
+        } else {
+          connector.name = 'Browser Wallet';
+        }
+      }
+      
+      // Use a more specific key to avoid duplicates
+      const walletKey = walletName.includes('metamask') ? 'metamask' :
+                       walletName.includes('coinbase') ? 'coinbase' :
+                       walletName.includes('rabby') ? 'rabby' :
+                       walletName.includes('walletconnect') ? 'walletconnect' :
+                       walletName.includes('phantom') ? 'phantom' :
+                       walletName.includes('trust') ? 'trust' :
+                       walletName.includes('injected') ? 'injected' : walletName;
+      
+      const existingIndex = unique.findIndex(c => {
+        const existingName = c.name.toLowerCase();
+        return (
+          (walletKey === 'metamask' && existingName.includes('metamask')) ||
+          (walletKey === 'coinbase' && existingName.includes('coinbase')) ||
+          (walletKey === 'rabby' && existingName.includes('rabby')) ||
+          (walletKey === 'walletconnect' && existingName.includes('walletconnect')) ||
+          (walletKey === 'phantom' && existingName.includes('phantom')) ||
+          (walletKey === 'trust' && existingName.includes('trust')) ||
+          (walletKey === 'injected' && existingName.includes('injected'))
+        );
+      });
+      
+      if (existingIndex === -1) {
+        unique.push(connector);
+      }
+      return unique;
+    }, [] as typeof connectors);
+  }, [connectors]);
 
   // Don't show connected state here - let the main page handle it
   // This component only handles the connection modal
