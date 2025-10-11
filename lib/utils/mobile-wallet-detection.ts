@@ -42,20 +42,12 @@ export function isAndroid(): boolean {
 // Mobile wallet configurations with WalletConnect support
 export const MOBILE_WALLETS: MobileWallet[] = [
   {
-    name: 'metamask',
-    displayName: 'MetaMask',
-    icon: '/wallet-icons/metamask.svg',
-    deepLink: 'metamask://wc?uri=',
-    appStoreUrl: 'https://apps.apple.com/app/metamask/id1438144202',
-    playStoreUrl: 'https://play.google.com/store/apps/details?id=io.metamask',
-  },
-  {
-    name: 'trust',
-    displayName: 'Trust Wallet',
-    icon: '/wallet-icons/trust.svg',
-    deepLink: 'trust://wc?uri=',
-    appStoreUrl: 'https://apps.apple.com/app/trust-crypto-bitcoin-wallet/id1288339409',
-    playStoreUrl: 'https://play.google.com/store/apps/details?id=com.wallet.crypto.trustapp',
+    name: 'walletconnect',
+    displayName: 'WalletConnect',
+    icon: '/wallet-icons/walletconnect.svg',
+    deepLink: 'walletconnect://wc?uri=',
+    appStoreUrl: 'https://apps.apple.com/app/walletconnect/id1359134690',
+    playStoreUrl: 'https://play.google.com/store/apps/details?id=com.walletconnect',
   },
   {
     name: 'coinbase',
@@ -64,14 +56,6 @@ export const MOBILE_WALLETS: MobileWallet[] = [
     deepLink: 'cbwallet://wc?uri=',
     appStoreUrl: 'https://apps.apple.com/app/coinbase-wallet/id1278383455',
     playStoreUrl: 'https://play.google.com/store/apps/details?id=org.toshi',
-  },
-  {
-    name: 'rainbow',
-    displayName: 'Rainbow',
-    icon: '/wallet-icons/rainbow.svg',
-    deepLink: 'rainbow://wc?uri=',
-    appStoreUrl: 'https://apps.apple.com/app/rainbow-ethereum-wallet/id1457119021',
-    playStoreUrl: 'https://play.google.com/store/apps/details?id=me.rainbow',
   },
   {
     name: 'phantom',

@@ -87,8 +87,27 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
       const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
       const hasValidWalletConnectId = walletConnectProjectId && walletConnectProjectId !== 'your-walletconnect-project-id';
       
-      // Handle Phantom and Coinbase Wallet differently (use built-in browsers)
-      if (wallet.name === 'phantom' || wallet.name === 'coinbase') {
+      // Handle WalletConnect differently (use WalletConnect connector)
+      if (wallet.name === 'walletconnect') {
+        console.log(`Using WalletConnect for ${wallet.displayName}`);
+        const walletConnectConnector = connectors.find(connector => 
+          connector.name.toLowerCase().includes('walletconnect')
+        );
+        
+        if (walletConnectConnector) {
+          console.log('Using WalletConnect connector for mobile wallet connection');
+          await connect({ connector: walletConnectConnector });
+          setShowWalletList(false);
+          return;
+        } else {
+          onError('WalletConnect connector not available. Please configure WalletConnect.');
+          setShowWalletList(false);
+          return;
+        }
+      }
+      
+      // Handle Phantom differently (use built-in browser)
+      if (wallet.name === 'phantom') {
         console.log(`Opening ${wallet.displayName} with built-in browser`);
         const baseUrl = window.location.origin;
         const deepLink = `${wallet.name.toLowerCase()}://dapp/${encodeURIComponent(baseUrl)}`;
@@ -106,6 +125,25 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
         
         setShowWalletList(false);
         return;
+      }
+      
+      // Handle Coinbase Wallet differently (use WalletConnect when in mobile browser)
+      if (wallet.name === 'coinbase') {
+        console.log(`Using WalletConnect for ${wallet.displayName} in mobile browser`);
+        const walletConnectConnector = connectors.find(connector => 
+          connector.name.toLowerCase().includes('walletconnect')
+        );
+        
+        if (walletConnectConnector) {
+          console.log('Using WalletConnect connector for Coinbase Wallet mobile connection');
+          await connect({ connector: walletConnectConnector });
+          setShowWalletList(false);
+          return;
+        } else {
+          onError('WalletConnect connector not available for Coinbase Wallet. Please configure WalletConnect.');
+          setShowWalletList(false);
+          return;
+        }
       }
       
       if (hasValidWalletConnectId) {
@@ -282,12 +320,13 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
                           {wallet.displayName}
                         </div>
                         <div className={styles.mobileWalletSubtext}>
-                          {hasValidWalletConnectId ? 
-                            (wallet.name === 'phantom' || wallet.name === 'coinbase' ? 
+                          {wallet.name === 'walletconnect' ? 
+                            'Connect via WalletConnect' :
+                            wallet.name === 'coinbase' ? 
+                              'Connect via WalletConnect' :
+                            wallet.name === 'phantom' ? 
                               'Open App & Use Browser' : 
                               'Connect via WalletConnect'
-                            ) : 
-                            'Open App (Setup Required)'
                           }
                         </div>
                       </div>
@@ -333,9 +372,9 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
                 {isMobile ? (
                   <p>
                     Don't have a wallet? 
-                    <a href="https://apps.apple.com/app/metamask/id1438144202" target="_blank" rel="noopener noreferrer"> Get MetaMask</a>, 
-                    <a href="https://apps.apple.com/app/trust-crypto-bitcoin-wallet/id1288339409" target="_blank" rel="noopener noreferrer"> Get Trust Wallet</a>, or 
-                    <a href="https://apps.apple.com/app/coinbase-wallet/id1278383455" target="_blank" rel="noopener noreferrer"> Get Coinbase Wallet</a>
+                    <a href="https://apps.apple.com/app/walletconnect/id1359134690" target="_blank" rel="noopener noreferrer"> Get WalletConnect</a>, 
+                    <a href="https://apps.apple.com/app/coinbase-wallet/id1278383455" target="_blank" rel="noopener noreferrer"> Get Coinbase Wallet</a>, or 
+                    <a href="https://apps.apple.com/app/phantom-solana-wallet/id1598432977" target="_blank" rel="noopener noreferrer"> Get Phantom</a>
                   </p>
                 ) : (
                   <p>Don't have a wallet? <a href="https://metamask.io" target="_blank" rel="noopener noreferrer">Get MetaMask</a>, <a href="https://wallet.coinbase.com/" target="_blank" rel="noopener noreferrer">Get Base Wallet</a>, or <a href="https://phantom.app" target="_blank" rel="noopener noreferrer">Get Phantom</a></p>
