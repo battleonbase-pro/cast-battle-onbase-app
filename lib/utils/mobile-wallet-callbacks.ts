@@ -62,47 +62,26 @@ export function checkWalletCallbackSessions(): WalletCallbackSession[] {
   return completedSessions;
 }
 
-// Generate universal link for wallet app
+// Generate universal link for wallet app with proper connection flow
 export function generateUniversalLink(wallet: string, sessionId: string): string {
   const baseUrl = window.location.origin;
   const callbackUrl = `${baseUrl}/api/wallet/callback?session=${sessionId}&wallet=${wallet}`;
   
-  const universalLinks: Record<string, UniversalLinkConfig> = {
-    metamask: {
-      scheme: 'metamask',
-      host: 'dapp',
-      path: 'browse'
-    },
-    trust: {
-      scheme: 'trust',
-      host: 'open_url',
-      path: ''
-    },
-    coinbase: {
-      scheme: 'cbwallet',
-      host: 'dapp',
-      path: 'browse'
-    },
-    rainbow: {
-      scheme: 'rainbow',
-      host: 'dapp',
-      path: 'browse'
-    },
-    phantom: {
-      scheme: 'phantom',
-      host: 'dapp',
-      path: 'browse'
-    }
+  // Use proper connection deep links that trigger sign-in flow
+  const connectionLinks: Record<string, string> = {
+    metamask: `metamask://dapp/${encodeURIComponent(baseUrl)}`,
+    trust: `trust://open_url?url=${encodeURIComponent(baseUrl)}`,
+    coinbase: `cbwallet://dapp/${encodeURIComponent(baseUrl)}`,
+    rainbow: `rainbow://dapp/${encodeURIComponent(baseUrl)}`,
+    phantom: `phantom://dapp/${encodeURIComponent(baseUrl)}`,
   };
   
-  const config = universalLinks[wallet.toLowerCase()];
-  if (!config) {
+  const deepLink = connectionLinks[wallet.toLowerCase()];
+  if (!deepLink) {
     throw new Error(`Unsupported wallet: ${wallet}`);
   }
   
-  // Create universal link with callback
-  const encodedCallbackUrl = encodeURIComponent(callbackUrl);
-  return `${config.scheme}://${config.host}/${config.path}?url=${encodedCallbackUrl}`;
+  return deepLink;
 }
 
 // Alternative: Use custom URL scheme with app-specific callback

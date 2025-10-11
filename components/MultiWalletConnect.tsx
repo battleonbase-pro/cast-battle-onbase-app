@@ -83,35 +83,33 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
       
       console.log('Connecting to mobile wallet:', wallet.displayName);
       
-      // Create a callback session
-      const session = createWalletCallbackSession(wallet.name);
-      console.log('Created wallet session:', session.id);
+      // Check if WalletConnect is properly configured
+      const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+      const hasValidWalletConnectId = walletConnectProjectId && walletConnectProjectId !== 'your-walletconnect-project-id';
       
-      // Generate callback URL
-      const callbackUrl = `${window.location.origin}/api/wallet/callback?session=${session.id}&wallet=${wallet.name}`;
-      
-      // Try different callback methods
-      let deepLinkUrl = '';
-      
-      try {
-        // Method 1: Universal Link
-        deepLinkUrl = generateUniversalLink(wallet.name, session.id);
-      } catch (error) {
-        console.log('Universal link failed, trying custom scheme');
-        // Method 2: Custom Scheme
-        deepLinkUrl = generateCustomSchemeCallback(wallet.name, session.id);
+      if (hasValidWalletConnectId) {
+        // Use WalletConnect for proper mobile wallet connection
+        const walletConnectConnector = connectors.find(connector => 
+          connector.name.toLowerCase().includes('walletconnect')
+        );
+        
+        if (walletConnectConnector) {
+          console.log('Using WalletConnect for mobile wallet connection');
+          await connect({ connector: walletConnectConnector });
+          setShowWalletList(false);
+          return;
+        }
       }
       
-      if (!deepLinkUrl) {
-        throw new Error('Failed to generate wallet deep link');
-      }
-      
-      console.log('Opening wallet with deep link:', deepLinkUrl);
+      // Fallback: Use simple deep link (this won't trigger sign-in, just opens the app)
+      console.log('WalletConnect not available, using fallback deep link');
+      const baseUrl = window.location.origin;
+      const deepLink = `${wallet.name.toLowerCase()}://dapp/${encodeURIComponent(baseUrl)}`;
       
       // Open wallet app
       const iframe = document.createElement('iframe');
       iframe.style.display = 'none';
-      iframe.src = deepLinkUrl;
+      iframe.src = deepLink;
       document.body.appendChild(iframe);
       
       // Remove iframe after a short delay
@@ -119,28 +117,8 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
         document.body.removeChild(iframe);
       }, 1000);
       
-      // Start polling for connection status
-      const stopPolling = startWalletConnectionPolling(
-        session.id,
-        (completedSession: WalletCallbackSession) => {
-          console.log('Wallet connection completed:', completedSession);
-          setShowWalletList(false);
-          // Simulate successful connection
-          if (completedSession.status === 'completed') {
-            onConnect('0x' + '0'.repeat(40)); // Placeholder address
-          } else {
-            onError('Wallet connection failed');
-          }
-        },
-        (error: string) => {
-          console.error('Wallet connection error:', error);
-          onError(error);
-        }
-      );
-      
-      // Store cleanup function
-      (window as any).stopWalletPolling = stopPolling;
-      
+      // Show helpful message
+      onError(`Please configure WalletConnect for proper mobile wallet connection. Currently only opens the ${wallet.displayName} app.`);
       setShowWalletList(false);
       
     } catch (error: any) {
@@ -253,37 +231,42 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
             
             <div className={styles.walletOptions}>
               {isMobile ? (
-                // Mobile wallet options with alternative callbacks
-                mobileWallets.map((wallet) => (
-                  <button
-                    key={wallet.name}
-                    onClick={() => handleMobileWalletConnect(wallet)}
-                    className={styles.walletOption}
-                    disabled={isPending}
-                  >
-                    <div className={styles.walletIcon}>
-                      <img 
-                        src={wallet.icon} 
-                        alt={`${wallet.displayName} icon`}
-                        className={styles.walletIconImage}
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          target.nextElementSibling!.textContent = getWalletIconFallback(wallet.name);
-                        }}
-                      />
-                      <span className={styles.walletIconFallback}></span>
-                    </div>
-                    <div className={styles.walletInfo}>
-                      <div className={styles.walletName}>
-                        {wallet.displayName}
+                // Mobile wallet options with WalletConnect or fallback
+                (() => {
+                  const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+                  const hasValidWalletConnectId = walletConnectProjectId && walletConnectProjectId !== 'your-walletconnect-project-id';
+                  
+                  return mobileWallets.map((wallet) => (
+                    <button
+                      key={wallet.name}
+                      onClick={() => handleMobileWalletConnect(wallet)}
+                      className={styles.walletOption}
+                      disabled={isPending}
+                    >
+                      <div className={styles.walletIcon}>
+                        <img 
+                          src={wallet.icon} 
+                          alt={`${wallet.displayName} icon`}
+                          className={styles.walletIconImage}
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            target.nextElementSibling!.textContent = getWalletIconFallback(wallet.name);
+                          }}
+                        />
+                        <span className={styles.walletIconFallback}></span>
                       </div>
-                      <div className={styles.mobileWalletSubtext}>
-                        Open in App & Sign In
+                      <div className={styles.walletInfo}>
+                        <div className={styles.walletName}>
+                          {wallet.displayName}
+                        </div>
+                        <div className={styles.mobileWalletSubtext}>
+                          {hasValidWalletConnectId ? 'Connect via WalletConnect' : 'Open App (Setup Required)'}
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                ))
+                    </button>
+                  ));
+                })()
               ) : (
                 // Desktop wallet options with browser extension connectors
                 availableConnectors.map((connector) => (
