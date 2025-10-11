@@ -71,21 +71,8 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
     return unique;
   }, [] as typeof connectors);
 
-  if (isConnected && address) {
-    return (
-      <div className={styles.connectedWallet}>
-        <span className={styles.walletAddress}>
-          {address.slice(0, 6)}...{address.slice(-4)}
-        </span>
-        <button 
-          onClick={handleDisconnect}
-          className={styles.disconnectButton}
-        >
-          Disconnect
-        </button>
-      </div>
-    );
-  }
+  // Don't show connected state here - let the main page handle it
+  // This component only handles the connection modal
 
   return (
     <>

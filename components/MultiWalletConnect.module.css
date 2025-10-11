@@ -218,39 +218,6 @@
   }
 }
 
-/* Connected Wallet Styles */
-.connectedWallet {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  max-width: 200px;
-}
-
-
-.walletAddress {
-  font-size: 14px;
-  font-weight: 500;
-  color: #374151;
-  font-family: 'SF Mono', 'Monaco', monospace;
-}
-
-
-.disconnectButton {
-  padding: 6px 12px;
-  background: #ef4444;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.disconnectButton:hover {
-  background: #dc2626;
-}
 
 /* Responsive Design */
 @media (max-width: 768px) {
@@ -365,17 +332,4 @@
     padding: 12px 16px 16px;
   }
   
-  .connectedWallet {
-    max-width: 150px;
-    gap: 8px;
-  }
-  
-  .walletAddress {
-    font-size: 12px;
-  }
-  
-  .disconnectButton {
-    padding: 4px 8px;
-    font-size: 10px;
-  }
 }
