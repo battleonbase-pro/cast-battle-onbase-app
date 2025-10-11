@@ -65,14 +65,16 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
     
     // For injected wallet, try to detect the actual wallet
     if (walletName === 'injected wallet' && typeof window !== 'undefined' && window.ethereum) {
+      // Check for Rabby first (it injects isRabby property)
       if (window.ethereum.isRabby) {
         connector.name = 'Rabby Wallet';
       } else if (window.ethereum.isPhantom) {
         connector.name = 'Phantom Wallet';
       } else if (window.ethereum.isTrust) {
         connector.name = 'Trust Wallet';
-      } else if (window.ethereum.isMetaMask) {
+      } else if (window.ethereum.isMetaMask && !window.ethereum.isRabby) {
         // Skip if MetaMask is already handled by dedicated connector
+        // But only if it's not Rabby (Rabby can have both isRabby and isMetaMask)
         return unique;
       } else if (window.ethereum.isCoinbaseWallet) {
         // Skip if Coinbase Wallet is already handled by dedicated connector
