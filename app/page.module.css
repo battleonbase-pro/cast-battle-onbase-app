@@ -134,8 +134,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 32px;
-  height: 32px;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .signOutBtn:hover {
@@ -143,6 +143,15 @@
   color: white;
   border-color: #0000ff;
   transform: translateY(-1px);
+}
+
+.signOutBtn:active {
+  transform: scale(0.95);
+}
+
+.signOutBtn:focus {
+  outline: 2px solid #0000ff;
+  outline-offset: 2px;
 }
 
 .signOutBtn:hover .powerIcon {
@@ -1851,5 +1860,18 @@
   
   .helpSection {
     margin-bottom: 16px;
+  }
+}
+
+
+/* Mobile touch improvements */
+@media (max-width: 768px) {
+  .signOutBtn {
+    min-width: 48px;
+    min-height: 48px;
+    padding: 12px;
+    /* Improve touch target */
+    -webkit-tap-highlight-color: rgba(0, 0, 255, 0.1);
+    touch-action: manipulation;
   }
 }
