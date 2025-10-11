@@ -85,6 +85,7 @@ interface BattleHistory {
 interface User {
   address: string;
   username?: string;
+  points?: number;
 }
 
 // Create a client
@@ -95,7 +96,6 @@ function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
 
   // Farcaster Wallet Component
   function FarcasterWalletComponent() {
@@ -107,11 +107,10 @@ function Home() {
       try {
         if (isFarcasterEnv === true && connectors.length > 0) {
           console.log('🎯 Farcaster environment detected, attempting immediate connection...');
-          const connectPromise = connect({ connector: connectors[0] });
-          if (connectPromise && typeof connectPromise.catch === 'function') {
-            connectPromise.catch((error: Error) => {
-              console.error('⚠️ Immediate connection failed:', error);
-            });
+          try {
+            connect({ connector: connectors[0] });
+          } catch (error) {
+            console.error('⚠️ Immediate connection failed:', error);
           }
         }
       } catch (error) {
@@ -899,19 +898,16 @@ function Home() {
         </div>
       )}
       
-      {/* Compact Expandable Header */}
-      <header className={`${styles.header} ${isHeaderExpanded ? styles.headerExpanded : styles.headerCollapsed}`}>
+      {/* Minimal Header */}
+      <header className={styles.header}>
         <div className={styles.headerTop}>
           <div className={styles.headerLeft}>
             <div className={styles.titleRow}>
-              <h1 className={styles.title} onClick={() => setIsHeaderExpanded(!isHeaderExpanded)}>
+              <h1 className={styles.title}>
                 <span className={styles.baseText}>NewsCast</span> 
                 <span className={styles.debateContainer}>
                   <span className={styles.betaLabel}>Beta</span>
                   <span className={styles.debateText}>Debate</span>
-                </span>
-                <span className={styles.expandIcon}>
-                  {isHeaderExpanded ? '−' : '+'}
                 </span>
               </h1>
               <button 
@@ -924,11 +920,6 @@ function Home() {
                 ?
               </button>
             </div>
-            {isHeaderExpanded && (
-              <div className={styles.headerSubtitle}>
-                AI-Powered News Debates on Base
-              </div>
-            )}
           </div>
           {user && isFarcasterEnv === false ? (
             <div className={styles.userCompact}>
@@ -972,10 +963,12 @@ function Home() {
           ) : isFarcasterEnv ? (
             <FarcasterWalletComponent />
           ) : (
-            <MultiWalletConnect 
-              onConnect={handleWalletConnect}
-              onError={handleWalletError}
-            />
+            <div className={styles.signInWrapper}>
+              <MultiWalletConnect 
+                onConnect={handleWalletConnect}
+                onError={handleWalletError}
+              />
+            </div>
           )}
                 </div>
       </header>

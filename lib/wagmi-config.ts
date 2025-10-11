@@ -19,10 +19,14 @@ export const config = createConfig({
         url: 'https://news-debate-onbase-app.vercel.app',
       },
     }),
-    // Coinbase Wallet connector
+    // Coinbase Wallet connector (Base Wallet)
     coinbaseWallet({
       appName: 'NewsCast Debate',
       appLogoUrl: 'https://news-debate-onbase-app.vercel.app/og-image.png',
+    }),
+    // Rabby Wallet connector
+    injected({
+      target: 'rabby',
     }),
     // WalletConnect connector (for mobile wallets)
     walletConnect({
@@ -34,13 +38,13 @@ export const config = createConfig({
         icons: ['https://news-debate-onbase-app.vercel.app/og-image.png'],
       },
     }),
-    // Generic injected connector (for other wallets)
+    // Phantom Wallet connector
     injected({
-      target: 'metaMask',
+      target: 'phantom',
     }),
-    // Rabby Wallet connector
+    // Trust Wallet connector
     injected({
-      target: 'rabby',
+      target: 'trust',
     }),
   ],
 })

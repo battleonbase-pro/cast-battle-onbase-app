@@ -30,23 +30,53 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
     disconnect();
   };
 
-  // Filter out Farcaster connector for non-Farcaster environments
-  const availableConnectors = connectors.filter(connector => 
-    connector.name !== 'Farcaster Mini App'
-  );
+  // Filter to show only specific wallets and remove duplicates
+  const availableConnectors = connectors.filter(connector => {
+    const walletName = connector.name.toLowerCase();
+    // Only include specific wallet types, avoiding generic injected connectors
+    return (
+      walletName === 'metamask' ||
+      walletName === 'coinbase wallet' ||
+      walletName === 'rabby' ||
+      walletName === 'walletconnect' ||
+      walletName === 'phantom' ||
+      walletName === 'trust' ||
+      walletName === 'trust wallet'
+    );
+  }).reduce((unique, connector) => {
+    const walletName = connector.name.toLowerCase();
+    // Use a more specific key to avoid duplicates
+    const walletKey = walletName.includes('metamask') ? 'metamask' :
+                     walletName.includes('coinbase') ? 'coinbase' :
+                     walletName.includes('rabby') ? 'rabby' :
+                     walletName.includes('walletconnect') ? 'walletconnect' :
+                     walletName.includes('phantom') ? 'phantom' :
+                     walletName.includes('trust') ? 'trust' : walletName;
+    
+    const existingIndex = unique.findIndex(c => {
+      const existingName = c.name.toLowerCase();
+      return (
+        (walletKey === 'metamask' && existingName.includes('metamask')) ||
+        (walletKey === 'coinbase' && existingName.includes('coinbase')) ||
+        (walletKey === 'rabby' && existingName.includes('rabby')) ||
+        (walletKey === 'walletconnect' && existingName.includes('walletconnect')) ||
+        (walletKey === 'phantom' && existingName.includes('phantom')) ||
+        (walletKey === 'trust' && existingName.includes('trust'))
+      );
+    });
+    
+    if (existingIndex === -1) {
+      unique.push(connector);
+    }
+    return unique;
+  }, [] as typeof connectors);
 
   if (isConnected && address) {
     return (
       <div className={styles.connectedWallet}>
-        <div className={styles.walletInfo}>
-          <div className={styles.walletIcon}>🔗</div>
-          <div className={styles.walletDetails}>
-            <div className={styles.walletAddress}>
-              {address.slice(0, 6)}...{address.slice(-4)}
-            </div>
-            <div className={styles.walletStatus}>Connected</div>
-          </div>
-        </div>
+        <span className={styles.walletAddress}>
+          {address.slice(0, 6)}...{address.slice(-4)}
+        </span>
         <button 
           onClick={handleDisconnect}
           className={styles.disconnectButton}
@@ -58,8 +88,8 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
   }
 
   return (
-    <div className={styles.walletConnect}>
-      {!showWalletList ? (
+    <>
+      <div className={styles.walletConnect}>
         <button 
           onClick={() => setShowWalletList(true)}
           className={styles.connectButton}
@@ -67,60 +97,102 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
         >
           {isPending ? 'Connecting...' : 'Connect Wallet'}
         </button>
-      ) : (
-        <div className={styles.walletList}>
-          <div className={styles.walletListHeader}>
-            <h3>Choose Wallet</h3>
-            <button 
-              onClick={() => setShowWalletList(false)}
-              className={styles.closeButton}
-            >
-              ✕
-            </button>
-          </div>
-          
-          <div className={styles.walletOptions}>
-            {availableConnectors.map((connector) => (
-              <button
-                key={connector.uid}
-                onClick={() => handleConnect(connector)}
-                className={styles.walletOption}
-                disabled={isPending}
+      </div>
+
+      {/* Wallet Selection Modal */}
+      {showWalletList && (
+        <div className={styles.walletModalOverlay} onClick={() => setShowWalletList(false)}>
+          <div className={styles.walletModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.walletModalHeader}>
+              <h3>Choose Wallet</h3>
+              <button 
+                onClick={() => setShowWalletList(false)}
+                className={styles.closeButton}
+                title="Close"
               >
-                <div className={styles.walletIcon}>
-                  {getWalletIcon(connector.name)}
-                </div>
-                <div className={styles.walletName}>
-                  {getWalletDisplayName(connector.name)}
-                </div>
-                <div className={styles.walletDescription}>
-                  {getWalletDescription(connector.name)}
-                </div>
+                ✕
               </button>
-            ))}
-          </div>
-          
-          <div className={styles.walletHelp}>
-            <p>Don't have a wallet? <a href="https://metamask.io" target="_blank" rel="noopener noreferrer">Get MetaMask</a></p>
+            </div>
+            
+            <div className={styles.walletOptions}>
+              {availableConnectors.map((connector) => (
+                <button
+                  key={connector.uid}
+                  onClick={() => {
+                    handleConnect(connector);
+                    setShowWalletList(false);
+                  }}
+                  className={styles.walletOption}
+                  disabled={isPending}
+                >
+                    <div className={styles.walletIcon}>
+                      <img 
+                        src={getWalletIcon(connector.name)} 
+                        alt={`${getWalletDisplayName(connector.name)} icon`}
+                        className={styles.walletIconImage}
+                        onError={(e) => {
+                          // Fallback to emoji if image fails to load
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          target.nextElementSibling!.textContent = getWalletIconFallback(connector.name);
+                        }}
+                      />
+                      <span className={styles.walletIconFallback}></span>
+                    </div>
+                  <div className={styles.walletInfo}>
+                    <div className={styles.walletName}>
+                      {getWalletDisplayName(connector.name)}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            
+              <div className={styles.walletHelp}>
+                <p>Don't have a wallet? <a href="https://metamask.io" target="_blank" rel="noopener noreferrer">Get MetaMask</a>, <a href="https://wallet.coinbase.com/" target="_blank" rel="noopener noreferrer">Get Base Wallet</a>, or <a href="https://phantom.app" target="_blank" rel="noopener noreferrer">Get Phantom</a></p>
+              </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
 function getWalletIcon(walletName: string): string {
   switch (walletName.toLowerCase()) {
     case 'metamask':
+      return '/wallet-icons/metamask.svg';
+    case 'coinbase wallet':
+      return '/wallet-icons/coinbase.svg';
+    case 'rabby':
+      return '/wallet-icons/rabby.svg';
+    case 'walletconnect':
+      return '/wallet-icons/walletconnect.svg';
+    case 'phantom':
+      return '/wallet-icons/phantom.svg';
+    case 'trust':
+    case 'trust wallet':
+      return '/wallet-icons/trust.svg';
+    default:
+      return '/wallet-icons/default.svg';
+  }
+}
+
+function getWalletIconFallback(walletName: string): string {
+  switch (walletName.toLowerCase()) {
+    case 'metamask':
       return '🦊';
     case 'coinbase wallet':
       return '🔵';
-    case 'walletconnect':
-      return '📱';
     case 'rabby':
       return '🐰';
-    case 'injected':
-      return '🔌';
+    case 'walletconnect':
+      return '📱';
+    case 'phantom':
+      return '👻';
+    case 'trust':
+    case 'trust wallet':
+      return '🔒';
     default:
       return '💳';
   }
@@ -131,31 +203,18 @@ function getWalletDisplayName(walletName: string): string {
     case 'metamask':
       return 'MetaMask';
     case 'coinbase wallet':
-      return 'Coinbase Wallet';
-    case 'walletconnect':
-      return 'WalletConnect';
+      return 'Base Wallet';
     case 'rabby':
       return 'Rabby Wallet';
-    case 'injected':
-      return 'Browser Wallet';
+    case 'walletconnect':
+      return 'WalletConnect';
+    case 'phantom':
+      return 'Phantom';
+    case 'trust':
+    case 'trust wallet':
+      return 'Trust Wallet';
     default:
       return walletName;
   }
 }
 
-function getWalletDescription(walletName: string): string {
-  switch (walletName.toLowerCase()) {
-    case 'metamask':
-      return 'Connect using MetaMask browser extension';
-    case 'coinbase wallet':
-      return 'Connect using Coinbase Wallet';
-    case 'walletconnect':
-      return 'Connect using mobile wallet via QR code';
-    case 'rabby':
-      return 'Connect using Rabby Wallet browser extension';
-    case 'injected':
-      return 'Connect using browser wallet';
-    default:
-      return 'Connect using your wallet';
-  }
-}
