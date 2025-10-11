@@ -12,16 +12,16 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "NewsCast Debate (Beta) - AI-Powered News Debates on Base",
-  description: "Join engaging AI-powered debates on trending news topics. Earn points, compete with others, and win rewards on the Base blockchain. Experience the future of social news discussion.",
-  keywords: "news debate, AI debates, Base blockchain, cryptocurrency, social media, news discussion, blockchain rewards, decentralized social",
+  title: "NewsCast Debate (Beta) - AI-Powered News Debates",
+  description: "Join engaging AI-powered debates on trending news topics. Earn points, compete with others, and win rewards. Experience the future of social news discussion.",
+  keywords: "news debate, AI debates, blockchain, cryptocurrency, social media, news discussion, blockchain rewards, decentralized social",
   authors: [{ name: "NewsCast Debate Team" }],
   creator: "NewsCast Debate",
   publisher: "Base",
   robots: "index, follow",
   openGraph: {
-    title: "NewsCast Debate (Beta) - AI-Powered News Debates on Base",
-    description: "Join engaging AI-powered debates on trending news topics. Earn points, compete with others, and win rewards on the Base blockchain.",
+    title: "NewsCast Debate (Beta) - AI-Powered News Debates",
+    description: "Join engaging AI-powered debates on trending news topics. Earn points, compete with others, and win rewards.",
     type: "website",
     locale: "en_US",
     siteName: "NewsCast Debate",
@@ -30,14 +30,14 @@ export const metadata: Metadata = {
         url: "https://news-debate-onbase-app.vercel.app/api/og-image",
         width: 1200,
         height: 630,
-        alt: "NewsCast Debate - AI-Powered News Debates on Base",
+        alt: "NewsCast Debate - AI-Powered News Debates",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "NewsCast Debate (Beta) - AI-Powered News Debates on Base",
-    description: "Join engaging AI-powered debates on trending news topics. Earn points, compete with others, and win rewards on the Base blockchain.",
+    title: "NewsCast Debate (Beta) - AI-Powered News Debates",
+    description: "Join engaging AI-powered debates on trending news topics. Earn points, compete with others, and win rewards.",
     creator: "@base",
     images: ["https://news-debate-onbase-app.vercel.app/api/og-image"],
   },
@@ -92,7 +92,7 @@ export default function RootLayout({
               "@context": "https://schema.org",
               "@type": "WebApplication",
               "name": "NewsCast Debate (Beta)",
-              "description": "AI-powered news debates on Base blockchain",
+              "description": "AI-powered news debates",
               "url": "https://newscast-debate.vercel.app",
               "applicationCategory": "SocialNetworkingApplication",
               "operatingSystem": "Web Browser",
@@ -106,7 +106,7 @@ export default function RootLayout({
                 "name": "Base",
                 "url": "https://base.org"
               },
-              "keywords": "news debate, AI debates, Base blockchain, cryptocurrency, social media"
+              "keywords": "news debate, AI debates, blockchain, cryptocurrency, social media"
             })
           }}
         />
