@@ -66,17 +66,35 @@ class ErrorHandler {
     try {
       if (typeof window === 'undefined') return null;
 
+      // Check for multiple wallet providers
+      const wallets = [];
+
+      // Check for MetaMask
+      if (window.ethereum?.isMetaMask) {
+        wallets.push({ type: 'metamask', provider: window.ethereum });
+      }
+
+      // Check for Coinbase Wallet
+      if (window.ethereum?.isCoinbaseWallet) {
+        wallets.push({ type: 'coinbase', provider: window.ethereum });
+      }
+
+      // Check for Rainbow Wallet
+      if (window.ethereum?.isRainbow) {
+        wallets.push({ type: 'rainbow', provider: window.ethereum });
+      }
+
       // Check for Base Sign-In
       if (window.base) {
-        return { type: 'base', provider: window.base };
+        wallets.push({ type: 'base', provider: window.base });
       }
 
-      // Check for Ethereum providers
-      if (window.ethereum) {
-        return { type: 'ethereum', provider: window.ethereum };
+      // Check for generic Ethereum providers
+      if (window.ethereum && wallets.length === 0) {
+        wallets.push({ type: 'ethereum', provider: window.ethereum });
       }
 
-      return null;
+      return wallets.length > 0 ? wallets : null;
     } catch (error) {
       console.warn('Safe wallet detection failed:', error.message);
       return null;

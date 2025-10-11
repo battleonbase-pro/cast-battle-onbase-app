@@ -1,9 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { SignInWithBaseButton } from '@base-org/account-ui/react';
-import { createBaseAccountSDK } from '@base-org/account';
-import { createWalletClient, custom } from 'viem';
-import { base } from 'viem/chains';
+import { MultiWalletConnect } from '@/components/MultiWalletConnect';
 import { sdk as farcasterSDK } from '@farcaster/miniapp-sdk';
 import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -90,19 +87,12 @@ interface User {
   username?: string;
 }
 
-interface BaseSDK {
-  connect: () => Promise<void>;
-  disconnect: () => Promise<void>;
-  getAccount: () => Promise<User | null>;
-}
-
 // Create a client
 const queryClient = new QueryClient()
 
 function Home() {
   const [isFarcasterEnv, setIsFarcasterEnv] = useState<boolean | null>(null); // null = detecting, true = Farcaster, false = browser
   const [user, setUser] = useState<User | null>(null);
-  const [sdk, setSdk] = useState<BaseSDK | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -116,14 +106,17 @@ function Home() {
       try {
         if (isFarcasterEnv === true && connectors.length > 0) {
           console.log('🎯 Farcaster environment detected, attempting immediate connection...');
-          connect({ connector: connectors[0] }).catch(error => {
-            console.error('⚠️ Immediate connection failed:', error);
-          });
+          const connectPromise = connect({ connector: connectors[0] });
+          if (connectPromise && typeof connectPromise.catch === 'function') {
+            connectPromise.catch((error: Error) => {
+              console.error('⚠️ Immediate connection failed:', error);
+            });
+          }
         }
       } catch (error) {
         console.error('❌ Error in immediate connection attempt:', error);
       }
-    }, [isFarcasterEnv, connectors, connect]);
+    }, [connectors, connect]);
 
     // Auto-connect when in Farcaster environment
     useEffect(() => {
@@ -159,7 +152,7 @@ function Home() {
       } catch (error) {
         console.error('❌ Error in auto-connect logic:', error);
       }
-    }, [isFarcasterEnv, isConnected, connect, connectors]);
+    }, [isConnected, connect, connectors]);
 
     // Update user state when wallet connects
     useEffect(() => {
@@ -350,39 +343,9 @@ function Home() {
     initApp();
     const cleanupBattleSSE = setupBattleStateSSE();
     
-    // Initialize Base Account SDK on client side only (only in non-Farcaster environments)
+    // Initialize wallet connection on client side only (only in non-Farcaster environments)
     if (typeof window !== 'undefined' && isFarcasterEnv === false) {
       try {
-        // Suppress analytics-related console errors
-        const originalConsoleError = console.error;
-        console.error = (...args) => {
-          const message = args.join(' ');
-          if (message.includes('Analytics SDK') || message.includes('AnalyticsSDKApiError')) {
-            // Suppress analytics errors
-            return;
-          }
-          originalConsoleError.apply(console, args);
-        };
-
-        // Check if ethereum provider is available
-        if (!window.ethereum) {
-          console.log('No Ethereum provider found. Wallet connection will not be available.');
-          // Continue without wallet - app can still be used for viewing battles
-          return;
-        }
-
-        const baseSDK = createBaseAccountSDK({
-          appName: 'Agentic AI NewsCast Debate on Base (Beta)',
-          walletClient: createWalletClient({
-            chain: base,
-            transport: custom(window.ethereum)
-          })
-        });
-        setSdk(baseSDK);
-        
-        // Restore original console.error after SDK initialization
-        console.error = originalConsoleError;
-        
         // Check for existing authentication
         const savedUser = localStorage.getItem('newscast-battle-user');
         if (savedUser) {
@@ -392,7 +355,7 @@ function Home() {
           fetchUserPoints(userData.address);
         }
       } catch (error) {
-        console.error('Failed to initialize Base Account SDK:', error);
+        console.error('Failed to initialize wallet connection:', error);
         setError('Failed to initialize wallet connection');
       }
     }
@@ -668,7 +631,7 @@ function Home() {
     } catch (error) {
       console.error('Failed to fetch casts:', error);
     }
-  }, []);
+  }, [user]);
 
   const fetchBattleHistory = useCallback(async () => {
     try {
@@ -780,70 +743,28 @@ function Home() {
     }
   };
 
-  const handleSignIn = async () => {
-    if (!sdk) {
-      setError('Wallet connection not ready. Please try again.');
-      return;
-    }
-
-    try {
-      // Get the provider and create wallet client (following documentation exactly)
-      const provider = sdk.getProvider();
-      const client = createWalletClient({
-        chain: base,
-        transport: custom(provider)
-      });
-
-      // Get account address (following documentation pattern)
-      const addresses = await client.getAddresses();
-      let account;
-      
-      if (!addresses || addresses.length === 0) {
-        // Try to request accounts if none are connected
-        const accounts = await provider.request({ method: 'eth_requestAccounts' });
-        if (!accounts || accounts.length === 0) {
-          throw new Error('Please connect your wallet first');
-        }
-        account = accounts[0];
-      } else {
-        account = addresses[0];
-      }
-
-      // Sign authentication message (following documentation pattern)
-      const message = `Join Agentic AI NewsCast Debate on Base (Beta) at ${Date.now()}`;
-      const signature = await client.signMessage({ 
-        account,
-        message,
-      });
-
-      // Set user data
-      const userData = {
-        address: account,
-        signature: signature,
-        timestamp: Date.now()
-      };
-      
-      setUser(userData);
-      
-      // Save to localStorage for persistence
-      localStorage.setItem('newscast-battle-user', JSON.stringify(userData));
-      
-      // Fetch user points
-      await fetchUserPoints(account);
-      
-      // Refetch current battle to check if user already joined
-      await fetchCurrentBattle();
-    } catch (error) {
-      console.error('Sign in failed:', error);
-      setError(error.message || 'Sign in failed');
-    }
-  };
-
   const handleSignOut = () => {
     setUser(null);
     setBattleJoined(false);
     setHasSubmittedCast(false);
     localStorage.removeItem('newscast-battle-user');
+  };
+
+  // Multi-wallet connection handlers
+  const handleWalletConnect = (address: string) => {
+    console.log('✅ Wallet connected:', address);
+    const userData = {
+      address: address,
+      username: undefined
+    };
+    setUser(userData);
+    localStorage.setItem('newscast-battle-user', JSON.stringify(userData));
+    fetchUserPoints(address);
+  };
+
+  const handleWalletError = (error: string) => {
+    console.error('❌ Wallet connection error:', error);
+    setError(error);
   };
 
   const formatTimeRemaining = (seconds: number) => {
@@ -1038,25 +959,11 @@ function Home() {
             </div>
           ) : isFarcasterEnv ? (
             <FarcasterWalletComponent />
-          ) : sdk ? (
-            <div className={styles.signInWrapper}>
-              <SignInWithBaseButton 
-                variant="solid"
-                colorScheme="light"
-                onClick={handleSignIn}
-              />
-            </div>
           ) : (
-            <div className={styles.signInWrapper}>
-              <button 
-                className={styles.signOutBtn}
-                disabled
-                style={{ opacity: 0.5, cursor: 'not-allowed' }}
-                title="Install a wallet extension (Coinbase Wallet, MetaMask, etc.) to participate in battles"
-              >
-                {typeof window !== 'undefined' && !window.ethereum ? 'Install Wallet' : 'Wallet Loading...'}
-              </button>
-            </div>
+            <MultiWalletConnect 
+              onConnect={handleWalletConnect}
+              onError={handleWalletError}
+            />
           )}
                 </div>
       </header>
