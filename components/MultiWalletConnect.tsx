@@ -87,8 +87,29 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
       const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
       const hasValidWalletConnectId = walletConnectProjectId && walletConnectProjectId !== 'your-walletconnect-project-id';
       
+      // Handle Phantom and Coinbase Wallet differently (use built-in browsers)
+      if (wallet.name === 'phantom' || wallet.name === 'coinbase') {
+        console.log(`Opening ${wallet.displayName} with built-in browser`);
+        const baseUrl = window.location.origin;
+        const deepLink = `${wallet.name.toLowerCase()}://dapp/${encodeURIComponent(baseUrl)}`;
+        
+        // Open wallet app with built-in browser
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = deepLink;
+        document.body.appendChild(iframe);
+        
+        // Remove iframe after a short delay
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+        }, 1000);
+        
+        setShowWalletList(false);
+        return;
+      }
+      
       if (hasValidWalletConnectId) {
-        // Use WalletConnect for proper mobile wallet connection
+        // Use WalletConnect for other mobile wallets (MetaMask, Trust, Rainbow)
         const walletConnectConnector = connectors.find(connector => 
           connector.name.toLowerCase().includes('walletconnect')
         );
@@ -261,7 +282,13 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
                           {wallet.displayName}
                         </div>
                         <div className={styles.mobileWalletSubtext}>
-                          {hasValidWalletConnectId ? 'Connect via WalletConnect' : 'Open App (Setup Required)'}
+                          {hasValidWalletConnectId ? 
+                            (wallet.name === 'phantom' || wallet.name === 'coinbase' ? 
+                              'Open App & Use Browser' : 
+                              'Connect via WalletConnect'
+                            ) : 
+                            'Open App (Setup Required)'
+                          }
                         </div>
                       </div>
                     </button>
