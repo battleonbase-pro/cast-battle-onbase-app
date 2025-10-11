@@ -53,14 +53,37 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
     }
   };
 
-  const handleMobileWalletConnect = (wallet: MobileWallet) => {
+  const handleMobileWalletConnect = async (wallet: MobileWallet) => {
     try {
-      console.log('Opening mobile wallet:', wallet.displayName);
-      openWalletApp(wallet, window.location.href);
-      setShowWalletList(false);
+      console.log('Connecting to mobile wallet:', wallet.displayName);
+      
+      // Check if WalletConnect is properly configured
+      const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+      const hasValidWalletConnectId = walletConnectProjectId && walletConnectProjectId !== 'your-walletconnect-project-id';
+      
+      if (hasValidWalletConnectId) {
+        // Use WalletConnect for mobile wallets (proper callback support)
+        const walletConnectConnector = connectors.find(connector => 
+          connector.name.toLowerCase().includes('walletconnect')
+        );
+        
+        if (walletConnectConnector) {
+          console.log('Using WalletConnect for mobile wallet connection');
+          await connect({ connector: walletConnectConnector });
+          setShowWalletList(false);
+        } else {
+          throw new Error('WalletConnect connector not found');
+        }
+      } else {
+        // WalletConnect not configured - show helpful message
+        const message = `Mobile wallet connection requires WalletConnect configuration. Please configure NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID in your environment variables.`;
+        console.warn(message);
+        onError(message);
+        setShowWalletList(false);
+      }
     } catch (error: any) {
       console.error('Mobile wallet error:', error);
-      onError(`Failed to open ${wallet.displayName}`);
+      onError(`Failed to connect ${wallet.displayName}: ${error.message}`);
     }
   };
 
@@ -167,37 +190,60 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
             
             <div className={styles.walletOptions}>
               {isMobile ? (
-                // Mobile wallet options with deep links
-                mobileWallets.map((wallet) => (
-                  <button
-                    key={wallet.name}
-                    onClick={() => handleMobileWalletConnect(wallet)}
-                    className={styles.walletOption}
-                    disabled={isPending}
-                  >
-                    <div className={styles.walletIcon}>
-                      <img 
-                        src={wallet.icon} 
-                        alt={`${wallet.displayName} icon`}
-                        className={styles.walletIconImage}
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          target.nextElementSibling!.textContent = getWalletIconFallback(wallet.name);
-                        }}
-                      />
-                      <span className={styles.walletIconFallback}></span>
-                    </div>
-                    <div className={styles.walletInfo}>
-                      <div className={styles.walletName}>
-                        {wallet.displayName}
+                // Mobile wallet options with WalletConnect
+                (() => {
+                  const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+                  const hasValidWalletConnectId = walletConnectProjectId && walletConnectProjectId !== 'your-walletconnect-project-id';
+                  
+                  if (!hasValidWalletConnectId) {
+                    return (
+                      <div className={styles.mobileWalletNotice}>
+                        <div className={styles.noticeIcon}>📱</div>
+                        <div className={styles.noticeTitle}>Mobile Wallet Setup Required</div>
+                        <div className={styles.noticeText}>
+                          To connect mobile wallets, please configure WalletConnect by setting 
+                          <code>NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID</code> in your environment variables.
+                        </div>
+                        <div className={styles.noticeLink}>
+                          <a href="https://cloud.walletconnect.com/" target="_blank" rel="noopener noreferrer">
+                            Get WalletConnect Project ID →
+                          </a>
+                        </div>
                       </div>
-                      <div className={styles.mobileWalletSubtext}>
-                        {isIOS() ? 'Open in App' : 'Open in App'}
+                    );
+                  }
+                  
+                  return mobileWallets.map((wallet) => (
+                    <button
+                      key={wallet.name}
+                      onClick={() => handleMobileWalletConnect(wallet)}
+                      className={styles.walletOption}
+                      disabled={isPending}
+                    >
+                      <div className={styles.walletIcon}>
+                        <img 
+                          src={wallet.icon} 
+                          alt={`${wallet.displayName} icon`}
+                          className={styles.walletIconImage}
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            target.nextElementSibling!.textContent = getWalletIconFallback(wallet.name);
+                          }}
+                        />
+                        <span className={styles.walletIconFallback}></span>
                       </div>
-                    </div>
-                  </button>
-                ))
+                      <div className={styles.walletInfo}>
+                        <div className={styles.walletName}>
+                          {wallet.displayName}
+                        </div>
+                        <div className={styles.mobileWalletSubtext}>
+                          Connect via WalletConnect
+                        </div>
+                      </div>
+                    </button>
+                  ));
+                })()
               ) : (
                 // Desktop wallet options with browser extension connectors
                 availableConnectors.map((connector) => (

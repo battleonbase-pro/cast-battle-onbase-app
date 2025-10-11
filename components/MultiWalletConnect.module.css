@@ -183,6 +183,52 @@
   line-height: 1.2;
 }
 
+.mobileWalletNotice {
+  padding: 24px;
+  text-align: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  margin: 16px 0;
+}
+
+.noticeIcon {
+  font-size: 32px;
+  margin-bottom: 12px;
+}
+
+.noticeTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+
+.noticeText {
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.noticeText code {
+  background: #e5e7eb;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.noticeLink a {
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.noticeLink a:hover {
+  text-decoration: underline;
+}
+
 
 .walletHelp {
   padding: 16px 24px 24px;
