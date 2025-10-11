@@ -29,18 +29,8 @@ const connectors = [
     appName: 'NewsCast Debate',
     appLogoUrl: 'https://news-debate-onbase-app.vercel.app/og-image.png',
   }),
-  // Rabby Wallet connector
-  injected({
-    target: 'rabby',
-  }),
-  // Phantom Wallet connector
-  injected({
-    target: 'phantom',
-  }),
-  // Trust Wallet connector
-  injected({
-    target: 'trust',
-  }),
+  // Generic injected connector for all other wallets
+  injected(),
 ];
 
 // Only add WalletConnect if we have a valid project ID
@@ -54,7 +44,7 @@ if (hasValidWalletConnectId) {
         url: 'https://news-debate-onbase-app.vercel.app',
         icons: ['https://news-debate-onbase-app.vercel.app/og-image.png'],
       },
-    })
+    }) as any
   );
 }
 

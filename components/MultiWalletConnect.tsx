@@ -3,6 +3,19 @@ import { useState } from 'react';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import styles from './MultiWalletConnect.module.css';
 
+// Extend window interface for wallet detection
+declare global {
+  interface Window {
+    ethereum?: {
+      isRabby?: boolean;
+      isPhantom?: boolean;
+      isTrust?: boolean;
+      isMetaMask?: boolean;
+      isCoinbaseWallet?: boolean;
+    };
+  }
+}
+
 interface MultiWalletConnectProps {
   onConnect: (address: string) => void;
   onError: (error: string) => void;
@@ -16,7 +29,9 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
 
   const handleConnect = async (connector: any) => {
     try {
+      console.log('Attempting to connect to:', connector.name, connector.type);
       await connect({ connector });
+      console.log('Connection successful');
       if (address) {
         onConnect(address);
       }
@@ -33,6 +48,7 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
   // Filter to show only specific wallets and remove duplicates
   const availableConnectors = connectors.filter(connector => {
     const walletName = connector.name.toLowerCase();
+    console.log('Available connector:', walletName, connector.type);
     // Only include specific wallet types, avoiding generic injected connectors
     return (
       walletName === 'metamask' ||
@@ -41,17 +57,39 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
       walletName === 'walletconnect' ||
       walletName === 'phantom' ||
       walletName === 'trust' ||
-      walletName === 'trust wallet'
+      walletName === 'trust wallet' ||
+      walletName === 'injected wallet' // Generic injected connector
     );
   }).reduce((unique, connector) => {
     const walletName = connector.name.toLowerCase();
+    
+    // For injected wallet, try to detect the actual wallet
+    if (walletName === 'injected wallet' && typeof window !== 'undefined' && window.ethereum) {
+      if (window.ethereum.isRabby) {
+        connector.name = 'Rabby Wallet';
+      } else if (window.ethereum.isPhantom) {
+        connector.name = 'Phantom Wallet';
+      } else if (window.ethereum.isTrust) {
+        connector.name = 'Trust Wallet';
+      } else if (window.ethereum.isMetaMask) {
+        // Skip if MetaMask is already handled by dedicated connector
+        return unique;
+      } else if (window.ethereum.isCoinbaseWallet) {
+        // Skip if Coinbase Wallet is already handled by dedicated connector
+        return unique;
+      } else {
+        connector.name = 'Browser Wallet';
+      }
+    }
+    
     // Use a more specific key to avoid duplicates
     const walletKey = walletName.includes('metamask') ? 'metamask' :
                      walletName.includes('coinbase') ? 'coinbase' :
                      walletName.includes('rabby') ? 'rabby' :
                      walletName.includes('walletconnect') ? 'walletconnect' :
                      walletName.includes('phantom') ? 'phantom' :
-                     walletName.includes('trust') ? 'trust' : walletName;
+                     walletName.includes('trust') ? 'trust' :
+                     walletName.includes('injected') ? 'injected' : walletName;
     
     const existingIndex = unique.findIndex(c => {
       const existingName = c.name.toLowerCase();
@@ -61,7 +99,8 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
         (walletKey === 'rabby' && existingName.includes('rabby')) ||
         (walletKey === 'walletconnect' && existingName.includes('walletconnect')) ||
         (walletKey === 'phantom' && existingName.includes('phantom')) ||
-        (walletKey === 'trust' && existingName.includes('trust'))
+        (walletKey === 'trust' && existingName.includes('trust')) ||
+        (walletKey === 'injected' && existingName.includes('injected'))
       );
     });
     
@@ -160,6 +199,8 @@ function getWalletIcon(walletName: string): string {
     case 'trust':
     case 'trust wallet':
       return '/wallet-icons/trust.svg';
+    case 'injected wallet':
+      return '/wallet-icons/default.svg';
     default:
       return '/wallet-icons/default.svg';
   }
@@ -180,6 +221,8 @@ function getWalletIconFallback(walletName: string): string {
     case 'trust':
     case 'trust wallet':
       return '🔒';
+    case 'injected wallet':
+      return '💳';
     default:
       return '💳';
   }
@@ -200,6 +243,8 @@ function getWalletDisplayName(walletName: string): string {
     case 'trust':
     case 'trust wallet':
       return 'Trust Wallet';
+    case 'injected wallet':
+      return 'Browser Wallet';
     default:
       return walletName;
   }
