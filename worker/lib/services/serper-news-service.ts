@@ -84,13 +84,21 @@ class SerperNewsService {
   }
 
   async getComprehensiveNews(): Promise<Article[]> {
-    // Dynamic query generation with randomized order for diverse results
-    const query = this.generateDynamicQuery();
-    
     try {
-      console.log(`[Serper News Service] Searching with dynamic query: "${query}"`);
+      // Use balanced dynamic query for diverse results
+      const query = this.generateDynamicQuery();
+      console.log(`[Serper News Service] Searching with balanced dynamic query: "${query}"`);
+      
       const articles = await this.searchNews(query);
       console.log(`[Serper News Service] Total comprehensive news articles: ${articles.length}`);
+      
+      // If we get too few articles, try a fallback approach
+      if (articles.length < 5) {
+        console.log(`[Serper News Service] Low article count (${articles.length}), trying fallback approach...`);
+        const fallbackArticles = await this.getFallbackNews();
+        return [...articles, ...fallbackArticles].slice(0, 25); // Limit total results
+      }
+      
       return articles;
     } catch (error) {
       console.warn(`[Serper News Service] Failed to fetch comprehensive news:`, error);
@@ -98,15 +106,29 @@ class SerperNewsService {
     }
   }
 
+  private async getFallbackNews(): Promise<Article[]> {
+    // Fallback: try different category-based searches
+    const categories = ['politics', 'world', 'economy', 'technology', 'health'];
+    const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+    
+    try {
+      console.log(`[Serper News Service] Fallback: trying ${randomCategory} category`);
+      return await this.getNewsByCategory(randomCategory);
+    } catch (error) {
+      console.warn(`[Serper News Service] Fallback also failed:`, error);
+      return [];
+    }
+  }
+
   private generateDynamicQuery(): string {
-    // Core keyword groups for different topics
+    // Core keyword groups for different topics - balanced distribution
     const keywordGroups = {
       breaking: ['breaking news', 'urgent news', 'latest news', 'top news'],
-      politics: ['politics', 'election', 'government', 'president', 'congress'],
-      crypto: ['cryptocurrency', 'bitcoin', 'ethereum', 'blockchain', 'crypto'],
-      world: ['world news', 'international', 'global', 'headlines'],
-      economy: ['economy', 'market', 'finance', 'business'],
-      tech: ['technology', 'AI', 'artificial intelligence', 'tech']
+      politics: ['politics', 'election', 'government', 'president', 'congress', 'policy'],
+      world: ['world news', 'international', 'global', 'headlines', 'foreign affairs'],
+      economy: ['economy', 'market', 'finance', 'business', 'economic policy'],
+      tech: ['technology', 'AI', 'artificial intelligence', 'tech', 'innovation'],
+      crypto: ['cryptocurrency', 'bitcoin', 'ethereum', 'blockchain', 'crypto', 'digital currency']
     };
 
     // Select one keyword from each group
@@ -124,7 +146,7 @@ class SerperNewsService {
     // Combine keywords with randomization
     const query = [...shuffledKeywords, timeKeyword].join(' ');
     
-    console.log(`[Serper News Service] Generated dynamic query: "${query}"`);
+    console.log(`[Serper News Service] Generated balanced dynamic query: "${query}"`);
     return query;
   }
 
