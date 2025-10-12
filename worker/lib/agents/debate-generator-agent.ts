@@ -31,7 +31,7 @@ class DebateGeneratorAgent extends BaseAgent {
       const debateTopic = {
         ...result.data,
         source: curatedTopic.source,
-        articleUrl: curatedTopic.url,
+        articleUrl: curatedTopic.articleUrl,
         articleTitle: curatedTopic.title,
         engagementScore: curatedTopic.engagementScore,
         relevanceFactors: curatedTopic.relevanceFactors,
