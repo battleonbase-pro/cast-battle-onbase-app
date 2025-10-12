@@ -6,8 +6,8 @@ const createPrismaClient = () => {
   
   // Add connection pooling parameters if not already present
   const urlWithPooling = databaseUrl?.includes('?') 
-    ? `${databaseUrl}&connection_limit=20&pool_timeout=20`
-    : `${databaseUrl}?connection_limit=20&pool_timeout=20`
+    ? `${databaseUrl}&connection_limit=5&pool_timeout=60&connect_timeout=60`
+    : `${databaseUrl}?connection_limit=5&pool_timeout=60&connect_timeout=60`
 
   return new PrismaClient({
     log: ['error', 'warn'], // Only log errors and warnings, no queries

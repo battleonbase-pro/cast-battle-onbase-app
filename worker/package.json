@@ -17,6 +17,7 @@
     "test:status": "curl -s -H \"X-API-Key: 92d4cca6-2987-417c-b6bf-36ac4cba6972\" https://battle-completion-worker-733567590021.us-central1.run.app/status | jq ."
   },
   "dependencies": {
+    "@ai-sdk/google": "^2.0.14",
     "@prisma/client": "^5.22.0",
     "ai": "^5.0.47",
     "axios": "^1.12.2",
