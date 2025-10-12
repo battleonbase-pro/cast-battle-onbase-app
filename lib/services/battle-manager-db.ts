@@ -100,7 +100,13 @@ export class BattleManagerDB {
     // Check if current battle has expired and complete it if needed
     await this.checkAndCompleteExpiredBattle();
     
-    // Check if we need to create a new battle
+    // In production, let the worker handle battle creation to avoid race conditions
+    if (process.env.NODE_ENV === 'production') {
+      console.log('🔄 Production mode: Battle creation handled by worker process');
+      return;
+    }
+    
+    // Only create battles in development mode
     await this.checkAndCreateBattle();
   }
 
@@ -466,8 +472,14 @@ export class BattleManagerDB {
         console.log(`🔄 Battle will be completed automatically when API is called after expiration`);
       }
     } else {
-      console.log(`📊 No active battle found, creating initial battle`);
-      // No active battle, create one immediately
+      // In production, let the worker handle battle creation to avoid race conditions
+      if (process.env.NODE_ENV === 'production') {
+        console.log(`📊 No active battle found, but production mode - worker will create battle`);
+        return;
+      }
+      
+      console.log(`📊 No active battle found, creating initial battle (development mode)`);
+      // No active battle, create one immediately (development only)
       await this.checkAndCreateBattle();
     }
   }
