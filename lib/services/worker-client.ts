@@ -15,7 +15,7 @@ class WorkerClient {
 
   constructor() {
     // Use the correct worker URL from the deployed service
-    this.workerUrl = process.env.WORKER_URL || 'https://battle-completion-worker-3lducklitq-uc.a.run.app';
+    this.workerUrl = process.env.WORKER_BASE_URL || 'https://battle-completion-worker-3lducklitq-uc.a.run.app';
     this.apiKey = process.env.WORKER_API_KEY || '92d4cca6-2987-417c-b6bf-36ac4cba6972';
   }
 
