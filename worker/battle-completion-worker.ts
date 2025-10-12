@@ -310,7 +310,10 @@ const createWorkerServer = () => {
 
 // Start the worker
 console.log('🌟 Battle Completion Worker starting...');
-startWorker();
+startWorker().catch((error) => {
+  console.error('❌ Failed to start worker:', error);
+  process.exit(1);
+});
 
 // Start HTTP server for monitoring (optional)
 const port = process.env.PORT || process.env.WORKER_PORT || 3001;
