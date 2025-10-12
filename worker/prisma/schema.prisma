@@ -34,6 +34,8 @@ model Battle {
   category    String
   source      String
   sourceUrl   String?     // URL to the original news article
+  imageUrl    String?     // URL to the article image
+  thumbnail   String?     // Thumbnail image URL
   status      BattleStatus @default(ACTIVE)
   
   // Battle timing

@@ -24,6 +24,8 @@ export class DatabaseService {
     category: string;
     source: string;
     sourceUrl?: string;
+    imageUrl?: string;
+    thumbnail?: string;
     startTime: Date;
     endTime: Date;
     durationHours: number;

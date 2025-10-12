@@ -1,6 +1,7 @@
 // lib/agents/news-curator-agent.ts
 import BaseAgent from './base-agent';
 import NewsSourceFactory from '../services/news-source-factory';
+import ImageFallbackService from '../services/image-fallback-service';
 
 interface Article {
   title: string;
@@ -9,6 +10,8 @@ interface Article {
   author?: string;
   published: string;
   category?: string[];
+  imageUrl?: string;
+  thumbnail?: string;
 }
 
 interface CachedData {
@@ -130,6 +133,16 @@ class NewsCuratorAgent extends BaseAgent {
       }
 
       // Create curated topic data
+      const imageFallbackService = ImageFallbackService.getInstance();
+      const category = this.categorizeArticle(hottestArticle);
+      
+      // Use provided image or generate fallback
+      const imageUrl = hottestArticle.imageUrl || hottestArticle.thumbnail || 
+        imageFallbackService.generateFallbackImage({
+          category: category,
+          title: hottestArticle.title
+        });
+      
       const curatedTopic = {
         id: `curated_${Date.now()}`,
         title: hottestArticle.title,
@@ -137,10 +150,12 @@ class NewsCuratorAgent extends BaseAgent {
         source: hottestArticle.author || 'Unknown',
         url: hottestArticle.url,
         publishedAt: hottestArticle.published,
-        category: this.categorizeArticle(hottestArticle),
+        category: category,
         engagementScore: hottestArticle.score,
         relevanceFactors: this.extractRelevanceFactors(hottestArticle),
         articleData: hottestArticle,
+        imageUrl: imageUrl,
+        thumbnail: imageUrl,
         curatedBy: 'News Curator',
         curatedAt: new Date().toISOString()
       };

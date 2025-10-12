@@ -203,6 +203,8 @@ export class BattleManagerDB {
         category: topic.category,
         source: topic.source,
         sourceUrl: topic.articleUrl || topic.sourceUrl,
+        imageUrl: topic.imageUrl,
+        thumbnail: topic.thumbnail,
         startTime: actualStartTime,
         endTime: endTime,
         durationHours: this.config.battleDurationHours,

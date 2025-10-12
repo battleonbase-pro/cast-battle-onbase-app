@@ -39,6 +39,8 @@ interface DebateTopic {
   category: string;
   source: string;
   sourceUrl?: string;
+  imageUrl?: string;
+  thumbnail?: string;
   debatePoints: {
     Support: string[];
     Oppose: string[];
@@ -1026,7 +1028,21 @@ function Home() {
                 )}
               </div>
 
-              <p className={styles.topicDescription}>{topic.description}</p>
+              {/* Article Image and Description */}
+              <div className={styles.topicContent}>
+                {(topic.imageUrl || topic.thumbnail) && (
+                  <img 
+                    src={topic.imageUrl || topic.thumbnail} 
+                    alt={topic.title}
+                    className={styles.topicImage}
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
+                  />
+                )}
+                <p className={styles.topicDescription}>{topic.description}</p>
+              </div>
 
               {/* Debate Points */}
               {topic.debatePoints && (

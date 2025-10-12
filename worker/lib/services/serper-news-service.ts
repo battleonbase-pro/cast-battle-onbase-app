@@ -4,9 +4,13 @@ import axios from 'axios';
 interface SerperArticle {
   title: string;
   link: string;
-  snippet: string;
+  snippet?: string;
   date?: string;
   position?: number;
+  imageUrl?: string;
+  thumbnailUrl?: string;
+  thumbnail?: string;
+  source?: string;
   sitelinks?: Array<{
     title: string;
     link: string;
@@ -14,8 +18,9 @@ interface SerperArticle {
 }
 
 interface SerperResponse {
-  organic: SerperArticle[];
-  news?: SerperArticle[];
+  organic?: SerperArticle[];
+  news: SerperArticle[];
+  topStories?: SerperArticle[];
 }
 
 interface Article {
@@ -25,6 +30,8 @@ interface Article {
   author?: string;
   published: string;
   category?: string[];
+  imageUrl?: string;
+  thumbnail?: string;
 }
 
 class SerperNewsService {
@@ -48,12 +55,12 @@ class SerperNewsService {
       
       const searchQuery = this.buildSearchQuery(query, category);
       
-      const response = await axios.post(`${this.baseUrl}/search`, {
+      const response = await axios.post(`${this.baseUrl}/news`, {
         q: searchQuery,
         num: 20,
         gl: 'us', // Country: United States
         hl: 'en', // Language: English
-        tbm: 'nws' // Search type: News
+        safe: 'off' // Allow all content for news
       }, {
         headers: {
           'X-API-KEY': this.apiKey,
@@ -62,9 +69,11 @@ class SerperNewsService {
       });
 
       const data: SerperResponse = response.data;
-      const articles = data.news || data.organic || [];
+      // Use news array directly as it contains imageUrl
+      const articles = data.news || [];
 
       console.log(`[Serper News Service] Found ${articles.length} articles for "${query}"`);
+      console.log(`[Serper News Service] Using news endpoint data`);
 
       return articles.map(article => this.mapSerperArticleToStandard(article, category));
 
@@ -268,19 +277,24 @@ class SerperNewsService {
   }
 
   private mapSerperArticleToStandard(serperArticle: SerperArticle, category?: string): Article {
-    // Extract source from URL domain
-    const source = this.extractSourceFromUrl(serperArticle.link);
+    // Extract source from URL domain or use provided source field
+    const source = serperArticle.source || this.extractSourceFromUrl(serperArticle.link);
     
     // Convert relative date to ISO string
     const publishedDate = this.convertRelativeDate(serperArticle.date);
     
+    // Use imageUrl, thumbnailUrl, or thumbnail (in order of preference)
+    const imageUrl = serperArticle.imageUrl || serperArticle.thumbnailUrl || serperArticle.thumbnail;
+    
     return {
       title: serperArticle.title,
-      description: serperArticle.snippet,
+      description: serperArticle.snippet || '', // topStories might not have snippet
       url: serperArticle.link,
       author: source,
       published: publishedDate,
-      category: category ? [category] : []
+      category: category ? [category] : [],
+      imageUrl: imageUrl,
+      thumbnail: imageUrl
     };
   }
 

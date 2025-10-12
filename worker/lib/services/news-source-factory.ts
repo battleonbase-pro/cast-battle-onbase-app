@@ -9,6 +9,8 @@ interface Article {
   author?: string;
   published: string;
   category?: string[];
+  imageUrl?: string;
+  thumbnail?: string;
 }
 
 interface NewsService {

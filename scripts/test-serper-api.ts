@@ -31,6 +31,10 @@ async function testSerperAPI() {
     if (worldNews.length > 0) {
       console.log(`📰 Sample: "${worldNews[0].title}"`);
       console.log(`🔗 URL: ${worldNews[0].url}`);
+      console.log(`🖼️  ImageUrl: ${worldNews[0].imageUrl ? '✅ Yes' : '❌ No'}`);
+      if (worldNews[0].imageUrl) {
+        console.log(`      URL: ${worldNews[0].imageUrl.substring(0, 80)}...`);
+      }
     }
 
     // Test politics news
@@ -39,6 +43,7 @@ async function testSerperAPI() {
     console.log(`✅ Found ${politicsNews.length} politics articles`);
     if (politicsNews.length > 0) {
       console.log(`📰 Sample: "${politicsNews[0].title}"`);
+      console.log(`🖼️  ImageUrl: ${politicsNews[0].imageUrl ? '✅ Yes' : '❌ No'}`);
     }
 
     // Test crypto news
@@ -47,10 +52,23 @@ async function testSerperAPI() {
     console.log(`✅ Found ${cryptoNews.length} crypto articles`);
     if (cryptoNews.length > 0) {
       console.log(`📰 Sample: "${cryptoNews[0].title}"`);
+      console.log(`🖼️  ImageUrl: ${cryptoNews[0].imageUrl ? '✅ Yes' : '❌ No'}`);
+    }
+
+    // Test imageUrl summary
+    console.log('\n5️⃣ Testing imageUrl summary...');
+    const allArticles = [...worldNews, ...politicsNews, ...cryptoNews];
+    const articlesWithImages = allArticles.filter(article => article.imageUrl);
+    console.log(`🖼️  Articles with images: ${articlesWithImages.length}/${allArticles.length}`);
+    
+    if (articlesWithImages.length > 0) {
+      console.log(`✅ Serper /news endpoint is returning imageUrl data!`);
+    } else {
+      console.log(`❌ No articles have imageUrl - check Serper API response`);
     }
 
     // Test switching back to CurrentsAPI
-    console.log('\n5️⃣ Testing source switching...');
+    console.log('\n6️⃣ Testing source switching...');
     factory.switchSource('currents');
     console.log(`📊 Switched to: ${factory.getCurrentSource()}`);
 

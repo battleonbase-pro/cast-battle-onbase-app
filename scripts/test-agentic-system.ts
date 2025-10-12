@@ -49,6 +49,10 @@ async function testAgenticSystem() {
     console.log(`   Description: ${battleTopicResult.debateTopic.description}`);
     console.log(`   Category: ${battleTopicResult.debateTopic.category}`);
     console.log(`   Source: ${battleTopicResult.debateTopic.source}`);
+    console.log(`   ImageUrl: ${battleTopicResult.debateTopic.imageUrl ? '✅ Yes' : '❌ No'}`);
+    if (battleTopicResult.debateTopic.imageUrl) {
+      console.log(`   Image: ${battleTopicResult.debateTopic.imageUrl.substring(0, 80)}...`);
+    }
     
     console.log('\n💬 Debate Points:');
     Object.entries(battleTopicResult.debateTopic.debatePoints).forEach(([side, points]) => {

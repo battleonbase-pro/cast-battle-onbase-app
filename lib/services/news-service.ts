@@ -8,6 +8,8 @@ interface DebateTopic {
   category: string;
   source: string;
   articleUrl?: string;
+  imageUrl?: string;
+  thumbnail?: string;
   debatePoints: {
     Support: string[];
     Oppose: string[];

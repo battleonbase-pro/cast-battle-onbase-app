@@ -381,11 +381,28 @@
   line-height: 1.4;
 }
 
+.topicContent {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.topicImage {
+  float: left;
+  width: 200px;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+  margin-right: 16px;
+}
+
 .topicDescription {
   font-size: 0.875rem;
   color: #6b7280;
   line-height: 1.6;
-  margin: 0 0 16px 0;
+  margin: 0;
+  flex: 1;
 }
 
 .topicMeta {
@@ -1256,6 +1273,18 @@
     font-size: 0.95rem;
     margin-bottom: 8px;
     padding-left: 14px;
+  }
+  
+  .topicContent {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .topicImage {
+    width: 100%;
+    height: 200px;
+    margin-right: 0;
+    margin-bottom: 12px;
   }
   
   .topicMeta {

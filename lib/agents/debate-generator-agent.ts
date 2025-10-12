@@ -35,6 +35,8 @@ class DebateGeneratorAgent extends BaseAgent {
         articleTitle: curatedTopic.title,
         engagementScore: curatedTopic.engagementScore,
         relevanceFactors: curatedTopic.relevanceFactors,
+        imageUrl: curatedTopic.imageUrl,
+        thumbnail: curatedTopic.thumbnail,
         generatedBy: this.name,
         generatedAt: new Date().toISOString(),
         originalTopic: curatedTopic

@@ -8,6 +8,8 @@ interface Article {
   author?: string;
   published: string;
   category?: string[];
+  imageUrl?: string;
+  thumbnail?: string;
 }
 
 class CurrentsNewsService {
@@ -139,7 +141,9 @@ class CurrentsNewsService {
       url: currentsArticle.url,
       author: currentsArticle.author,
       published: currentsArticle.published,
-      category: category ? [category] : currentsArticle.category || []
+      category: category ? [category] : currentsArticle.category || [],
+      imageUrl: currentsArticle.image,
+      thumbnail: currentsArticle.image
     };
   }
 }
