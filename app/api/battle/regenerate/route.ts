@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     // Create new battle with real data
     const startTime = new Date();
-    const endTime = new Date(startTime.getTime() + (1 * 60 * 60 * 1000)); // 1 hour
+    const endTime = new Date(startTime.getTime() + (4 * 60 * 60 * 1000)); // 4 hours
 
     const newBattle = await prisma.battle.create({
       data: {
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
         thumbnail: topic.thumbnail,
         startTime: startTime,
         endTime: endTime,
-        durationHours: 1,
+        durationHours: 4,
         maxParticipants: 1000,
         debatePoints: topic.debatePoints,
         overallScore: topic.overallScore,
