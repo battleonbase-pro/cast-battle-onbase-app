@@ -7,6 +7,7 @@ import NewsService from './news-service';
 import { DatabaseService } from './database';
 import { broadcastBattleEvent } from './battle-broadcaster';
 import { DBSharedStateManager } from './db-shared-state';
+import { workerClient } from './worker-client';
 
 export interface BattleConfig {
   battleDurationHours: number;
