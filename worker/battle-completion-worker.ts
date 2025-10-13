@@ -31,6 +31,7 @@ class BattleCompletionWorker {
   private isRunning = false;
   private intervalId: NodeJS.Timeout | null = null;
   private battleTimer: NodeJS.Timeout | null = null;
+  private countdownTimer: NodeJS.Timeout | null = null;
   private retryCount = 0;
   private maxRetries = 3;
   private lastSuccessfulCheck: Date | null = null;
@@ -69,7 +70,10 @@ class BattleCompletionWorker {
     // Perform initial check and set up timer-based scheduling
     this.performBattleCheck();
 
-    console.log('✅ Battle completion worker started (timer-based scheduling)');
+    // Start continuous countdown timer for real-time updates
+    this.startCountdownTimer();
+
+    console.log('✅ Battle completion worker started (timer-based scheduling + countdown)');
   }
 
   stop(): void {
@@ -89,6 +93,11 @@ class BattleCompletionWorker {
     if (this.battleTimer) {
       clearTimeout(this.battleTimer);
       this.battleTimer = null;
+    }
+
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer);
+      this.countdownTimer = null;
     }
 
     console.log('✅ Battle completion worker stopped');
@@ -111,13 +120,7 @@ class BattleCompletionWorker {
       // Set up timer for next battle expiration
       await this.scheduleNextBattleCheck();
       
-      // Broadcast timer update to connected clients
-      try {
-        const timingInfo = await this.getBattleTimingInfo();
-        broadcastTimerUpdate(timingInfo);
-      } catch (error) {
-        console.error('Error broadcasting timer update:', error);
-      }
+      // Note: Timer updates are now handled by continuous countdown timer
       
     } catch (error) {
       this.retryCount++;
@@ -221,6 +224,34 @@ class BattleCompletionWorker {
       console.log('🔄 Fallback check triggered');
       await this.performBattleCheck();
     }, intervalMs);
+  }
+
+  /**
+   * Start continuous countdown timer for real-time updates
+   */
+  private startCountdownTimer(): void {
+    console.log('⏰ Starting continuous countdown timer...');
+    
+    // Clear any existing countdown timer
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer);
+    }
+    
+    // Set up countdown timer to broadcast updates every second
+    this.countdownTimer = setInterval(async () => {
+      try {
+        const timingInfo = await this.getBattleTimingInfo();
+        
+        // Only broadcast if there's an active battle
+        if (timingInfo.battleId && timingInfo.timeRemaining > 0) {
+          broadcastTimerUpdate(timingInfo);
+        }
+      } catch (error) {
+        console.error('Error in countdown timer:', error);
+      }
+    }, 1000); // Every second
+    
+    console.log('✅ Continuous countdown timer started');
   }
 
   // Health check endpoint for monitoring
