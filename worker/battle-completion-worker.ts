@@ -14,6 +14,7 @@
 
 import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { BattleManagerDB } from './lib/services/battle-manager-db';
+import { addTimerConnection, removeTimerConnectionById, broadcastTimerUpdate, broadcastBattleTransition } from './lib/services/timer-broadcaster';
 
 interface WorkerStatus {
   isRunning: boolean;
@@ -110,6 +111,14 @@ class BattleCompletionWorker {
       // Set up timer for next battle expiration
       await this.scheduleNextBattleCheck();
       
+      // Broadcast timer update to connected clients
+      try {
+        const timingInfo = await this.getBattleTimingInfo();
+        broadcastTimerUpdate(timingInfo);
+      } catch (error) {
+        console.error('Error broadcasting timer update:', error);
+      }
+      
     } catch (error) {
       this.retryCount++;
       console.error(`❌ [${new Date().toISOString()}] Battle check failed (attempt ${this.retryCount}/${this.maxRetries}):`, error);
@@ -170,6 +179,18 @@ class BattleCompletionWorker {
           const minutesUntilExpiry = Math.floor((timeUntilExpiry % (1000 * 60 * 60)) / (1000 * 60));
           
           console.log(`⏰ Timer set for battle "${currentBattle.title}" to expire in ${hoursUntilExpiry}h ${minutesUntilExpiry}m`);
+          
+          // Broadcast battle transition to connected clients
+          try {
+            broadcastBattleTransition({
+              battleId: currentBattle.id,
+              title: currentBattle.title,
+              endTime: currentBattle.endTime.toISOString(),
+              status: currentBattle.status
+            });
+          } catch (error) {
+            console.error('Error broadcasting battle transition:', error);
+          }
         } else {
           console.log('⚠️ Current battle has already expired, triggering immediate check');
           await this.performBattleCheck();
@@ -219,6 +240,47 @@ class BattleCompletionWorker {
   async triggerManualCheck(): Promise<void> {
     console.log('🔧 Manual battle check triggered');
     await this.performBattleCheck();
+  }
+
+  // Get current battle timing info for SSE clients
+  async getBattleTimingInfo(): Promise<{
+    battleId: string | null;
+    timeRemaining: number;
+    endTime: string | null;
+    status: string | null;
+    title: string | null;
+  }> {
+    if (!this.battleManager) {
+      throw new Error('Battle Manager not initialized');
+    }
+
+    try {
+      const currentBattle = await this.battleManager.getCurrentBattle();
+      
+      if (currentBattle && currentBattle.status === 'ACTIVE') {
+        const now = new Date();
+        const timeRemaining = Math.max(0, Math.floor((currentBattle.endTime.getTime() - now.getTime()) / 1000));
+        
+        return {
+          battleId: currentBattle.id,
+          timeRemaining,
+          endTime: currentBattle.endTime.toISOString(),
+          status: currentBattle.status,
+          title: currentBattle.title
+        };
+      } else {
+        return {
+          battleId: null,
+          timeRemaining: 0,
+          endTime: null,
+          status: null,
+          title: null
+        };
+      }
+    } catch (error) {
+      console.error('Error getting battle timing info:', error);
+      throw error;
+    }
   }
 
   // Get battle manager status for /status endpoint
@@ -309,6 +371,84 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // HTTP Server for worker endpoints (optional - for monitoring)
 
+// Handle Timer SSE Stream
+function handleTimerSSE(req: IncomingMessage, res: ServerResponse) {
+  const connectionId = `timer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  console.log(`⏰ NEW TIMER CLIENT CONNECTED: ${connectionId}`);
+
+  // Set SSE headers
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Cache-Control'
+  });
+
+  // Send initial connection confirmation
+  const initialData = {
+    type: 'CONNECTION_ESTABLISHED',
+    connectionId,
+    timestamp: new Date().toISOString()
+  };
+  
+  res.write(`data: ${JSON.stringify(initialData)}\n\n`);
+
+  // Create controller-like object for compatibility
+  const controller = {
+    enqueue: (data: Uint8Array) => {
+      try {
+        res.write(data);
+      } catch (error) {
+        console.error('Error writing to timer SSE connection:', error);
+        removeTimerConnectionById(connectionId);
+      }
+    },
+    desiredSize: 1, // Always writable initially
+    close: () => {
+      try {
+        res.end();
+      } catch (error) {
+        console.error('Error closing timer SSE connection:', error);
+      }
+    },
+    error: (_error: Error) => {
+      try {
+        res.writeHead(500);
+        res.end();
+      } catch (err) {
+        console.error('Error handling timer SSE error:', err);
+      }
+    }
+  } as ReadableStreamDefaultController;
+
+  // Add connection to broadcaster
+  addTimerConnection({ id: connectionId, controller });
+
+  // Send initial timer data
+  worker.getBattleTimingInfo().then(timingInfo => {
+    const timerData = {
+      type: 'TIMER_UPDATE',
+      data: timingInfo,
+      timestamp: new Date().toISOString()
+    };
+    res.write(`data: ${JSON.stringify(timerData)}\n\n`);
+  }).catch(error => {
+    console.error('Error sending initial timer data:', error);
+  });
+
+  // Handle client disconnect
+  req.on('close', () => {
+    console.log(`⏰ TIMER CLIENT DISCONNECTED: ${connectionId}`);
+    removeTimerConnectionById(connectionId);
+  });
+
+  req.on('error', (error) => {
+    console.error(`⏰ Timer SSE connection error for ${connectionId}:`, error);
+    removeTimerConnectionById(connectionId);
+  });
+}
+
 // API Key validation helper
 const validateApiKey = (req: IncomingMessage): boolean => {
   const apiKey = process.env.WORKER_API_KEY;
@@ -338,8 +478,8 @@ const createWorkerServer = () => {
       return;
     }
     
-    // Validate API key for all endpoints except health check
-    if (url.pathname !== '/health' && !validateApiKey(req)) {
+    // Validate API key for all endpoints except health check and timer endpoints
+    if (url.pathname !== '/health' && url.pathname !== '/timer-sync' && url.pathname !== '/timer-stream' && !validateApiKey(req)) {
       res.writeHead(401, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Unauthorized - Invalid API key' }));
       return;
@@ -363,6 +503,27 @@ const createWorkerServer = () => {
             await worker.triggerManualCheck();
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ success: true, message: 'Manual check triggered' }));
+          } else {
+            res.writeHead(405, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Method not allowed' }));
+          }
+          break;
+          
+        case '/timer-sync':
+          if (req.method === 'GET') {
+            const timingInfo = await worker.getBattleTimingInfo();
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, data: timingInfo }));
+          } else {
+            res.writeHead(405, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Method not allowed' }));
+          }
+          break;
+          
+        case '/timer-stream':
+          if (req.method === 'GET') {
+            // Handle SSE timer stream
+            handleTimerSSE(req, res);
           } else {
             res.writeHead(405, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'Method not allowed' }));
