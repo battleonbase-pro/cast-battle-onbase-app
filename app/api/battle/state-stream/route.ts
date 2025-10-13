@@ -11,6 +11,10 @@ export async function GET(_request: NextRequest) {
 
   const encoder = new TextEncoder();
 
+  // Store timers for cleanup
+  let battleTimer: NodeJS.Timeout | null = null;
+  let heartbeatTimer: NodeJS.Timeout | null = null;
+
   const stream = new ReadableStream({
     start(controller) {
       // Store connection
@@ -31,7 +35,7 @@ export async function GET(_request: NextRequest) {
       controller.enqueue(encoder.encode(`data: ${JSON.stringify(initialData)}\n\n`));
 
       // Set up battle timer to sync client countdown every 15 seconds
-      const _battleTimer = setInterval(async () => {
+      battleTimer = setInterval(async () => {
         try {
           // Check if controller is still open before writing
           if (controller.desiredSize === null) {
@@ -74,7 +78,7 @@ export async function GET(_request: NextRequest) {
       }, 15000);
 
       // Set up heartbeat every 30 seconds
-      const _heartbeatTimer = setInterval(() => {
+      heartbeatTimer = setInterval(() => {
         try {
           // Check if controller is still open before writing
           if (controller.desiredSize === null) {
@@ -104,6 +108,14 @@ export async function GET(_request: NextRequest) {
       // Store cleanup function
       (controller as ReadableStreamDefaultController & { cleanup?: () => void }).cleanup = () => {
         console.log(`🔌 CLEANUP CALLED for connection ${connectionId}`);
+        if (battleTimer) {
+          clearInterval(battleTimer);
+          battleTimer = null;
+        }
+        if (heartbeatTimer) {
+          clearInterval(heartbeatTimer);
+          heartbeatTimer = null;
+        }
         markConnectionInactive(connectionId);
         // Keep connection alive for potential reconnection
       };
@@ -111,6 +123,15 @@ export async function GET(_request: NextRequest) {
 
     cancel() {
       console.log(`🔌 CLIENT DISCONNECTED: ${connectionId}`);
+      // Clear timers to prevent memory leaks
+      if (battleTimer) {
+        clearInterval(battleTimer);
+        battleTimer = null;
+      }
+      if (heartbeatTimer) {
+        clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
+      }
       markConnectionInactive(connectionId);
       // Keep connection alive for potential reconnection
     }
