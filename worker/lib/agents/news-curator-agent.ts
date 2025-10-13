@@ -148,7 +148,7 @@ class NewsCuratorAgent extends BaseAgent {
         title: hottestArticle.title,
         description: hottestArticle.description,
         source: hottestArticle.author || 'Unknown',
-        url: hottestArticle.url,
+        articleUrl: hottestArticle.url, // Fixed: use articleUrl instead of url
         publishedAt: hottestArticle.published,
         category: category,
         engagementScore: hottestArticle.score,
