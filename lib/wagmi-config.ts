@@ -1,7 +1,16 @@
 import { http, createConfig } from 'wagmi'
 import { base, mainnet } from 'wagmi/chains'
-import { injected, metaMask, coinbaseWallet, walletConnect, baseAccount } from 'wagmi/connectors'
+import { injected, metaMask, walletConnect, baseAccount } from 'wagmi/connectors'
 import { farcasterMiniApp as miniAppConnector } from '@farcaster/miniapp-wagmi-connector'
+
+// Custom Phantom connector for better detection
+const phantomConnector = injected({
+  target: () => ({
+    id: 'phantom',
+    name: 'Phantom',
+    provider: typeof window !== 'undefined' ? window.phantom?.ethereum : undefined,
+  }),
+})
 
 // Get WalletConnect project ID, only include WalletConnect if valid ID is provided
 const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
@@ -17,7 +26,7 @@ if (process.env.NODE_ENV === 'development') {
 const connectors = [
   // Farcaster connector (for Farcaster environment)
   miniAppConnector(),
-  // Base Account connector (for Base app integration)
+  // Base Account connector (for Base app integration - both desktop and mobile)
   baseAccount({
     appName: 'NewsCast Debate',
   }),
@@ -28,12 +37,8 @@ const connectors = [
       url: 'https://news-debate-onbase-app.vercel.app',
     },
   }),
-  // Coinbase Wallet connector (Base Wallet)
-  coinbaseWallet({
-    appName: 'NewsCast Debate',
-    appLogoUrl: 'https://news-debate-onbase-app.vercel.app/og-image.png',
-    enableMobileWalletLink: true, // Enable direct connection for mobile
-  }),
+  // Phantom connector (for better detection)
+  phantomConnector,
   // Generic injected connector for all other wallets
   injected(),
 ];

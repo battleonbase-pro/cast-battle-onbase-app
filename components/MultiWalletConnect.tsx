@@ -18,7 +18,6 @@ import {
   handleWalletReturn,
   type WalletCallbackSession
 } from '../lib/utils/mobile-wallet-callbacks';
-import { isCoinbaseWalletBrowser, handleCoinbaseWalletConnection } from '../lib/utils/coinbase-wallet-detection';
 
 // Extend window interface for wallet detection
 declare global {
@@ -128,12 +127,12 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
         return;
       }
       
-      // Handle Base Account/Coinbase Wallet - use proper detection and connection method
+      // Handle Base Wallet - use Base Account connector for all platforms
       if (wallet.name === 'coinbase' || wallet.name.toLowerCase().includes('base')) {
-        console.log(`Connecting to ${wallet.displayName} with environment detection`);
+        console.log(`Connecting to ${wallet.displayName} using Base Account connector`);
         
         try {
-          // For Base Account connector, use direct connection
+          // Use Base Account connector for all Base wallet connections
           const baseConnector = connectors.find(connector => 
             connector.name.toLowerCase().includes('base account') ||
             connector.name.toLowerCase().includes('baseaccount') ||
@@ -141,16 +140,15 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
           );
           
           if (baseConnector) {
-            console.log('Using Base Account connector for Base app integration');
+            console.log('Using Base Account connector for Base wallet integration');
             await connect({ connector: baseConnector });
             setShowWalletList(false);
             return;
+          } else {
+            onError('Base Account connector not available');
+            setShowWalletList(false);
+            return;
           }
-          
-          // Fallback to Coinbase Wallet connection method
-          await handleCoinbaseWalletConnection(connect, connectors, window.location.href);
-          setShowWalletList(false);
-          return;
         } catch (error: any) {
           console.error('Base Wallet connection error:', error);
           onError(error.message || 'Failed to connect to Base Wallet');
@@ -238,22 +236,36 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
       
       // For injected wallet, try to detect the actual wallet
       if ((walletName === 'injected wallet' || walletName === 'injected') && typeof window !== 'undefined' && window.ethereum) {
+        console.log('🔍 Detecting injected wallet:', {
+          isRabby: window.ethereum.isRabby,
+          isPhantom: window.ethereum.isPhantom,
+          isTrust: window.ethereum.isTrust,
+          isMetaMask: window.ethereum.isMetaMask,
+          isCoinbaseWallet: window.ethereum.isCoinbaseWallet
+        });
+        
         // Check for Rabby first (it injects isRabby property)
         if (window.ethereum.isRabby) {
           connector.name = 'Rabby Wallet';
+          console.log('✅ Detected Rabby Wallet');
         } else if (window.ethereum.isPhantom) {
           connector.name = 'Phantom Wallet';
+          console.log('✅ Detected Phantom Wallet');
         } else if (window.ethereum.isTrust) {
           connector.name = 'Trust Wallet';
+          console.log('✅ Detected Trust Wallet');
         } else if (window.ethereum.isMetaMask && !window.ethereum.isRabby) {
           // Skip if MetaMask is already handled by dedicated connector
           // But only if it's not Rabby (Rabby can have both isRabby and isMetaMask)
+          console.log('⏭️ Skipping MetaMask (handled by dedicated connector)');
           return unique;
         } else if (window.ethereum.isCoinbaseWallet) {
           // Skip if Coinbase Wallet is already handled by dedicated connector
+          console.log('⏭️ Skipping Coinbase Wallet (handled by dedicated connector)');
           return unique;
         } else {
           connector.name = 'Browser Wallet';
+          console.log('⚠️ Unknown injected wallet, using generic name');
         }
       }
       
@@ -469,7 +481,6 @@ function getWalletDisplayName(walletName: string): string {
     case 'coinbase wallet':
     case 'coinbasewallet':
     case 'coinbase-wallet':
-      return 'Coinbase Wallet';
     case 'base wallet':
     case 'basewallet':
     case 'base-wallet':
