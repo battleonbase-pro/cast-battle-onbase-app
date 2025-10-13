@@ -451,6 +451,32 @@ Calculate weighted scores and select the winner. Provide detailed scoring breakd
       const supportCasts = castsWithScores.filter(cast => cast.side === 'SUPPORT');
       const opposeCasts = castsWithScores.filter(cast => cast.side === 'OPPOSE');
 
+      // Handle edge case: Only 1 cast total - that user is always the winner
+      if (casts.length === 1) {
+        const winner = castsWithScores[0];
+        this.logActivity('Edge case: Only 1 cast submitted - automatic winner', {
+          winnerId: winner.id,
+          winnerSide: winner.side,
+          winnerScore: winner.totalScore.toFixed(2)
+        });
+        
+        return {
+          ...winner,
+          selectionMethod: 'single-participant',
+          selectionReason: 'Only 1 cast submitted - automatic winner',
+          groupAnalysis: {
+            winningSide: winner.side,
+            supportScore: winner.side === 'SUPPORT' ? winner.totalScore : 0,
+            opposeScore: winner.side === 'OPPOSE' ? winner.totalScore : 0,
+            top3Candidates: [{
+              id: winner.id,
+              score: winner.totalScore.toFixed(2),
+              content: winner.content.substring(0, 50) + '...'
+            }] // Available candidates for insights (1 cast in this case)
+          }
+        };
+      }
+
       // Step 4: Determine winning group
       const supportScore = this.calculateGroupScore(supportCasts);
       const opposeScore = this.calculateGroupScore(opposeCasts);
@@ -695,17 +721,17 @@ Calculate weighted scores and select the winner. Provide detailed scoring breakd
     }
   }
 
-  // Generate insights from top 3 candidates (Single LLM call)
+  // Generate insights from available candidates (Single LLM call)
   async generateInsightsFromTop3(top3Candidates, battleData) {
-    this.logActivity('Generating insights from top 3 candidates');
+    this.logActivity('Generating insights from available candidates');
 
     try {
-      const prompt = `Analyze the top 3 debate contributions and generate insights about the winning arguments.
+      const prompt = `Analyze the debate contributions and generate insights about the winning arguments.
 
 BATTLE TOPIC: "${battleData.title}"
 BATTLE DESCRIPTION: "${battleData.description}"
 
-TOP 3 CONTRIBUTIONS:
+TOP CONTRIBUTIONS:
 ${top3Candidates.map((candidate, index) => `
 ${index + 1}. Score: ${candidate.score}/10
    Content: "${candidate.content}"
@@ -725,14 +751,15 @@ Provide a concise but insightful analysis (max 200 words).`;
         throw new Error('Failed to generate insights');
       }
 
-      this.logActivity('Successfully generated insights from top 3', {
-        insightsLength: result.data.length
+      this.logActivity('Successfully generated insights from available candidates', {
+        insightsLength: result.data.length,
+        candidateCount: top3Candidates.length
       });
 
       return result.data;
 
     } catch (error) {
-      this.logActivity('Error generating insights from top 3', { error: error.message });
+      this.logActivity('Error generating insights from available candidates', { error: error.message });
       return null;
     }
   }
