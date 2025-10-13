@@ -571,7 +571,13 @@ function Home() {
         const endTime = new Date(data.battle.endTime).getTime();
         setBattleEndTime(endTime);
         
-        await fetchCasts();
+        // Fetch casts, but don't let it fail the entire function
+        try {
+          await fetchCasts();
+        } catch (castError) {
+          console.error('Failed to fetch casts:', castError);
+          // Continue anyway - casts are not critical for battle display
+        }
       } else {
         setError(data.error || 'No active debate available');
       }
