@@ -18,6 +18,7 @@ import {
   handleWalletReturn,
   type WalletCallbackSession
 } from '../lib/utils/mobile-wallet-callbacks';
+import { isCoinbaseWalletBrowser, handleCoinbaseWalletConnection } from '../lib/utils/coinbase-wallet-detection';
 
 // Extend window interface for wallet detection
 declare global {
@@ -127,21 +128,17 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
         return;
       }
       
-      // Handle Coinbase Wallet - use native connector instead of WalletConnect
+      // Handle Coinbase Wallet - use proper detection and connection method
       if (wallet.name === 'coinbase') {
-        console.log(`Connecting to ${wallet.displayName} using native connector`);
-        const coinbaseConnector = connectors.find(connector => 
-          connector.name.toLowerCase().includes('coinbase') || 
-          connector.name.toLowerCase().includes('base wallet')
-        );
+        console.log(`Connecting to ${wallet.displayName} with environment detection`);
         
-        if (coinbaseConnector) {
-          console.log('Using native Coinbase Wallet connector');
-          await connect({ connector: coinbaseConnector });
+        try {
+          await handleCoinbaseWalletConnection(connect, connectors, window.location.href);
           setShowWalletList(false);
           return;
-        } else {
-          onError('Coinbase Wallet connector not available');
+        } catch (error: any) {
+          console.error('Coinbase Wallet connection error:', error);
+          onError(error.message || 'Failed to connect to Coinbase Wallet');
           setShowWalletList(false);
           return;
         }

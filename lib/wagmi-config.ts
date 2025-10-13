@@ -28,6 +28,7 @@ const connectors = [
   coinbaseWallet({
     appName: 'NewsCast Debate',
     appLogoUrl: 'https://news-debate-onbase-app.vercel.app/og-image.png',
+    enableMobileWalletLink: true, // Enable direct connection for mobile
   }),
   // Generic injected connector for all other wallets
   injected(),
