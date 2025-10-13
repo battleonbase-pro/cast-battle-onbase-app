@@ -2,17 +2,15 @@
 import NewsCuratorAgent from './news-curator-agent';
 import DebateGeneratorAgent from './debate-generator-agent';
 import ModeratorAgent from './moderator-agent';
-import JudgeAgent from './judge-agent';
 
 class AgentOrchestrator {
   constructor(apiKey) {
     this.apiKey = apiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     
-    // Initialize agents
+    // Initialize agents (only for topic generation)
     this.newsCurator = new NewsCuratorAgent(this.apiKey);
     this.debateGenerator = new DebateGeneratorAgent(this.apiKey);
     this.moderator = new ModeratorAgent(this.apiKey);
-    this.judge = new JudgeAgent(this.apiKey);
     
     this.workflowHistory = [];
   }
@@ -106,81 +104,8 @@ class AgentOrchestrator {
     }
   }
 
-  // Workflow: Complete battle and determine winner
-  async completeBattle(battleData, casts, winnerMethod = 'hybrid') {
-    const workflowId = `battle_completion_${Date.now()}`;
-    this.logWorkflow('Starting battle completion', workflowId);
-
-    try {
-      // Step 1: Batch moderate all casts
-      this.logWorkflow('Step 1: Batch cast moderation', workflowId);
-      const moderationResults = await this.moderator.moderateBattleCasts(casts, battleData);
-      
-      if (moderationResults.results.length === 0) {
-        throw new Error('No casts found for moderation');
-      }
-
-      // Step 2: Judge determines winner
-      this.logWorkflow('Step 2: Battle judgment', workflowId);
-      const judgment = await this.judge.judgeBattle(
-        battleData, 
-        casts, 
-        moderationResults.results, 
-        winnerMethod
-      );
-
-      // Step 3: Generate battle statistics
-      this.logWorkflow('Step 3: Statistics generation', workflowId);
-      const statistics = await this.judge.generateBattleStatistics(
-        battleData, 
-        casts, 
-        moderationResults.results, 
-        judgment
-      );
-
-      const result = {
-        workflowId,
-        battleData,
-        moderationResults,
-        judgment,
-        statistics,
-        completedAt: new Date().toISOString(),
-        agents: {
-          moderator: this.moderator.name,
-          judge: this.judge.name
-        }
-      };
-
-      this.logWorkflow('Successfully completed battle', workflowId, {
-        winnerId: judgment.winner.id,
-        winnerMethod: judgment.winnerMethod,
-        totalCasts: casts.length
-      });
-
-      this.workflowHistory.push({
-        id: workflowId,
-        type: 'battle_completion',
-        status: 'completed',
-        timestamp: new Date().toISOString(),
-        result: result
-      });
-
-      return result;
-
-    } catch (error) {
-      this.logWorkflow('Error in battle completion', workflowId, { error: error.message });
-      
-      this.workflowHistory.push({
-        id: workflowId,
-        type: 'battle_completion',
-        status: 'failed',
-        timestamp: new Date().toISOString(),
-        error: error.message
-      });
-
-      throw error;
-    }
-  }
+  // Note: Battle completion is handled by the worker service
+  // This orchestrator is only used for topic generation
 
   // Workflow: Generate debate variations
   async generateDebateVariations(originalTopic, count = 2) {
