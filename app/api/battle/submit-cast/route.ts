@@ -123,27 +123,3 @@ export async function POST(request: NextRequest) {
     }, { status: 500 });
   }
 }
-
-export async function GET(_request: NextRequest) {
-  try {
-    const battleManager = await BattleManagerDB.getInstance();
-    const casts = await battleManager.getCurrentBattleCasts();
-    
-    return NextResponse.json({ 
-      success: true, 
-      casts: casts.map(cast => ({
-        id: cast.id,
-        content: cast.content,
-        side: cast.side,
-        userAddress: cast.user.address,
-        createdAt: cast.createdAt
-      }))
-    });
-    
-  } catch (error) {
-    console.error('Error fetching casts:', error);
-    return NextResponse.json({ 
-      error: 'Failed to fetch casts' 
-    }, { status: 500 });
-  }
-}
