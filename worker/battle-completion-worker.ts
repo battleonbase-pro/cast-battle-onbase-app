@@ -1,16 +1,18 @@
 /**
  * Battle Completion Worker Service
- * Optimized for production deployment on Railway, Render, Fly.io, etc.
+ * Optimized for production deployment on Google Cloud Run
  * 
  * Features:
- * - Automatic battle completion every 5 minutes
+ * - Timer-based battle completion (no polling!)
+ * - Precise scheduling based on battle expiration times
  * - Health check endpoint
  * - Graceful shutdown handling
  * - Error recovery and retry logic
  * - Comprehensive logging
+ * - Fallback to interval-based checking if needed
  */
 
-import { createServer } from 'http';
+import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { BattleManagerDB } from './lib/services/battle-manager-db';
 
 interface WorkerStatus {
@@ -27,6 +29,7 @@ class BattleCompletionWorker {
   private battleManager: BattleManagerDB | null = null;
   private isRunning = false;
   private intervalId: NodeJS.Timeout | null = null;
+  private battleTimer: NodeJS.Timeout | null = null;
   private retryCount = 0;
   private maxRetries = 3;
   private lastSuccessfulCheck: Date | null = null;
@@ -62,15 +65,10 @@ class BattleCompletionWorker {
     console.log('🔄 Starting battle completion worker...');
     this.isRunning = true;
 
-    // Check for expired battles every 5 minutes
-    this.intervalId = setInterval(async () => {
-      await this.performBattleCheck();
-    }, 5 * 60 * 1000); // 5 minutes
-
-    // Perform initial check immediately
+    // Perform initial check and set up timer-based scheduling
     this.performBattleCheck();
 
-    console.log('✅ Battle completion worker started (checking every 5 minutes)');
+    console.log('✅ Battle completion worker started (timer-based scheduling)');
   }
 
   stop(): void {
@@ -85,6 +83,11 @@ class BattleCompletionWorker {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
+    }
+
+    if (this.battleTimer) {
+      clearTimeout(this.battleTimer);
+      this.battleTimer = null;
     }
 
     console.log('✅ Battle completion worker stopped');
@@ -104,6 +107,9 @@ class BattleCompletionWorker {
       const duration = Date.now() - startTime.getTime();
       console.log(`✅ [${new Date().toISOString()}] Battle check completed successfully in ${duration}ms`);
       
+      // Set up timer for next battle expiration
+      await this.scheduleNextBattleCheck();
+      
     } catch (error) {
       this.retryCount++;
       console.error(`❌ [${new Date().toISOString()}] Battle check failed (attempt ${this.retryCount}/${this.maxRetries}):`, error);
@@ -118,6 +124,9 @@ class BattleCompletionWorker {
           console.error('❌ Failed to reinitialize worker:', initError);
         }
       }
+      
+      // Fallback to interval-based checking if timer scheduling fails
+      this.scheduleFallbackCheck();
     }
   }
 
@@ -127,6 +136,70 @@ class BattleCompletionWorker {
     }
 
     await this.battleManager.checkAndCompleteExpiredBattles();
+  }
+
+  /**
+   * Schedule the next battle check based on current battle expiration time
+   */
+  private async scheduleNextBattleCheck(): Promise<void> {
+    try {
+      if (!this.battleManager) {
+        throw new Error('Battle Manager not initialized');
+      }
+
+      // Get current battle to determine when it expires
+      const currentBattle = await this.battleManager.getCurrentBattle();
+      
+      if (currentBattle && currentBattle.status === 'ACTIVE') {
+        const now = new Date();
+        const timeUntilExpiry = currentBattle.endTime.getTime() - now.getTime();
+        
+        if (timeUntilExpiry > 0) {
+          // Clear any existing timer
+          if (this.battleTimer) {
+            clearTimeout(this.battleTimer);
+          }
+          
+          // Set timer to trigger exactly when battle expires
+          this.battleTimer = setTimeout(async () => {
+            console.log(`⏰ Battle "${currentBattle.title}" expired, triggering check...`);
+            await this.performBattleCheck();
+          }, timeUntilExpiry);
+          
+          const hoursUntilExpiry = Math.floor(timeUntilExpiry / (1000 * 60 * 60));
+          const minutesUntilExpiry = Math.floor((timeUntilExpiry % (1000 * 60 * 60)) / (1000 * 60));
+          
+          console.log(`⏰ Timer set for battle "${currentBattle.title}" to expire in ${hoursUntilExpiry}h ${minutesUntilExpiry}m`);
+        } else {
+          console.log('⚠️ Current battle has already expired, triggering immediate check');
+          await this.performBattleCheck();
+        }
+      } else {
+        console.log('ℹ️ No active battle found, will check again in 1 minute');
+        this.scheduleFallbackCheck(60000); // 1 minute fallback
+      }
+    } catch (error) {
+      console.error('❌ Failed to schedule next battle check:', error);
+      this.scheduleFallbackCheck();
+    }
+  }
+
+  /**
+   * Fallback to interval-based checking if timer scheduling fails
+   */
+  private scheduleFallbackCheck(intervalMs: number = 5 * 60 * 1000): void {
+    console.log(`🔄 Scheduling fallback check in ${intervalMs / 1000}s`);
+    
+    // Clear any existing interval
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+    }
+    
+    // Set up fallback interval
+    this.intervalId = setInterval(async () => {
+      console.log('🔄 Fallback check triggered');
+      await this.performBattleCheck();
+    }, intervalMs);
   }
 
   // Health check endpoint for monitoring
@@ -149,7 +222,12 @@ class BattleCompletionWorker {
   }
 
   // Get battle manager status for /status endpoint
-  async getBattleManagerStatus(): Promise<any> {
+  async getBattleManagerStatus(): Promise<{
+    success: boolean;
+    status: string;
+    config: unknown;
+    currentBattle: unknown;
+  }> {
     if (!this.battleManager) {
       throw new Error('Battle Manager not initialized');
     }
@@ -165,7 +243,7 @@ class BattleCompletionWorker {
         currentBattle: currentBattle ? {
           id: currentBattle.id,
           status: currentBattle.status,
-          topic: currentBattle.topic?.title,
+          title: currentBattle.title,
           participants: currentBattle.participants.length,
           endTime: currentBattle.endTime
         } : null
@@ -232,19 +310,21 @@ process.on('unhandledRejection', (reason, promise) => {
 // HTTP Server for worker endpoints (optional - for monitoring)
 
 // API Key validation helper
-const validateApiKey = (req: any): boolean => {
+const validateApiKey = (req: IncomingMessage): boolean => {
   const apiKey = process.env.WORKER_API_KEY;
   if (!apiKey) {
     console.warn('⚠️ WORKER_API_KEY not set - API key validation disabled');
     return true; // Allow access if no API key is set
   }
   
-  const providedKey = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '');
+  const apiKeyHeader = req.headers['x-api-key'];
+  const authHeader = req.headers['authorization'];
+  const providedKey = apiKeyHeader || (typeof authHeader === 'string' ? authHeader.replace('Bearer ', '') : '');
   return providedKey === apiKey;
 };
 
 const createWorkerServer = () => {
-  const server = createServer(async (req, res) => {
+  const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
     const url = new URL(req.url || '', `http://${req.headers.host}`);
     
     // Set CORS headers
