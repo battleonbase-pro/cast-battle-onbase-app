@@ -68,7 +68,9 @@ export function handleCoinbaseWalletConnection(
         console.log('Detected Coinbase Wallet browser - using native connector');
         const coinbaseConnector = connectors.find(connector => 
           connector.name.toLowerCase().includes('coinbase') || 
-          connector.name.toLowerCase().includes('base wallet')
+          connector.name.toLowerCase().includes('base') ||
+          connector.name.toLowerCase().includes('coinbasewallet') ||
+          connector.name.toLowerCase().includes('basewallet')
         );
         
         if (coinbaseConnector) {

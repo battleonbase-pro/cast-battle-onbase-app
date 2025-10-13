@@ -128,8 +128,8 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
         return;
       }
       
-      // Handle Coinbase Wallet - use proper detection and connection method
-      if (wallet.name === 'coinbase') {
+      // Handle Coinbase Wallet/Base Wallet - use proper detection and connection method
+      if (wallet.name === 'coinbase' || wallet.name.toLowerCase().includes('base')) {
         console.log(`Connecting to ${wallet.displayName} with environment detection`);
         
         try {
@@ -190,24 +190,36 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
 
   // Filter to show only specific wallets and remove duplicates (memoized to prevent repeated execution)
   const availableConnectors = useMemo(() => {
+    console.log('🔍 Available connectors:', connectors.map(c => ({ name: c.name, type: c.type, id: c.id })));
+    
     return connectors.filter(connector => {
       const walletName = connector.name.toLowerCase();
-      // Only include specific wallet types, avoiding generic injected connectors
+      console.log(`🔍 Checking connector: "${connector.name}" (${walletName})`);
+      
+      // More inclusive filtering - include any connector that might be Coinbase/Base related
       return (
         walletName === 'metamask' ||
+        walletName.includes('coinbase') ||
+        walletName.includes('base') ||
         walletName === 'coinbase wallet' ||
+        walletName === 'coinbasewallet' ||
+        walletName === 'coinbase-wallet' ||
+        walletName === 'base wallet' ||
+        walletName === 'basewallet' ||
+        walletName === 'base-wallet' ||
         walletName === 'rabby' ||
         walletName === 'walletconnect' ||
         walletName === 'phantom' ||
         walletName === 'trust' ||
         walletName === 'trust wallet' ||
-        walletName === 'injected wallet' // Generic injected connector
+        walletName === 'injected wallet' ||
+        walletName === 'injected' // Generic injected connector
       );
     }).reduce((unique, connector) => {
       const walletName = connector.name.toLowerCase();
       
       // For injected wallet, try to detect the actual wallet
-      if (walletName === 'injected wallet' && typeof window !== 'undefined' && window.ethereum) {
+      if ((walletName === 'injected wallet' || walletName === 'injected') && typeof window !== 'undefined' && window.ethereum) {
         // Check for Rabby first (it injects isRabby property)
         if (window.ethereum.isRabby) {
           connector.name = 'Rabby Wallet';
@@ -229,7 +241,7 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
       
       // Use a more specific key to avoid duplicates
       const walletKey = walletName.includes('metamask') ? 'metamask' :
-                       walletName.includes('coinbase') ? 'coinbase' :
+                       walletName.includes('coinbase') || walletName.includes('base') ? 'coinbase' :
                        walletName.includes('rabby') ? 'rabby' :
                        walletName.includes('walletconnect') ? 'walletconnect' :
                        walletName.includes('phantom') ? 'phantom' :
@@ -240,7 +252,7 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
         const existingName = c.name.toLowerCase();
         return (
           (walletKey === 'metamask' && existingName.includes('metamask')) ||
-          (walletKey === 'coinbase' && existingName.includes('coinbase')) ||
+          (walletKey === 'coinbase' && (existingName.includes('coinbase') || existingName.includes('base'))) ||
           (walletKey === 'rabby' && existingName.includes('rabby')) ||
           (walletKey === 'walletconnect' && existingName.includes('walletconnect')) ||
           (walletKey === 'phantom' && existingName.includes('phantom')) ||
