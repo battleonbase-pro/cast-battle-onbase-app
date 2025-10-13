@@ -10,11 +10,15 @@ const phantomConnector = injected({
     name: 'Phantom',
     provider: typeof window !== 'undefined' ? window.phantom?.ethereum : undefined,
   }),
+  // Ensure it's not confused with WalletConnect
+  type: 'injected',
 })
 
 // Get WalletConnect project ID, only include WalletConnect if valid ID is provided
 const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
-const hasValidWalletConnectId = walletConnectProjectId && walletConnectProjectId !== 'your-project-id';
+const hasValidWalletConnectId = walletConnectProjectId && 
+  walletConnectProjectId !== 'your-project-id' && 
+  walletConnectProjectId !== 'your-walletconnect-project-id';
 
 // Log WalletConnect configuration status
 if (process.env.NODE_ENV === 'development') {
@@ -26,7 +30,7 @@ if (process.env.NODE_ENV === 'development') {
 const connectors = [
   // Farcaster connector (for Farcaster environment)
   miniAppConnector(),
-  // Base Account connector (for Base app integration - both desktop and mobile)
+  // Base Account connector (official Base ecosystem integration)
   baseAccount({
     appName: 'NewsCast Debate',
   }),
@@ -39,8 +43,6 @@ const connectors = [
   }),
   // Phantom connector (for better detection)
   phantomConnector,
-  // Generic injected connector for all other wallets
-  injected(),
 ];
 
 // Only add WalletConnect if we have a valid project ID

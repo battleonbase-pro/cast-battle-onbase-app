@@ -1,36 +1,7 @@
 "use client";
-import { useState, useEffect, useMemo } from 'react';
-import { useAccount, useConnect, useDisconnect } from 'wagmi';
+import { useState, useMemo } from 'react';
+import { useConnect, useAccount, useDisconnect } from 'wagmi';
 import styles from './MultiWalletConnect.module.css';
-import { 
-  isMobileDevice, 
-  isIOS, 
-  isAndroid, 
-  getAvailableMobileWallets, 
-  openWalletApp,
-  type MobileWallet 
-} from '../lib/utils/mobile-wallet-detection';
-import {
-  createWalletCallbackSession,
-  generateUniversalLink,
-  generateCustomSchemeCallback,
-  startWalletConnectionPolling,
-  handleWalletReturn,
-  type WalletCallbackSession
-} from '../lib/utils/mobile-wallet-callbacks';
-
-// Extend window interface for wallet detection
-declare global {
-  interface Window {
-    ethereum?: {
-      isRabby?: boolean;
-      isPhantom?: boolean;
-      isTrust?: boolean;
-      isMetaMask?: boolean;
-      isCoinbaseWallet?: boolean;
-    };
-  }
-}
 
 interface MultiWalletConnectProps {
   onConnect: (address: string) => void;
@@ -38,268 +9,50 @@ interface MultiWalletConnectProps {
 }
 
 export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectProps) {
+  const { connectAsync, connectors, isPending } = useConnect();
   const { isConnected, address } = useAccount();
-  const { connect, connectors, isPending } = useConnect();
   const { disconnect } = useDisconnect();
   const [showWalletList, setShowWalletList] = useState(false);
-  
-  // Check if we're on mobile
-  const isMobile = isMobileDevice();
-  const mobileWallets = getAvailableMobileWallets();
-
-  // Handle wallet returns when component mounts
-  useEffect(() => {
-    const returnedSession = handleWalletReturn();
-    if (returnedSession) {
-      console.log('Wallet return detected:', returnedSession);
-      if (returnedSession.status === 'completed') {
-        onConnect('0x' + '0'.repeat(40)); // Placeholder address
-      } else {
-        onError('Wallet connection failed');
-      }
-    }
-  }, [onConnect, onError]);
 
   const handleConnect = async (connector: any) => {
     try {
-      console.log('Attempting to connect to:', connector.name, connector.type);
-      await connect({ connector });
+      console.log('Attempting to connect to:', connector.name);
+      
+      // Use standard wagmi connection for all wallets including Base Account
+      // The Base Account connector handles authentication internally
+      await connectAsync({ connector });
       console.log('Connection successful');
-      if (address) {
-        onConnect(address);
-      }
+      setShowWalletList(false);
     } catch (error: any) {
       console.error('Connection error:', error);
       onError(error.message || 'Failed to connect wallet');
-    }
-  };
-
-  const handleMobileWalletConnect = async (wallet: MobileWallet) => {
-    try {
-      // Only use mobile wallet logic on actual mobile devices
-      if (!isMobile) {
-        throw new Error('Mobile wallet connection only available on mobile devices');
-      }
-      
-      console.log('Connecting to mobile wallet:', wallet.displayName);
-      
-      // Check if WalletConnect is properly configured
-      const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
-      const hasValidWalletConnectId = walletConnectProjectId && walletConnectProjectId !== 'your-walletconnect-project-id';
-      
-      // Handle WalletConnect differently (use WalletConnect connector)
-      if (wallet.name === 'walletconnect') {
-        console.log(`Using WalletConnect for ${wallet.displayName}`);
-        const walletConnectConnector = connectors.find(connector => 
-          connector.name.toLowerCase().includes('walletconnect')
-        );
-        
-        if (walletConnectConnector) {
-          console.log('Using WalletConnect connector for mobile wallet connection');
-          await connect({ connector: walletConnectConnector });
-          setShowWalletList(false);
-          return;
-        } else {
-          onError('WalletConnect connector not available. Please configure WalletConnect.');
-          setShowWalletList(false);
-          return;
-        }
-      }
-      
-      // Handle Phantom differently (use built-in browser)
-      if (wallet.name === 'phantom') {
-        console.log(`Opening ${wallet.displayName} with built-in browser`);
-        const baseUrl = window.location.origin;
-        const deepLink = `${wallet.name.toLowerCase()}://dapp/${encodeURIComponent(baseUrl)}`;
-        
-        // Open wallet app with built-in browser
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = deepLink;
-        document.body.appendChild(iframe);
-        
-        // Remove iframe after a short delay
-        setTimeout(() => {
-          document.body.removeChild(iframe);
-        }, 1000);
-        
-        setShowWalletList(false);
-        return;
-      }
-      
-      // Handle Base Wallet - use Base Account connector for all platforms
-      if (wallet.name === 'coinbase' || wallet.name.toLowerCase().includes('base')) {
-        console.log(`Connecting to ${wallet.displayName} using Base Account connector`);
-        
-        try {
-          // Use Base Account connector for all Base wallet connections
-          const baseConnector = connectors.find(connector => 
-            connector.name.toLowerCase().includes('base account') ||
-            connector.name.toLowerCase().includes('baseaccount') ||
-            connector.name.toLowerCase().includes('base-account')
-          );
-          
-          if (baseConnector) {
-            console.log('Using Base Account connector for Base wallet integration');
-            await connect({ connector: baseConnector });
-            setShowWalletList(false);
-            return;
-          } else {
-            onError('Base Account connector not available');
-            setShowWalletList(false);
-            return;
-          }
-        } catch (error: any) {
-          console.error('Base Wallet connection error:', error);
-          onError(error.message || 'Failed to connect to Base Wallet');
-          setShowWalletList(false);
-          return;
-        }
-      }
-      
-      if (hasValidWalletConnectId) {
-        // Use WalletConnect for other mobile wallets (MetaMask, Trust, Rainbow)
-        const walletConnectConnector = connectors.find(connector => 
-          connector.name.toLowerCase().includes('walletconnect')
-        );
-        
-        if (walletConnectConnector) {
-          console.log('Using WalletConnect for mobile wallet connection');
-          await connect({ connector: walletConnectConnector });
-          setShowWalletList(false);
-          return;
-        }
-      }
-      
-      // Fallback: Use simple deep link (this won't trigger sign-in, just opens the app)
-      console.log('WalletConnect not available, using fallback deep link');
-      const baseUrl = window.location.origin;
-      const deepLink = `${wallet.name.toLowerCase()}://dapp/${encodeURIComponent(baseUrl)}`;
-      
-      // Open wallet app
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      iframe.src = deepLink;
-      document.body.appendChild(iframe);
-      
-      // Remove iframe after a short delay
-      setTimeout(() => {
-        document.body.removeChild(iframe);
-      }, 1000);
-      
-      // Show helpful message
-      onError(`Please configure WalletConnect for proper mobile wallet connection. Currently only opens the ${wallet.displayName} app.`);
       setShowWalletList(false);
-      
-    } catch (error: any) {
-      console.error('Mobile wallet error:', error);
-      onError(`Failed to connect ${wallet.displayName}: ${error.message}`);
     }
   };
 
-  const handleDisconnect = () => {
-    disconnect();
-  };
-
-  // Filter to show only specific wallets and remove duplicates (memoized to prevent repeated execution)
+  // Simple wallet filtering - show only the connectors we want
   const availableConnectors = useMemo(() => {
-    console.log('🔍 Available connectors:', connectors.map(c => ({ name: c.name, type: c.type, id: c.id })));
-    
-    return connectors.filter(connector => {
+    const filtered = connectors.filter(connector => {
       const walletName = connector.name.toLowerCase();
-      console.log(`🔍 Checking connector: "${connector.name}" (${walletName})`);
-      
-      // More inclusive filtering - include any connector that might be Coinbase/Base related
       return (
-        walletName === 'metamask' ||
-        walletName.includes('coinbase') ||
-        walletName.includes('base') ||
-        walletName === 'coinbase wallet' ||
-        walletName === 'coinbasewallet' ||
-        walletName === 'coinbase-wallet' ||
-        walletName === 'base wallet' ||
-        walletName === 'basewallet' ||
-        walletName === 'base-wallet' ||
-        walletName === 'base account' ||
-        walletName === 'baseaccount' ||
-        walletName === 'base-account' ||
-        walletName === 'rabby' ||
-        walletName === 'walletconnect' ||
-        walletName === 'phantom' ||
-        walletName === 'trust' ||
-        walletName === 'trust wallet' ||
-        walletName === 'injected wallet' ||
-        walletName === 'injected' // Generic injected connector
+        walletName.includes('metamask') ||
+        walletName.includes('base account') || // Only Base Account, not Coinbase Wallet
+        walletName.includes('phantom') ||
+        walletName.includes('walletconnect')
       );
-    }).reduce((unique, connector) => {
-      const walletName = connector.name.toLowerCase();
-      
-      // For injected wallet, try to detect the actual wallet
-      if ((walletName === 'injected wallet' || walletName === 'injected') && typeof window !== 'undefined' && window.ethereum) {
-        console.log('🔍 Detecting injected wallet:', {
-          isRabby: window.ethereum.isRabby,
-          isPhantom: window.ethereum.isPhantom,
-          isTrust: window.ethereum.isTrust,
-          isMetaMask: window.ethereum.isMetaMask,
-          isCoinbaseWallet: window.ethereum.isCoinbaseWallet
-        });
-        
-        // Check for Rabby first (it injects isRabby property)
-        if (window.ethereum.isRabby) {
-          connector.name = 'Rabby Wallet';
-          console.log('✅ Detected Rabby Wallet');
-        } else if (window.ethereum.isPhantom) {
-          connector.name = 'Phantom Wallet';
-          console.log('✅ Detected Phantom Wallet');
-        } else if (window.ethereum.isTrust) {
-          connector.name = 'Trust Wallet';
-          console.log('✅ Detected Trust Wallet');
-        } else if (window.ethereum.isMetaMask && !window.ethereum.isRabby) {
-          // Skip if MetaMask is already handled by dedicated connector
-          // But only if it's not Rabby (Rabby can have both isRabby and isMetaMask)
-          console.log('⏭️ Skipping MetaMask (handled by dedicated connector)');
-          return unique;
-        } else if (window.ethereum.isCoinbaseWallet) {
-          // Skip if Coinbase Wallet is already handled by dedicated connector
-          console.log('⏭️ Skipping Coinbase Wallet (handled by dedicated connector)');
-          return unique;
-        } else {
-          connector.name = 'Browser Wallet';
-          console.log('⚠️ Unknown injected wallet, using generic name');
-        }
+    });
+    
+    // Remove duplicates based on connector type and name
+    const uniqueConnectors = filtered.reduce((acc, connector) => {
+      const key = `${connector.type}-${connector.name.toLowerCase()}`;
+      if (!acc.some(c => `${c.type}-${c.name.toLowerCase()}` === key)) {
+        acc.push(connector);
       }
-      
-      // Use a more specific key to avoid duplicates
-      const walletKey = walletName.includes('metamask') ? 'metamask' :
-                       walletName.includes('coinbase') || walletName.includes('base') ? 'base' :
-                       walletName.includes('rabby') ? 'rabby' :
-                       walletName.includes('walletconnect') ? 'walletconnect' :
-                       walletName.includes('phantom') ? 'phantom' :
-                       walletName.includes('trust') ? 'trust' :
-                       walletName.includes('injected') ? 'injected' : walletName;
-      
-      const existingIndex = unique.findIndex(c => {
-        const existingName = c.name.toLowerCase();
-        return (
-          (walletKey === 'metamask' && existingName.includes('metamask')) ||
-          (walletKey === 'base' && (existingName.includes('coinbase') || existingName.includes('base'))) ||
-          (walletKey === 'rabby' && existingName.includes('rabby')) ||
-          (walletKey === 'walletconnect' && existingName.includes('walletconnect')) ||
-          (walletKey === 'phantom' && existingName.includes('phantom')) ||
-          (walletKey === 'trust' && existingName.includes('trust')) ||
-          (walletKey === 'injected' && existingName.includes('injected'))
-        );
-      });
-      
-      if (existingIndex === -1) {
-        unique.push(connector);
-      }
-      return unique;
-    }, [] as typeof connectors);
+      return acc;
+    }, [] as typeof filtered);
+    
+    return uniqueConnectors;
   }, [connectors]);
-
-  // Don't show connected state here - let the main page handle it
-  // This component only handles the connection modal
 
   return (
     <>
@@ -329,97 +82,46 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
             </div>
             
             <div className={styles.walletOptions}>
-              {isMobile ? (
-                // Mobile wallet options with WalletConnect or fallback
-                (() => {
-                  const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
-                  const hasValidWalletConnectId = walletConnectProjectId && walletConnectProjectId !== 'your-walletconnect-project-id';
-                  
-                  return mobileWallets.map((wallet) => (
-                    <button
-                      key={wallet.name}
-                      onClick={() => handleMobileWalletConnect(wallet)}
-                      className={styles.walletOption}
-                      disabled={isPending}
-                    >
-                      <div className={styles.walletIcon}>
-                        <img 
-                          src={wallet.icon} 
-                          alt={`${wallet.displayName} icon`}
-                          className={styles.walletIconImage}
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            target.nextElementSibling!.textContent = getWalletIconFallback(wallet.name);
-                          }}
-                        />
-                        <span className={styles.walletIconFallback}></span>
-                      </div>
-                      <div className={styles.walletInfo}>
-                        <div className={styles.walletName}>
-                          {wallet.displayName}
-                        </div>
-                        <div className={styles.mobileWalletSubtext}>
-                          {wallet.name === 'walletconnect' ? 
-                            'Connect via WalletConnect' :
-                            wallet.name === 'coinbase' ? 
-                              'Connect via WalletConnect' :
-                            wallet.name === 'phantom' ? 
-                              'Open App & Use Browser' : 
-                              'Connect via WalletConnect'
-                          }
-                        </div>
-                      </div>
-                    </button>
-                  ));
-                })()
-              ) : (
-                // Desktop wallet options with browser extension connectors
-                availableConnectors.map((connector) => (
-                  <button
-                    key={connector.uid}
-                    onClick={() => {
-                      handleConnect(connector);
-                      setShowWalletList(false);
-                    }}
-                    className={styles.walletOption}
-                    disabled={isPending}
-                  >
-                    <div className={styles.walletIcon}>
-                      <img 
-                        src={getWalletIcon(connector.name)} 
-                        alt={`${getWalletDisplayName(connector.name)} icon`}
-                        className={styles.walletIconImage}
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          target.nextElementSibling!.textContent = getWalletIconFallback(connector.name);
-                        }}
-                      />
-                      <span className={styles.walletIconFallback}></span>
+              {availableConnectors.map((connector) => (
+                <button
+                  key={connector.id}
+                  onClick={() => handleConnect(connector)}
+                  className={styles.walletOption}
+                  disabled={isPending}
+                >
+                  <div className={styles.walletIcon}>
+                    <img 
+                      src={getWalletIcon(connector.name)} 
+                      alt={`${getWalletDisplayName(connector.name)} icon`}
+                      className={styles.walletIconImage}
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        target.nextElementSibling!.textContent = getWalletIconFallback(connector.name);
+                      }}
+                    />
+                    <span className={styles.walletIconFallback}></span>
+                  </div>
+                  <div className={styles.walletInfo}>
+                    <div className={styles.walletName}>
+                      {getWalletDisplayName(connector.name)}
                     </div>
-                    <div className={styles.walletInfo}>
-                      <div className={styles.walletName}>
-                        {getWalletDisplayName(connector.name)}
-                      </div>
+                    <div className={styles.walletSubtext}>
+                      Connect Wallet
                     </div>
-                  </button>
-                ))
-              )}
+                  </div>
+                </button>
+              ))}
             </div>
             
-              <div className={styles.walletHelp}>
-                {isMobile ? (
-                  <p>
-                    Don't have a wallet? 
-                    <a href="https://apps.apple.com/app/walletconnect/id1359134690" target="_blank" rel="noopener noreferrer"> Get WalletConnect</a>, 
-                    <a href="https://apps.apple.com/app/coinbase-wallet/id1278383455" target="_blank" rel="noopener noreferrer"> Get Coinbase Wallet</a>, or 
-                    <a href="https://apps.apple.com/app/phantom-solana-wallet/id1598432977" target="_blank" rel="noopener noreferrer"> Get Phantom</a>
-                  </p>
-                ) : (
-                  <p>Don't have a wallet? <a href="https://metamask.io" target="_blank" rel="noopener noreferrer">Get MetaMask</a>, <a href="https://wallet.coinbase.com/" target="_blank" rel="noopener noreferrer">Get Base Wallet</a>, or <a href="https://phantom.app" target="_blank" rel="noopener noreferrer">Get Phantom</a></p>
-                )}
-              </div>
+            <div className={styles.walletModalFooter}>
+              <p>
+                Don't have a wallet? 
+                <a href="https://metamask.io" target="_blank" rel="noopener noreferrer"> Get MetaMask</a>, 
+                <a href="https://wallet.coinbase.com/" target="_blank" rel="noopener noreferrer"> Get Base Wallet</a>, or 
+                <a href="https://phantom.app" target="_blank" rel="noopener noreferrer"> Get Phantom</a>
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -431,17 +133,9 @@ function getWalletIcon(walletName: string): string {
   switch (walletName.toLowerCase()) {
     case 'metamask':
       return '/wallet-icons/metamask.svg';
-    case 'coinbase wallet':
-    case 'coinbasewallet':
-    case 'coinbase-wallet':
-    case 'base wallet':
-    case 'basewallet':
-    case 'base-wallet':
     case 'base account':
     case 'baseaccount':
     case 'base-account':
-    case 'base':
-    case 'coinbase':
       return '/wallet-icons/coinbase.svg';
     case 'rabby':
       return '/wallet-icons/rabby.svg';
@@ -452,8 +146,6 @@ function getWalletIcon(walletName: string): string {
     case 'trust':
     case 'trust wallet':
       return '/wallet-icons/trust.svg';
-    case 'injected wallet':
-      return '/wallet-icons/default.svg';
     default:
       return '/wallet-icons/default.svg';
   }
@@ -463,13 +155,6 @@ function getWalletIconFallback(walletName: string): string {
   switch (walletName.toLowerCase()) {
     case 'metamask':
       return '🦊';
-    case 'coinbase wallet':
-    case 'coinbase':
-    case 'coinbasewallet':
-    case 'coinbase-wallet':
-    case 'base wallet':
-    case 'basewallet':
-    case 'base-wallet':
     case 'base account':
     case 'baseaccount':
     case 'base-account':
@@ -485,8 +170,6 @@ function getWalletIconFallback(walletName: string): string {
       return '🔒';
     case 'rainbow':
       return '🌈';
-    case 'injected wallet':
-      return '💳';
     default:
       return '💳';
   }
@@ -496,12 +179,6 @@ function getWalletDisplayName(walletName: string): string {
   switch (walletName.toLowerCase()) {
     case 'metamask':
       return 'MetaMask';
-    case 'coinbase wallet':
-    case 'coinbasewallet':
-    case 'coinbase-wallet':
-    case 'base wallet':
-    case 'basewallet':
-    case 'base-wallet':
     case 'base account':
     case 'baseaccount':
     case 'base-account':
@@ -515,10 +192,7 @@ function getWalletDisplayName(walletName: string): string {
     case 'trust':
     case 'trust wallet':
       return 'Trust Wallet';
-    case 'injected wallet':
-      return 'Browser Wallet';
     default:
       return walletName;
   }
 }
-

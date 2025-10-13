@@ -4,7 +4,7 @@ import { MultiWalletConnect } from '@/components/MultiWalletConnect';
 import { sdk as farcasterSDK } from '@farcaster/miniapp-sdk';
 import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useAccount, useConnect } from 'wagmi';
+import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { config } from '@/lib/wagmi-config';
 import {
   Chart as ChartJS,
@@ -98,6 +98,35 @@ function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Monitor wallet connection state for non-Farcaster environments
+  const { isConnected, address } = useAccount();
+  const { disconnect } = useDisconnect();
+
+  // Handle wallet disconnection for non-Farcaster environments
+  useEffect(() => {
+    if (isFarcasterEnv === false) {
+      if (!isConnected || !address) {
+        // Wallet disconnected - clear user state
+        console.log('🔌 Wallet disconnected, clearing user state');
+        setUser(null);
+        localStorage.removeItem('newscast-battle-user');
+        setBattleJoined(false);
+        setHasSubmittedCast(false);
+        setUserPoints(0);
+      } else if (isConnected && address && !user) {
+        // Wallet connected - restore user state
+        console.log('🔌 Wallet connected, restoring user state:', address);
+        const userData = {
+          address: address,
+          username: undefined
+        };
+        setUser(userData);
+        localStorage.setItem('newscast-battle-user', JSON.stringify(userData));
+        fetchUserPoints(address);
+      }
+    }
+  }, [isConnected, address, isFarcasterEnv, user]);
 
   // Farcaster Wallet Component
   function FarcasterWalletComponent() {
@@ -756,22 +785,21 @@ function Home() {
   };
 
   const handleSignOut = () => {
+    // Disconnect the wallet first
+    disconnect();
+    
+    // Then clear local state
     setUser(null);
     setBattleJoined(false);
     setHasSubmittedCast(false);
+    setUserPoints(0);
     localStorage.removeItem('newscast-battle-user');
   };
 
   // Multi-wallet connection handlers
   const handleWalletConnect = (address: string) => {
     console.log('✅ Wallet connected:', address);
-    const userData = {
-      address: address,
-      username: undefined
-    };
-    setUser(userData);
-    localStorage.setItem('newscast-battle-user', JSON.stringify(userData));
-    fetchUserPoints(address);
+    // User state will be handled by the useEffect above
   };
 
   const handleWalletError = (error: string) => {
