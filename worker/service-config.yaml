@@ -1,0 +1,57 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/ingress-status: all
+    run.googleapis.com/urls: '["https://battle-completion-worker-733567590021.us-central1.run.app","https://battle-completion-worker-3lducklitq-uc.a.run.app"]'
+  labels:
+    cloud.googleapis.com/location: us-central1
+  name: battle-completion-worker
+  namespace: '733567590021'
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: '10'
+        autoscaling.knative.dev/minScale: '1'
+        run.googleapis.com/client-name: gcloud
+        run.googleapis.com/client-version: 542.0.0
+        run.googleapis.com/startup-cpu-boost: 'true'
+      labels:
+        client.knative.dev/nonce: njzcppique
+        run.googleapis.com/startupProbeType: Default
+    spec:
+      containerConcurrency: 80
+      containers:
+      - env:
+        - name: GOOGLE_GENERATIVE_AI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: google-generative-ai-api-key
+        - name: NODE_ENV
+          value: production
+        - name: NEWS_SOURCE
+          value: serper
+        - name: RESTART_TRIGGER
+          value: '1760344041'
+        image: gcr.io/733567590021/battle-completion-worker
+        ports:
+        - containerPort: 3001
+          name: http1
+        resources:
+          limits:
+            cpu: '1'
+            memory: 512Mi
+        startupProbe:
+          failureThreshold: 1
+          periodSeconds: 240
+          tcpSocket:
+            port: 3001
+          timeoutSeconds: 240
+      serviceAccountName: 733567590021-compute@developer.gserviceaccount.com
+      timeoutSeconds: 3600
+  traffic:
+  - latestRevision: true
+    percent: 100

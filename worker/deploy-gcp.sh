@@ -55,7 +55,7 @@ gcloud run deploy ${SERVICE_NAME} \
     --max-instances 10 \
     --timeout 3600 \
     --set-env-vars NODE_ENV=production,NEWS_SOURCE=serper \
-    --set-secrets DATABASE_URL=database-url:latest,GOOGLE_GENERATIVE_AI_API_KEY=google-ai-api-key:latest,SERPER_API_KEY=serper-api-key:latest,CURRENTS_API_KEY=currents-api-key:latest,WORKER_API_KEY=battle-worker-secrets:latest
+    --set-secrets DATABASE_URL=database-url:latest,GOOGLE_GENERATIVE_AI_API_KEY=google-generative-ai-api-key:latest,SERPER_API_KEY=serper-api-key:latest,CURRENTS_API_KEY=currents-api-key:latest,WORKER_API_KEY=battle-worker-secrets:latest
 
 # Get service URL
 SERVICE_URL=$(gcloud run services describe ${SERVICE_NAME} --region=${REGION} --format="value(status.url)")
