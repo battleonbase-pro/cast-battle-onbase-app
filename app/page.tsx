@@ -138,6 +138,24 @@ function Home() {
     }
   }, [isConnected, address, isFarcasterEnv, user]);
 
+  // Additional effect to handle Base Account connection state
+  useEffect(() => {
+    if (isFarcasterEnv === false && isConnected && address && !user) {
+      // Check if this might be a Base Account connection that needs state restoration
+      const savedUser = localStorage.getItem('newscast-battle-user');
+      if (!savedUser) {
+        console.log('🔵 Potential Base Account connection detected, setting up user state');
+        const userData = {
+          address: address,
+          username: undefined
+        };
+        setUser(userData);
+        localStorage.setItem('newscast-battle-user', JSON.stringify(userData));
+        fetchUserPoints(address);
+      }
+    }
+  }, [isConnected, address, isFarcasterEnv, user]);
+
   // Farcaster Wallet Component
   function FarcasterWalletComponent() {
     const { isConnected, address } = useAccount()

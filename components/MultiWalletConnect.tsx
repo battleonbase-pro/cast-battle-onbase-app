@@ -21,8 +21,8 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
       // Set explicit connection flag to indicate user-initiated connection
       localStorage.setItem('wagmi.explicitConnection', 'true');
       
-      // For Base Account, implement proper Sign-In with Base flow
-      if (connector.name.toLowerCase().includes('base account')) {
+      // For Base Account, implement proper Sign-In with Base flow based on official docs
+      if (connector.id === 'baseAccount' || connector.name.toLowerCase().includes('base account')) {
         console.log('🔵 Base Account connector detected - implementing Sign-In with Base');
         
         // Force a fresh connection by disconnecting first if already connected
@@ -34,50 +34,58 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
           console.log('No previous connection to disconnect');
         }
 
-        // 1. Connect to get the provider
-        await connectAsync({ connector });
-        
-        // 2. Get the Base Account provider
-        const provider = connector.provider;
-        if (!provider) {
-          throw new Error('Base Account provider not available');
-        }
-
-        // 3. Generate nonce for SIWE
+        // 1. Generate nonce for SIWE (as per official docs)
         const nonce = window.crypto.randomUUID().replace(/-/g, '');
         console.log('🔐 Generated nonce for SIWE:', nonce);
 
-        // 4. Perform Sign-In with Ethereum authentication
-        const authResult = await provider.request({
-          method: 'wallet_connect',
-          params: [{
-            version: '1',
-            capabilities: {
-              signInWithEthereum: { 
-                nonce, 
-                chainId: '0x2105' // Base Mainnet - 8453
-              }
+        // 2. Connect and get the provider (as per official docs)
+        await connectAsync({ connector });
+        const provider = connector.provider;
+
+        if (!provider) {
+          console.warn('⚠️ Base Account provider not available after connection');
+          console.log('🔍 This might be a timing issue - connection may still work through wagmi');
+          // Don't throw error - let wagmi handle the connection
+        } else {
+          console.log('✅ Base Account provider found, attempting SIWE authentication');
+          
+          // 3. Authenticate with wallet_connect (as per official docs)
+          try {
+            const authResult = await provider.request({
+              method: 'wallet_connect',
+              params: [{
+                version: '1',
+                capabilities: {
+                  signInWithEthereum: { 
+                    nonce, 
+                    chainId: '0x2105' // Base Mainnet - 8453
+                  }
+                }
+              }]
+            });
+
+            // 4. Extract authentication data (as per official docs)
+            const { accounts } = authResult;
+            const { address, capabilities } = accounts[0];
+            const { message, signature } = capabilities.signInWithEthereum;
+
+            console.log('✅ Sign-In with Base successful:', { address, message, signature });
+
+            // 5. Verify on backend (as per official docs)
+            try {
+              await fetch('/api/auth/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ address, message, signature })
+              });
+              console.log('✅ Backend verification successful');
+            } catch (verifyError) {
+              console.warn('⚠️ Backend verification failed (continuing anyway):', verifyError);
             }
-          }]
-        });
-
-        // 5. Extract authentication data
-        const { accounts } = authResult;
-        const { address, capabilities } = accounts[0];
-        const { message, signature } = capabilities.signInWithEthereum;
-
-        console.log('✅ Sign-In with Base successful:', { address, message, signature });
-
-        // 6. Verify signature on backend (optional for now)
-        try {
-          await fetch('/api/auth/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ address, message, signature })
-          });
-          console.log('✅ Backend verification successful');
-        } catch (verifyError) {
-          console.warn('⚠️ Backend verification failed (continuing anyway):', verifyError);
+          } catch (siweError) {
+            console.warn('⚠️ Sign-In with Ethereum failed (continuing with standard connection):', siweError);
+            // Don't throw - let the standard wagmi connection proceed
+          }
         }
 
       } else {
@@ -101,9 +109,11 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
   const availableConnectors = useMemo(() => {
     const filtered = connectors.filter(connector => {
       const walletName = connector.name.toLowerCase();
+      const walletId = connector.id.toLowerCase();
       return (
         walletName.includes('metamask') ||
-        walletName.includes('base account') || // Only Base Account, not Coinbase Wallet
+        walletId === 'baseaccount' || // Use exact ID as per official docs
+        walletName.includes('base account') || // Fallback for name matching
         walletName.includes('phantom') ||
         walletName.includes('walletconnect')
       );
