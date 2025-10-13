@@ -10,9 +10,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get('limit') || '10');
 
-    console.log(`[Leaderboard API] Fetching leaderboard with limit: ${limit}`);
     const leaderboard = await databaseService.getLeaderboard(limit);
-    console.log(`[Leaderboard API] Found ${leaderboard.length} users in leaderboard`);
 
     return NextResponse.json({
       success: true,
