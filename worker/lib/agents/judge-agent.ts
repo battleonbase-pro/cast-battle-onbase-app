@@ -21,9 +21,14 @@ class JudgeAgent extends BaseAgent {
         return moderation && moderation.isAppropriate;
       });
 
-      if (appropriateCasts.length === 0) {
-        throw new Error('No appropriate casts found for judging');
+      // Fallback: If no casts pass moderation, use all casts (moderation might be too strict)
+      const castsToJudge = appropriateCasts.length > 0 ? appropriateCasts : casts;
+      
+      if (castsToJudge.length === 0) {
+        throw new Error('No casts found for judging');
       }
+      
+      console.log(`📊 Judging ${castsToJudge.length} casts (${appropriateCasts.length} passed moderation, ${casts.length - appropriateCasts.length} used as fallback)`);
 
       // Apply winner selection method
       let winner;
@@ -31,24 +36,24 @@ class JudgeAgent extends BaseAgent {
 
       switch (winnerMethod) {
         case 'random':
-          winner = this.selectRandomWinner(appropriateCasts);
-          judgmentDetails = await this.generateRandomJudgment(battleData, appropriateCasts, winner);
+          winner = this.selectRandomWinner(castsToJudge);
+          judgmentDetails = await this.generateRandomJudgment(battleData, castsToJudge, winner);
           break;
         
         case 'votes':
-          winner = this.selectVoteWinner(appropriateCasts);
-          judgmentDetails = await this.generateVoteJudgment(battleData, appropriateCasts, winner);
+          winner = this.selectVoteWinner(castsToJudge);
+          judgmentDetails = await this.generateVoteJudgment(battleData, castsToJudge, winner);
           break;
         
         case 'quality':
-          winner = await this.selectQualityWinner(battleData, appropriateCasts, moderationResults);
-          judgmentDetails = await this.generateQualityJudgment(battleData, appropriateCasts, winner);
+          winner = await this.selectQualityWinner(battleData, castsToJudge, moderationResults);
+          judgmentDetails = await this.generateQualityJudgment(battleData, castsToJudge, winner);
           break;
         
         case 'hybrid':
         default:
-          winner = await this.selectOptimizedHybridWinner(battleData, appropriateCasts);
-          judgmentDetails = await this.generateOptimizedHybridJudgment(battleData, appropriateCasts, winner);
+          winner = await this.selectOptimizedHybridWinner(battleData, castsToJudge);
+          judgmentDetails = await this.generateOptimizedHybridJudgment(battleData, castsToJudge, winner);
           break;
       }
 

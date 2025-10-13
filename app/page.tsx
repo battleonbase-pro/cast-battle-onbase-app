@@ -1289,7 +1289,7 @@ function Home() {
                           <span>{battle.participants} participants</span>
                           <span>{battle.casts} arguments</span>
                         </div>
-                        {battle.winner && (
+                        {battle.winner ? (
                           <div className={styles.historyWinner}>
                             <div className={styles.winnerLabel}>🏆 Winner:</div>
                             <div className={styles.winnerInfo}>
@@ -1298,6 +1298,18 @@ function Home() {
                               </span>
                               <span className={styles.winnerPoints}>
                                 +{battle.winner.pointsAwarded} points
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className={styles.historyWinner}>
+                            <div className={styles.winnerLabel}>🏆 Winner:</div>
+                            <div className={styles.winnerInfo}>
+                              <span className={styles.winnerAddress}>
+                                No Winner
+                              </span>
+                              <span className={styles.winnerPoints}>
+                                No participants
                               </span>
                             </div>
                           </div>

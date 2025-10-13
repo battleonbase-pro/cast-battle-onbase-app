@@ -136,12 +136,13 @@ CAST CONTENT TO MODERATE:
 
 MODERATION CRITERIA:
 
-1. APPROPRIATENESS (Required):
+1. APPROPRIATENESS (Required - Be Lenient):
    - No hate speech, harassment, or personal attacks
    - No spam, off-topic content, or promotional material
-   - No misinformation or false claims
+   - No clear misinformation or false claims (be lenient with opinions)
    - No inappropriate language or content
    - Respectful tone and constructive arguments
+   - IMPORTANT: Approve content unless it clearly violates these rules
 
 2. QUALITY (1-10):
    - Well-reasoned arguments with supporting evidence
@@ -169,6 +170,9 @@ ASSESSMENT GUIDELINES:
 - Focus on constructive criticism
 - Identify specific issues and provide actionable feedback
 - Reward quality content and thoughtful arguments
+- DEFAULT TO APPROVAL unless content clearly violates rules
+- Be lenient with political opinions and controversial topics
+- Focus on intent rather than perfect accuracy
 
 Provide a comprehensive moderation assessment.`;
   }
