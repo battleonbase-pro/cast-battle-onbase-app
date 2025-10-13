@@ -452,6 +452,7 @@ export class DatabaseService {
 
   async getLeaderboard(limit: number = 10) {
     try {
+      console.log(`[Database Service] Getting leaderboard with limit: ${limit}`);
       const users = await prisma.user.findMany({
         orderBy: {
           points: 'desc'
@@ -494,7 +495,8 @@ export class DatabaseService {
         }
       });
 
-      return users.map((user, index) => ({
+      console.log(`[Database Service] Found ${users.length} users from database`);
+      const leaderboard = users.map((user, index) => ({
         ...user,
         rank: index + 1,
         participationCount: user.participations.length,
@@ -507,6 +509,9 @@ export class DatabaseService {
           wonAt: win.battle.createdAt
         }))
       }));
+
+      console.log(`[Database Service] Returning leaderboard with ${leaderboard.length} entries`);
+      return leaderboard;
     } catch (error) {
       console.error('Error getting leaderboard:', error);
       return [];
