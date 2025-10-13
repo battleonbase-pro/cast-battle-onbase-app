@@ -664,6 +664,7 @@ function Home() {
         // Check if user has submitted
         if (user) {
           const userCast = data.casts.find((cast: Cast) => 
+            cast.userAddress && user.address && 
             cast.userAddress.toLowerCase() === user.address.toLowerCase()
           );
           setHasSubmittedCast(!!userCast);
@@ -673,6 +674,7 @@ function Home() {
           if (savedUser) {
             const userData = JSON.parse(savedUser);
             const userCast = data.casts.find((cast: Cast) => 
+              cast.userAddress && userData.address && 
               cast.userAddress.toLowerCase() === userData.address.toLowerCase()
             );
             setHasSubmittedCast(!!userCast);
@@ -995,7 +997,7 @@ function Home() {
           {user && isFarcasterEnv === false ? (
             <div className={styles.userCompact}>
               <div className={styles.userInfo}>
-                <span className={styles.userAddress}>{user.address.slice(0, 6)}...{user.address.slice(-4)}</span>
+                <span className={styles.userAddress}>{user.address?.slice(0, 6)}...{user.address?.slice(-4)}</span>
                 <span className={`${styles.userPoints} ${pointsAnimation ? styles.pointsAnimated : ''}`}>
                   🔵 {userPoints} pts
                 </span>
@@ -1260,7 +1262,7 @@ function Home() {
                             {cast.side}
                           </span>
                           <span className={styles.argumentUser}>
-                            {cast.userAddress.slice(0, 6)}...{cast.userAddress.slice(-4)}
+                            {cast.userAddress?.slice(0, 6)}...{cast.userAddress?.slice(-4)}
                           </span>
                         </div>
                         <div className={styles.argumentContent}>{cast.content}</div>
@@ -1292,7 +1294,7 @@ function Home() {
                             <div className={styles.winnerLabel}>🏆 Winner:</div>
                             <div className={styles.winnerInfo}>
                               <span className={styles.winnerAddress}>
-                                {battle.winner.address.slice(0, 6)}...{battle.winner.address.slice(-4)}
+                                {battle.winner?.address?.slice(0, 6)}...{battle.winner?.address?.slice(-4)}
                               </span>
                               <span className={styles.winnerPoints}>
                                 +{battle.winner.pointsAwarded} points
@@ -1309,7 +1311,7 @@ function Home() {
                                   {winner.position === 1 ? '🥇' : winner.position === 2 ? '🥈' : '🥉'}
                                 </span>
                                 <span className={styles.winnerAddress}>
-                                  {winner.address.slice(0, 6)}...{winner.address.slice(-4)}
+                                  {winner.address?.slice(0, 6)}...{winner.address?.slice(-4)}
                                 </span>
                                 <span className={styles.winnerPoints}>
                                   +{winner.pointsAwarded} pts
@@ -1346,7 +1348,7 @@ function Home() {
                         </div>
                         <div className={styles.leaderboardInfo}>
                           <div className={styles.leaderboardAddress}>
-                            {player.address.slice(0, 6)}...{player.address.slice(-4)}
+                            {player.address?.slice(0, 6)}...{player.address?.slice(-4)}
                             {player.username && <span className={styles.leaderboardUsername}>@{player.username}</span>}
                           </div>
                           <div className={styles.leaderboardStats}>

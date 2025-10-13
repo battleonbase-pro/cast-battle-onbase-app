@@ -21,9 +21,19 @@ export async function GET(_request: NextRequest) {
     const db = await import('@/lib/services/database').then(m => m.default);
     const casts = await db.getCastsForBattle(currentBattle.id);
 
+    // Transform casts to match frontend interface
+    const transformedCasts = (casts || []).map((cast: any) => ({
+      id: cast.id,
+      content: cast.content,
+      side: cast.side,
+      userAddress: cast.user?.address || '', // Extract address from user object
+      createdAt: cast.createdAt,
+      user: cast.user // Keep user object for additional data if needed
+    }));
+
     return NextResponse.json({
       success: true,
-      casts: casts || []
+      casts: transformedCasts
     });
 
   } catch (error) {
