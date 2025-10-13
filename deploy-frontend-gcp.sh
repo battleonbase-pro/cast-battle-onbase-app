@@ -2,7 +2,7 @@
 
 # GCP Configuration
 PROJECT_ID="battle-worker-phraseflow"
-SERVICE_NAME="news-debate-frontend"
+SERVICE_NAME="news-debate-app"
 REGION="us-central1"
 IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}"
 
@@ -37,4 +37,4 @@ gcloud run deploy ${SERVICE_NAME} \
     --set-secrets DATABASE_URL=database-url:latest,WORKER_BASE_URL=worker-base-url:latest,WORKER_API_KEY=worker-api-key:latest,GOOGLE_GENERATIVE_AI_API_KEY=google-generative-ai-api-key:latest,SERPER_API_KEY=serper-api-key:latest,NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=walletconnect-project-id:latest
 
 echo "✅ Deployment complete!"
-echo "🌐 Service URL: https://${SERVICE_NAME}-${PROJECT_ID}.${REGION}.run.app"
+echo "🌐 Service URL: https://${SERVICE_NAME}-733567590021.${REGION}.run.app"
