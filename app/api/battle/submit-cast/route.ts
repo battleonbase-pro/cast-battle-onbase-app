@@ -4,6 +4,37 @@ import { BattleManagerDB } from '@/lib/services/battle-manager-db';
 // Force Node.js runtime for battle management
 export const runtime = 'nodejs';
 
+export async function GET(_request: NextRequest) {
+  try {
+    const battleManager = await BattleManagerDB.getInstance();
+    
+    // Get current battle to fetch its casts
+    const currentBattle = await battleManager.getCurrentBattleSafe();
+    if (!currentBattle) {
+      return NextResponse.json({
+        success: false,
+        error: 'No active battle available'
+      }, { status: 404 });
+    }
+
+    // Get casts for the current battle
+    const db = await import('@/lib/services/database').then(m => m.default);
+    const casts = await db.getCastsForBattle(currentBattle.id);
+
+    return NextResponse.json({
+      success: true,
+      casts: casts || []
+    });
+
+  } catch (error) {
+    console.error('Error fetching casts:', error);
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to fetch casts'
+    }, { status: 500 });
+  }
+}
+
 export async function POST(request: NextRequest) {
   let userAddress: string | undefined;
   
