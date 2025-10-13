@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BattleManagerDB } from '@/lib/services/battle-manager-db';
-import { broadcastSentimentUpdate } from '@/lib/services/sentiment-broadcaster';
 
 // Force Node.js runtime for battle management
 export const runtime = 'nodejs';
@@ -52,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Check if user has already joined the battle
-    const isParticipant = currentBattle.participants.some(p => p.user.address === userAddress);
+    const isParticipant = currentBattle.participants.some((p: { user: { address: string } }) => p.user.address === userAddress);
     if (!isParticipant) {
       console.log(`❌ User ${userAddress} attempted to submit cast without joining battle`);
       return NextResponse.json({ 
@@ -70,8 +69,7 @@ export async function POST(request: NextRequest) {
     // Log user submitting cast
     console.log(`📝 User ${userAddress} submitted cast (${side}) and earned 10 points! Total points: ${userPoints}`);
     
-    // Broadcast sentiment update to all connected clients
-    await broadcastSentimentUpdate(currentBattle.id, userAddress);
+    // Note: Sentiment updates are now handled through the unified state stream
     
     return NextResponse.json({ 
       success: true, 
@@ -85,9 +83,10 @@ export async function POST(request: NextRequest) {
       pointsAwarded: 10
     });
     
-  } catch (error) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Error submitting cast:', error);
-    console.log(`❌ User ${userAddress || 'unknown'} failed to submit cast: ${error.message || 'Unknown error'}`);
+    console.log(`❌ User ${userAddress || 'unknown'} failed to submit cast: ${errorMessage}`);
     return NextResponse.json({ 
       error: 'Failed to submit cast' 
     }, { status: 500 });
