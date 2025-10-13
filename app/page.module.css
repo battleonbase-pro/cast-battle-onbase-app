@@ -392,11 +392,14 @@
   width: 200px;
   height: auto;
   max-height: 140px;
-  object-fit: contain;
+  object-fit: contain; /* Keep contain to maintain aspect ratio */
+  object-position: center; /* Center the image within the container */
   border-radius: 8px;
   flex-shrink: 0;
   margin-right: 16px;
   background: #f8fafc;
+  /* Ensure the image doesn't stretch by maintaining aspect ratio */
+  aspect-ratio: auto; /* Let the image maintain its natural aspect ratio */
 }
 
 .topicDescription {
@@ -1288,7 +1291,10 @@
     max-height: 200px;
     margin-right: 0;
     margin-bottom: 12px;
-    object-fit: contain;
+    object-fit: contain; /* Keep contain to maintain aspect ratio */
+    object-position: center; /* Center the image within the container */
+    /* Ensure the image doesn't stretch by maintaining aspect ratio */
+    aspect-ratio: auto; /* Let the image maintain its natural aspect ratio */
   }
   
   .topicMeta {
