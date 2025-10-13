@@ -40,8 +40,8 @@ model Battle {
   controversyLevel String?
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
-  imageUrl         String?  // Production image URL from Serper API
-  thumbnail        String?  // Production thumbnail URL from Serper API
+  imageUrl         String?
+  thumbnail        String?
   history          BattleHistory?
   participants     BattleParticipation[]
   winners          BattleWin[]
