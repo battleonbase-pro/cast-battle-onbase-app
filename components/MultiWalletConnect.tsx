@@ -432,6 +432,16 @@ function getWalletIcon(walletName: string): string {
     case 'metamask':
       return '/wallet-icons/metamask.svg';
     case 'coinbase wallet':
+    case 'coinbasewallet':
+    case 'coinbase-wallet':
+    case 'base wallet':
+    case 'basewallet':
+    case 'base-wallet':
+    case 'base account':
+    case 'baseaccount':
+    case 'base-account':
+    case 'base':
+    case 'coinbase':
       return '/wallet-icons/coinbase.svg';
     case 'rabby':
       return '/wallet-icons/rabby.svg';
@@ -455,6 +465,14 @@ function getWalletIconFallback(walletName: string): string {
       return '🦊';
     case 'coinbase wallet':
     case 'coinbase':
+    case 'coinbasewallet':
+    case 'coinbase-wallet':
+    case 'base wallet':
+    case 'basewallet':
+    case 'base-wallet':
+    case 'base account':
+    case 'baseaccount':
+    case 'base-account':
       return '🔵';
     case 'rabby':
       return '🐰';
