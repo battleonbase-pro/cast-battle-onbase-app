@@ -69,8 +69,8 @@ This will:
 
 After deployment, your services will be available at:
 
-- **Frontend**: `https://news-debate-frontend-battle-worker-phraseflow.us-central1.run.app`
-- **Worker**: `https://battle-completion-worker-733567590021.us-central1.run.app`
+- **Frontend**: `https://news-debate-app-[PROJECT_NUMBER].us-central1.run.app`
+- **Worker**: `https://battle-completion-worker-[PROJECT_NUMBER].us-central1.run.app`
 
 ## Monitoring and Logs
 

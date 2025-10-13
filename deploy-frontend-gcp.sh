@@ -37,4 +37,11 @@ gcloud run deploy ${SERVICE_NAME} \
     --set-secrets DATABASE_URL=database-url:latest,WORKER_BASE_URL=worker-base-url:latest,WORKER_API_KEY=worker-api-key:latest,GOOGLE_GENERATIVE_AI_API_KEY=google-generative-ai-api-key:latest,SERPER_API_KEY=serper-api-key:latest,NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=walletconnect-project-id:latest
 
 echo "✅ Deployment complete!"
-echo "🌐 Service URL: https://${SERVICE_NAME}-733567590021.${REGION}.run.app"
+
+# Get the actual service URL from the deployment
+SERVICE_URL=$(gcloud run services describe ${SERVICE_NAME} --region=${REGION} --format="value(status.url)" 2>/dev/null || echo "")
+if [ -n "$SERVICE_URL" ]; then
+    echo "🌐 Service URL: ${SERVICE_URL}"
+else
+    echo "⚠️  Service URL not available - check deployment status"
+fi
