@@ -1,6 +1,6 @@
 import { http, createConfig } from 'wagmi'
 import { base, mainnet } from 'wagmi/chains'
-import { injected, metaMask, coinbaseWallet, walletConnect } from 'wagmi/connectors'
+import { injected, metaMask, coinbaseWallet, walletConnect, baseAccount } from 'wagmi/connectors'
 import { farcasterMiniApp as miniAppConnector } from '@farcaster/miniapp-wagmi-connector'
 
 // Get WalletConnect project ID, only include WalletConnect if valid ID is provided
@@ -17,6 +17,10 @@ if (process.env.NODE_ENV === 'development') {
 const connectors = [
   // Farcaster connector (for Farcaster environment)
   miniAppConnector(),
+  // Base Account connector (for Base app integration)
+  baseAccount({
+    appName: 'NewsCast Debate',
+  }),
   // MetaMask connector
   metaMask({
     dappMetadata: {

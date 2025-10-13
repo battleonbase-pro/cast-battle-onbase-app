@@ -128,17 +128,32 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
         return;
       }
       
-      // Handle Coinbase Wallet/Base Wallet - use proper detection and connection method
+      // Handle Base Account/Coinbase Wallet - use proper detection and connection method
       if (wallet.name === 'coinbase' || wallet.name.toLowerCase().includes('base')) {
         console.log(`Connecting to ${wallet.displayName} with environment detection`);
         
         try {
+          // For Base Account connector, use direct connection
+          const baseConnector = connectors.find(connector => 
+            connector.name.toLowerCase().includes('base account') ||
+            connector.name.toLowerCase().includes('baseaccount') ||
+            connector.name.toLowerCase().includes('base-account')
+          );
+          
+          if (baseConnector) {
+            console.log('Using Base Account connector for Base app integration');
+            await connect({ connector: baseConnector });
+            setShowWalletList(false);
+            return;
+          }
+          
+          // Fallback to Coinbase Wallet connection method
           await handleCoinbaseWalletConnection(connect, connectors, window.location.href);
           setShowWalletList(false);
           return;
         } catch (error: any) {
-          console.error('Coinbase Wallet connection error:', error);
-          onError(error.message || 'Failed to connect to Coinbase Wallet');
+          console.error('Base Wallet connection error:', error);
+          onError(error.message || 'Failed to connect to Base Wallet');
           setShowWalletList(false);
           return;
         }
@@ -207,6 +222,9 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
         walletName === 'base wallet' ||
         walletName === 'basewallet' ||
         walletName === 'base-wallet' ||
+        walletName === 'base account' ||
+        walletName === 'baseaccount' ||
+        walletName === 'base-account' ||
         walletName === 'rabby' ||
         walletName === 'walletconnect' ||
         walletName === 'phantom' ||
@@ -241,7 +259,7 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
       
       // Use a more specific key to avoid duplicates
       const walletKey = walletName.includes('metamask') ? 'metamask' :
-                       walletName.includes('coinbase') || walletName.includes('base') ? 'coinbase' :
+                       walletName.includes('coinbase') || walletName.includes('base') ? 'base' :
                        walletName.includes('rabby') ? 'rabby' :
                        walletName.includes('walletconnect') ? 'walletconnect' :
                        walletName.includes('phantom') ? 'phantom' :
@@ -252,7 +270,7 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
         const existingName = c.name.toLowerCase();
         return (
           (walletKey === 'metamask' && existingName.includes('metamask')) ||
-          (walletKey === 'coinbase' && (existingName.includes('coinbase') || existingName.includes('base'))) ||
+          (walletKey === 'base' && (existingName.includes('coinbase') || existingName.includes('base'))) ||
           (walletKey === 'rabby' && existingName.includes('rabby')) ||
           (walletKey === 'walletconnect' && existingName.includes('walletconnect')) ||
           (walletKey === 'phantom' && existingName.includes('phantom')) ||
@@ -449,6 +467,15 @@ function getWalletDisplayName(walletName: string): string {
     case 'metamask':
       return 'MetaMask';
     case 'coinbase wallet':
+    case 'coinbasewallet':
+    case 'coinbase-wallet':
+      return 'Coinbase Wallet';
+    case 'base wallet':
+    case 'basewallet':
+    case 'base-wallet':
+    case 'base account':
+    case 'baseaccount':
+    case 'base-account':
       return 'Base Wallet';
     case 'rabby':
       return 'Rabby Wallet';
