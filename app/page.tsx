@@ -418,11 +418,11 @@ function Home() {
     if (typeof window === 'undefined') return;
 
     try {
-      // Use the new timer stream endpoint for real-time timer updates
-      const eventSource = new EventSource('/api/battle/timer-stream');
+      // Use the battle state stream for all events (timer + battle + sentiment)
+      const eventSource = new EventSource('/api/battle/state-stream');
       
       eventSource.onopen = () => {
-        console.log('Timer stream SSE connection opened');
+        console.log('Battle state SSE connection opened');
         setConnectionStatus('connected');
       };
 
@@ -432,7 +432,7 @@ function Home() {
           
           switch (data.type) {
             case 'CONNECTION_ESTABLISHED':
-              console.log('Timer stream SSE connected:', data.connectionId);
+              console.log('Battle state SSE connected:', data.connectionId);
               break;
               
             case 'BATTLE_ENDED':

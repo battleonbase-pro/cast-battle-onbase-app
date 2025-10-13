@@ -31,8 +31,42 @@ export async function GET(_request: NextRequest) {
       
       controller.enqueue(encoder.encode(`data: ${JSON.stringify(initialData)}\n\n`));
 
-      // Note: Timer updates are now handled by worker via /timer-stream endpoint
-      // This endpoint is kept for backward compatibility but no longer runs timers
+      // Proxy timer updates from worker
+      const workerUrl = process.env.WORKER_BASE_URL || 'https://battle-completion-worker-733567590021.us-central1.run.app';
+      const timerStreamUrl = `${workerUrl}/timer-stream`;
+      
+      // Connect to worker timer stream and forward events
+      fetch(timerStreamUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+        },
+      }).then(async (workerResponse) => {
+        if (!workerResponse.ok) {
+          console.error(`Worker timer stream failed: ${workerResponse.status}`);
+          return;
+        }
+        
+        const reader = workerResponse.body?.getReader();
+        if (!reader) return;
+        
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            // Forward timer events to client
+            if (controller.desiredSize !== null) {
+              controller.enqueue(value);
+            }
+          }
+        } catch (error) {
+          console.error('Error forwarding timer stream:', error);
+        }
+      }).catch(error => {
+        console.error('Error connecting to worker timer stream:', error);
+      });
     },
 
     cancel() {
