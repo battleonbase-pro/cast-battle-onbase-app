@@ -53,7 +53,7 @@ export const MOBILE_WALLETS: MobileWallet[] = [
     name: 'coinbase',
     displayName: 'Coinbase Wallet',
     icon: '/wallet-icons/coinbase.svg',
-    deepLink: 'cbwallet://wc?uri=',
+    deepLink: 'cbwallet://',
     appStoreUrl: 'https://apps.apple.com/app/coinbase-wallet/id1278383455',
     playStoreUrl: 'https://play.google.com/store/apps/details?id=org.toshi',
   },

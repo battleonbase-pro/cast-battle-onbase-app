@@ -127,20 +127,21 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
         return;
       }
       
-      // Handle Coinbase Wallet differently (use WalletConnect when in mobile browser)
+      // Handle Coinbase Wallet - use native connector instead of WalletConnect
       if (wallet.name === 'coinbase') {
-        console.log(`Using WalletConnect for ${wallet.displayName} in mobile browser`);
-        const walletConnectConnector = connectors.find(connector => 
-          connector.name.toLowerCase().includes('walletconnect')
+        console.log(`Connecting to ${wallet.displayName} using native connector`);
+        const coinbaseConnector = connectors.find(connector => 
+          connector.name.toLowerCase().includes('coinbase') || 
+          connector.name.toLowerCase().includes('base wallet')
         );
         
-        if (walletConnectConnector) {
-          console.log('Using WalletConnect connector for Coinbase Wallet mobile connection');
-          await connect({ connector: walletConnectConnector });
+        if (coinbaseConnector) {
+          console.log('Using native Coinbase Wallet connector');
+          await connect({ connector: coinbaseConnector });
           setShowWalletList(false);
           return;
         } else {
-          onError('WalletConnect connector not available for Coinbase Wallet. Please configure WalletConnect.');
+          onError('Coinbase Wallet connector not available');
           setShowWalletList(false);
           return;
         }
