@@ -115,15 +115,25 @@ function Home() {
         setHasSubmittedCast(false);
         setUserPoints(0);
       } else if (isConnected && address && !user) {
-        // Wallet connected - restore user state
-        console.log('🔌 Wallet connected, restoring user state:', address);
-        const userData = {
-          address: address,
-          username: undefined
-        };
-        setUser(userData);
-        localStorage.setItem('newscast-battle-user', JSON.stringify(userData));
-        fetchUserPoints(address);
+        // Wallet connected but no user state - this should only happen on fresh connection
+        // Check if this is a fresh connection by looking for explicit user action
+        const hasExplicitConnection = localStorage.getItem('wagmi.explicitConnection');
+        
+        if (hasExplicitConnection) {
+          console.log('🔌 Wallet connected, restoring user state:', address);
+          const userData = {
+            address: address,
+            username: undefined
+          };
+          setUser(userData);
+          localStorage.setItem('newscast-battle-user', JSON.stringify(userData));
+          fetchUserPoints(address);
+          
+          // Clear the explicit connection flag
+          localStorage.removeItem('wagmi.explicitConnection');
+        } else {
+          console.log('🔌 Wallet connected but no explicit user action - not restoring state');
+        }
       }
     }
   }, [isConnected, address, isFarcasterEnv, user]);
@@ -784,16 +794,40 @@ function Home() {
     }
   };
 
-  const handleSignOut = () => {
-    // Disconnect the wallet first
-    disconnect();
-    
-    // Then clear local state
-    setUser(null);
-    setBattleJoined(false);
-    setHasSubmittedCast(false);
-    setUserPoints(0);
-    localStorage.removeItem('newscast-battle-user');
+  const handleSignOut = async () => {
+    try {
+      console.log('🔌 Starting wallet disconnection...');
+      
+      // Disconnect the wallet first
+      await disconnect();
+      
+      // Clear all local storage related to wallet connection
+      localStorage.removeItem('newscast-battle-user');
+      localStorage.removeItem('wagmi.store');
+      localStorage.removeItem('wagmi.connected');
+      localStorage.removeItem('wagmi.recentConnectorId');
+      localStorage.removeItem('wagmi.explicitConnection'); // Clear explicit connection flag
+      
+      // Clear session storage as well
+      sessionStorage.clear();
+      
+      // Then clear local state
+      setUser(null);
+      setBattleJoined(false);
+      setHasSubmittedCast(false);
+      setUserPoints(0);
+      
+      console.log('✅ Wallet disconnected and state cleared');
+    } catch (error) {
+      console.error('Error during wallet disconnection:', error);
+      // Still clear local state even if disconnection fails
+      setUser(null);
+      setBattleJoined(false);
+      setHasSubmittedCast(false);
+      setUserPoints(0);
+      localStorage.removeItem('newscast-battle-user');
+      localStorage.removeItem('wagmi.explicitConnection');
+    }
   };
 
   // Multi-wallet connection handlers

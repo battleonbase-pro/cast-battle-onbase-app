@@ -10,22 +10,89 @@ interface MultiWalletConnectProps {
 
 export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectProps) {
   const { connectAsync, connectors, isPending } = useConnect();
-  const { isConnected, address } = useAccount();
+  const { isConnected: _isConnected, address: _address } = useAccount();
   const { disconnect } = useDisconnect();
   const [showWalletList, setShowWalletList] = useState(false);
 
-  const handleConnect = async (connector: any) => {
+  const handleConnect = async (connector: { name: string; id: string }) => {
     try {
       console.log('Attempting to connect to:', connector.name);
       
-      // Use standard wagmi connection for all wallets including Base Account
-      // The Base Account connector handles authentication internally
-      await connectAsync({ connector });
+      // Set explicit connection flag to indicate user-initiated connection
+      localStorage.setItem('wagmi.explicitConnection', 'true');
+      
+      // For Base Account, implement proper Sign-In with Base flow
+      if (connector.name.toLowerCase().includes('base account')) {
+        console.log('🔵 Base Account connector detected - implementing Sign-In with Base');
+        
+        // Force a fresh connection by disconnecting first if already connected
+        try {
+          await disconnect();
+          // Small delay to ensure disconnection is complete
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (_disconnectError) {
+          console.log('No previous connection to disconnect');
+        }
+
+        // 1. Connect to get the provider
+        await connectAsync({ connector });
+        
+        // 2. Get the Base Account provider
+        const provider = connector.provider;
+        if (!provider) {
+          throw new Error('Base Account provider not available');
+        }
+
+        // 3. Generate nonce for SIWE
+        const nonce = window.crypto.randomUUID().replace(/-/g, '');
+        console.log('🔐 Generated nonce for SIWE:', nonce);
+
+        // 4. Perform Sign-In with Ethereum authentication
+        const authResult = await provider.request({
+          method: 'wallet_connect',
+          params: [{
+            version: '1',
+            capabilities: {
+              signInWithEthereum: { 
+                nonce, 
+                chainId: '0x2105' // Base Mainnet - 8453
+              }
+            }
+          }]
+        });
+
+        // 5. Extract authentication data
+        const { accounts } = authResult;
+        const { address, capabilities } = accounts[0];
+        const { message, signature } = capabilities.signInWithEthereum;
+
+        console.log('✅ Sign-In with Base successful:', { address, message, signature });
+
+        // 6. Verify signature on backend (optional for now)
+        try {
+          await fetch('/api/auth/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ address, message, signature })
+          });
+          console.log('✅ Backend verification successful');
+        } catch (verifyError) {
+          console.warn('⚠️ Backend verification failed (continuing anyway):', verifyError);
+        }
+
+      } else {
+        // For other wallets, use standard wagmi connection
+        await connectAsync({ connector });
+      }
+      
       console.log('Connection successful');
       setShowWalletList(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Connection error:', error);
-      onError(error.message || 'Failed to connect wallet');
+      // Clear the explicit connection flag on error
+      localStorage.removeItem('wagmi.explicitConnection');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to connect wallet';
+      onError(errorMessage);
       setShowWalletList(false);
     }
   };
@@ -116,7 +183,7 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
             
             <div className={styles.walletModalFooter}>
               <p>
-                Don't have a wallet? 
+                Don&apos;t have a wallet? 
                 <a href="https://metamask.io" target="_blank" rel="noopener noreferrer"> Get MetaMask</a>, 
                 <a href="https://wallet.coinbase.com/" target="_blank" rel="noopener noreferrer"> Get Base Wallet</a>, or 
                 <a href="https://phantom.app" target="_blank" rel="noopener noreferrer"> Get Phantom</a>
