@@ -9,9 +9,6 @@ import { addSentimentConnection, removeSentimentConnection } from '@/lib/service
 export async function GET(request: NextRequest) {
   const encoder = new TextEncoder();
   
-  // Store heartbeat timer for cleanup
-  let heartbeatTimer: NodeJS.Timeout | null = null;
-  
   const stream = new ReadableStream({
     start(controller) {
       // Add this connection to the set
@@ -20,26 +17,12 @@ export async function GET(request: NextRequest) {
       // Send initial data
       sendInitialData(controller, encoder);
       
-      // Send heartbeat every 15 seconds for mobile browsers (more frequent)
-      heartbeatTimer = setInterval(() => {
-        try {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'heartbeat', timestamp: Date.now() })}\n\n`));
-        } catch (error) {
-          console.error('Heartbeat error:', error);
-          if (heartbeatTimer) {
-            clearInterval(heartbeatTimer);
-            heartbeatTimer = null;
-          }
-        }
-      }, 15000);
+      // Note: Heartbeat removed - not essential for sentiment updates
+      // Timer updates are handled by worker via /timer-stream endpoint
       
       // Cleanup on connection close
       request.signal.addEventListener('abort', () => {
         removeSentimentConnection(controller);
-        if (heartbeatTimer) {
-          clearInterval(heartbeatTimer);
-          heartbeatTimer = null;
-        }
         try {
           controller.close();
         } catch (error) {
@@ -49,12 +32,7 @@ export async function GET(request: NextRequest) {
     },
     
     cancel() {
-      removeSentimentConnection(controller);
-      // Clear heartbeat timer to prevent memory leaks
-      if (heartbeatTimer) {
-        clearInterval(heartbeatTimer);
-        heartbeatTimer = null;
-      }
+      // Note: Connection cleanup is handled in the abort event listener above
     }
   });
 

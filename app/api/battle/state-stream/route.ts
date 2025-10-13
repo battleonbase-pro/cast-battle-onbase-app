@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server';
-import { BattleManagerDB } from '@/lib/services/battle-manager-db';
-import { addSSEConnection, markConnectionInactive, removeSSEConnectionById } from '@/lib/services/battle-broadcaster';
+import { addSSEConnection, markConnectionInactive } from '@/lib/services/battle-broadcaster';
 
 // Force Node.js runtime for SSE (Edge Runtime has limitations with streaming)
 export const runtime = 'nodejs';
@@ -11,9 +10,7 @@ export async function GET(_request: NextRequest) {
 
   const encoder = new TextEncoder();
 
-  // Store timers for cleanup
-  let battleTimer: NodeJS.Timeout | null = null;
-  let heartbeatTimer: NodeJS.Timeout | null = null;
+  // Note: Timer logic removed - now handled by worker via /timer-stream endpoint
 
   const stream = new ReadableStream({
     start(controller) {
@@ -34,104 +31,12 @@ export async function GET(_request: NextRequest) {
       
       controller.enqueue(encoder.encode(`data: ${JSON.stringify(initialData)}\n\n`));
 
-      // Set up battle timer to sync client countdown every 15 seconds
-      battleTimer = setInterval(async () => {
-        try {
-          // Check if controller is still open before writing
-          if (controller.desiredSize === null) {
-            console.log(`🔌 Controller closed for connection ${connectionId}`);
-            markConnectionInactive(connectionId);
-            // Don't clear intervals, keep connection alive
-            return;
-          }
-
-          const battleManager = new BattleManagerDB();
-          const currentBattle = await battleManager.getCurrentBattleSafe();
-          
-          if (currentBattle && currentBattle.status === 'ACTIVE') {
-            const now = new Date();
-            const timeRemaining = Math.max(0, Math.floor((currentBattle.endTime.getTime() - now.getTime()) / 1000));
-            
-            const timerData = {
-              type: 'TIMER_UPDATE',
-              data: {
-                battleId: currentBattle.id,
-                timeRemaining,
-                endTime: currentBattle.endTime.toISOString(),
-                status: currentBattle.status
-              },
-              timestamp: new Date().toISOString()
-            };
-            
-            try {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify(timerData)}\n\n`));
-            } catch {
-              // Remove failed connection immediately
-              removeSSEConnectionById(connectionId);
-              return;
-            }
-          }
-        } catch (error) {
-          console.error('Error in battle timer:', error);
-          // Don't mark as inactive - keep connection alive for potential reconnection
-        }
-      }, 15000);
-
-      // Set up heartbeat every 30 seconds
-      heartbeatTimer = setInterval(() => {
-        try {
-          // Check if controller is still open before writing
-          if (controller.desiredSize === null) {
-            console.log(`🔌 Controller closed for connection ${connectionId}`);
-            markConnectionInactive(connectionId);
-            // Don't clear intervals, keep connection alive
-            return;
-          }
-
-          const heartbeatData = {
-            type: 'HEARTBEAT',
-            timestamp: new Date().toISOString()
-          };
-          try {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify(heartbeatData)}\n\n`));
-          } catch {
-            // Remove failed connection immediately
-            removeSSEConnectionById(connectionId);
-            return;
-          }
-        } catch (error) {
-          console.error('Error in heartbeat timer:', error);
-          // Don't mark as inactive - keep connection alive for potential reconnection
-        }
-      }, 30000);
-
-      // Store cleanup function
-      (controller as ReadableStreamDefaultController & { cleanup?: () => void }).cleanup = () => {
-        console.log(`🔌 CLEANUP CALLED for connection ${connectionId}`);
-        if (battleTimer) {
-          clearInterval(battleTimer);
-          battleTimer = null;
-        }
-        if (heartbeatTimer) {
-          clearInterval(heartbeatTimer);
-          heartbeatTimer = null;
-        }
-        markConnectionInactive(connectionId);
-        // Keep connection alive for potential reconnection
-      };
+      // Note: Timer updates are now handled by worker via /timer-stream endpoint
+      // This endpoint is kept for backward compatibility but no longer runs timers
     },
 
     cancel() {
       console.log(`🔌 CLIENT DISCONNECTED: ${connectionId}`);
-      // Clear timers to prevent memory leaks
-      if (battleTimer) {
-        clearInterval(battleTimer);
-        battleTimer = null;
-      }
-      if (heartbeatTimer) {
-        clearInterval(heartbeatTimer);
-        heartbeatTimer = null;
-      }
       markConnectionInactive(connectionId);
       // Keep connection alive for potential reconnection
     }
