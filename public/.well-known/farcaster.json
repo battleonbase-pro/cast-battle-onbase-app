@@ -1,18 +1,42 @@
 {
   "accountAssociation": {
-    "header": "eyJmaWQiOjI2NTM0MiwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweGRCNTlDNDFlMjVjNjQ4MjBmQmY3QkNCZTkxRjUzNDhhOUU1RTc3YzYifQ",
-    "payload": "eyJkb21haW4iOiJuZXdzLWRlYmF0ZS1hcHAtNzMzNTY3NTkwMDIxLnVzLWNlbnRyYWwxLnJ1bi5hcHAifQ",
-    "signature": "zQ1IEHOkA8z34590VoQeYSDfIjGP9qrDHo4P0sahxMIu+I9SMkWITwNq3DfFF/NagwaTyPGsWlugz689sqfj2xw="
+    "header": "",
+    "payload": "",
+    "signature": ""
   },
   "baseBuilder": {
     "allowedAddresses": ["0x1a33D3440C62A4586380ad5269f1F7E55F4C6af7"]
+  },
+  "frame": {
+    "name": "NewsCast Debate",
+    "tags": ["ai", "debate", "news", "base", "blockchain"],
+    "homeUrl": "https://news-debate-app-733567590021.us-central1.run.app",
+    "iconUrl": "https://news-debate-app-733567590021.us-central1.run.app/icon.png",
+    "ogTitle": "NewsCast Debate",
+    "tagline": "Debate intelligently",
+    "version": "1",
+    "imageUrl": "https://news-debate-app-733567590021.us-central1.run.app/image.png",
+    "subtitle": "AI-powered news debates",
+    "ogImageUrl": "https://news-debate-app-733567590021.us-central1.run.app/og-image.png",
+    "webhookUrl": "https://news-debate-app-733567590021.us-central1.run.app/api/webhook",
+    "buttonTitle": "Open NewsCast Debate",
+    "description": "AI-powered news debates on Base blockchain. Join intelligent discussions, earn points, and compete with others.",
+    "heroImageUrl": "https://news-debate-app-733567590021.us-central1.run.app/og-image.png",
+    "ogDescription": "AI-powered news debates on Base blockchain. Join discussions and earn points.",
+    "screenshotUrls": [
+      "https://news-debate-app-733567590021.us-central1.run.app/screenshot1.png",
+      "https://news-debate-app-733567590021.us-central1.run.app/screenshot2.png"
+    ],
+    "splashImageUrl": "https://news-debate-app-733567590021.us-central1.run.app/splash.png",
+    "primaryCategory": "social",
+    "splashBackgroundColor": "#ffffff"
   },
   "miniapp": {
     "version": "1",
     "name": "NewsCast Debate",
     "homeUrl": "https://news-debate-app-733567590021.us-central1.run.app",
     "iconUrl": "https://news-debate-app-733567590021.us-central1.run.app/icon.png",
-    "splashImageUrl": "https://news-debate-app-733567590021.us-central1.run.app/icon.png",
+    "splashImageUrl": "https://news-debate-app-733567590021.us-central1.run.app/splash.png",
     "splashBackgroundColor": "#ffffff",
     "webhookUrl": "https://news-debate-app-733567590021.us-central1.run.app/api/webhook",
     "subtitle": "AI-powered news debates",
@@ -22,35 +46,12 @@
       "https://news-debate-app-733567590021.us-central1.run.app/screenshot2.png"
     ],
     "primaryCategory": "social",
-    "tags": ["AI", "Debate", "News", "Base", "Blockchain"],
+    "tags": ["ai", "debate", "news", "base", "blockchain"],
     "heroImageUrl": "https://news-debate-app-733567590021.us-central1.run.app/og-image.png",
     "tagline": "Debate intelligently",
     "ogTitle": "NewsCast Debate",
     "ogDescription": "AI-powered news debates on Base blockchain. Join discussions and earn points.",
     "ogImageUrl": "https://news-debate-app-733567590021.us-central1.run.app/og-image.png",
     "noindex": true
-  },
-  "version": "1.0.0",
-  "name": "NewsCast Debate",
-  "description": "AI-powered news debates on Base blockchain. Join intelligent discussions, earn points, and compete with others.",
-  "icon": "https://news-debate-app-733567590021.us-central1.run.app/icon.png",
-  "splash": {
-    "imageUrl": "https://news-debate-app-733567590021.us-central1.run.app/icon.png",
-    "backgroundColor": "#ffffff"
-  },
-  "url": "https://news-debate-app-733567590021.us-central1.run.app",
-  "category": "social",
-  "tags": ["AI", "Debate", "News", "Base", "Blockchain"],
-  "permissions": {
-    "camera": false,
-    "microphone": false,
-    "location": false
-  },
-  "features": [
-    "AI-powered debate generation",
-    "Real-time news curation", 
-    "Points and rewards system",
-    "Base blockchain integration",
-    "Social competition"
-  ]
+  }
 }

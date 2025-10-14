@@ -13,13 +13,7 @@ const nextConfig: NextConfig = {
   },
   // Configure redirects
   async redirects() {
-    return [
-      {
-        source: '/test-redirect',
-        destination: 'https://google.com',
-        permanent: false,
-      },
-    ];
+    return [];
   },
   webpack: (config) => {
     config.externals.push("pino-pretty", "lokijs", "encoding");
