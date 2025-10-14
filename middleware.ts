@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export function middleware(request: NextRequest) {
+  console.log('Middleware triggered for:', request.nextUrl.pathname);
+  
   // Handle the specific farcaster.json redirect
   if (request.nextUrl.pathname === '/.well-known/farcaster.json') {
     console.log('Middleware: Redirecting to Farcaster hosted manifest');
@@ -16,6 +18,7 @@ export function middleware(request: NextRequest) {
         'Last-Modified': new Date().toUTCString(),
         'ETag': `"${Date.now()}"`,
         'X-Middleware-Redirect': 'true',
+        'X-Middleware-Timestamp': new Date().toISOString(),
       }
     });
     
@@ -27,6 +30,7 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/.well-known/farcaster.json'
+    '/.well-known/farcaster.json',
+    '/test-middleware'
   ]
 };
