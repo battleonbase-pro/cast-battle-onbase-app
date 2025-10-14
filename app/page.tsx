@@ -239,7 +239,9 @@ function Home() {
       return (
         <div className={styles.userCompact}>
           <div className={styles.userInfo}>
-            <span className={styles.userAddress}>{address?.slice(0, 6)}...{address?.slice(-4)}</span>
+            <span className={styles.userAddress}>
+              {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Not connected'}
+            </span>
             <span className={styles.userPoints}>
               🔵 {user?.points || 0} pts
             </span>
@@ -1016,7 +1018,9 @@ function Home() {
           {user && isFarcasterEnv === false ? (
             <div className={styles.userCompact}>
               <div className={styles.userInfo}>
-                <span className={styles.userAddress}>{user.address?.slice(0, 6)}...{user.address?.slice(-4)}</span>
+                <span className={styles.userAddress}>
+                  {user?.address ? `${user.address.slice(0, 6)}...${user.address.slice(-4)}` : 'Not connected'}
+                </span>
                 <span className={`${styles.userPoints} ${pointsAnimation ? styles.pointsAnimated : ''}`}>
                   🔵 {userPoints} pts
                 </span>
@@ -1106,7 +1110,7 @@ function Home() {
                 <ShareButton 
                   battleTopic={topic.title} 
                   battleId={topic.id}
-                  userAddress={userAddress}
+                  userAddress={user?.address}
                   className={styles.shareButton}
                 />
               </div>
@@ -1289,7 +1293,7 @@ function Home() {
                             {cast.side}
                           </span>
                           <span className={styles.argumentUser}>
-                            {cast.userAddress?.slice(0, 6)}...{cast.userAddress?.slice(-4)}
+                            {cast.userAddress ? `${cast.userAddress.slice(0, 6)}...${cast.userAddress.slice(-4)}` : 'Unknown'}
                           </span>
                         </div>
                         <div className={styles.argumentContent}>{cast.content}</div>
