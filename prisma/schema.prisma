@@ -17,6 +17,7 @@ model User {
   participations BattleParticipation[]
   wins           BattleWin[]
   casts          Cast[]
+  shareRewards   ShareReward[]
 
   @@map("users")
 }
@@ -46,6 +47,7 @@ model Battle {
   participants     BattleParticipation[]
   winners          BattleWin[]
   casts            Cast[]
+  shareRewards     ShareReward[]
 
   @@map("battles")
 }
@@ -120,6 +122,20 @@ model SharedState {
   createdAt         DateTime  @default(now())
 
   @@map("shared_state")
+}
+
+model ShareReward {
+  id        String   @id @default(cuid())
+  userId    String
+  battleId  String
+  platform  String   // 'twitter', 'facebook', etc.
+  points    Int      @default(20)
+  sharedAt  DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  battle    Battle   @relation(fields: [battleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, battleId, platform])
+  @@map("share_rewards")
 }
 
 enum BattleStatus {

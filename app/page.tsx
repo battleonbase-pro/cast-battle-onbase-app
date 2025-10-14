@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { MultiWalletConnect } from '@/components/MultiWalletConnect';
+import ShareButton from '@/components/ShareButton';
 import { sdk as farcasterSDK } from '@farcaster/miniapp-sdk';
 import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -1100,7 +1101,15 @@ function Home() {
               </div>
               <h2 className={styles.topicTitle}>{topic.title}</h2>
               
-              {/* Source and Category Info */}
+              {/* Share Button */}
+              <div className={styles.shareContainer}>
+                <ShareButton 
+                  battleTopic={topic.title} 
+                  battleId={topic.id}
+                  userAddress={userAddress}
+                  className={styles.shareButton}
+                />
+              </div>
               <div className={styles.topicMeta}>
                 <span className={styles.topicCategory}>{topic.category}</span>
                 {topic.source && topic.source !== 'System' && (

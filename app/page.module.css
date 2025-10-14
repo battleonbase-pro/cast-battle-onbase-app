@@ -1914,3 +1914,74 @@
     touch-action: manipulation;
   }
 }
+
+
+/* Share Button Styles */
+.shareContainer {
+  display: flex;
+  justify-content: center;
+  margin: 16px 0;
+}
+
+.shareButton {
+  background: linear-gradient(135deg, #1da1f2 0%, #0d8bd9 100%);
+  border: none;
+  box-shadow: 0 2px 8px rgba(29, 161, 242, 0.3);
+  transition: all 0.2s ease;
+}
+
+.shareButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(29, 161, 242, 0.4);
+}
+
+.shareButton:active {
+  transform: translateY(0);
+}
+
+/* Mobile share button */
+@media (max-width: 768px) {
+  .shareContainer {
+    margin: 12px 0;
+  }
+  
+  .shareButton {
+    padding: 10px 16px;
+    font-size: 0.875rem;
+  }
+}
+
+/* Share reward notification */
+.shareRewardNotification {
+  position: absolute;
+  top: -48px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  animation: bounceIn 0.6s ease-out;
+  z-index: 10;
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.05);
+  }
+  70% {
+    transform: translateX(-50%) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+}
