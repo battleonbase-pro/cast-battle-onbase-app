@@ -11,6 +11,16 @@ const nextConfig: NextConfig = {
     // Disable TypeScript errors during builds for deployment
     ignoreBuildErrors: true,
   },
+  // Configure redirects
+  async redirects() {
+    return [
+      {
+        source: '/.well-known/farcaster.json',
+        destination: 'https://api.farcaster.xyz/miniapps/hosted-manifest/0199c011-193b-ca61-a963-36fbfaef8937',
+        permanent: false, // This will use a 307 redirect
+      },
+    ];
+  },
   webpack: (config) => {
     config.externals.push("pino-pretty", "lokijs", "encoding");
     
