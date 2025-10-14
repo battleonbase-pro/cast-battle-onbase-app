@@ -1919,7 +1919,7 @@
 /* Share Button Styles */
 .shareContainer {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   margin: 8px 0;
 }
 

@@ -105,7 +105,7 @@ export default function ShareButton({ battleTopic, battleId, userAddress, classN
       const twitterWindow = window.open(shareUrl, '_blank', 'width=600,height=400,scrollbars=yes,resizable=yes');
       
       // Track share event and award points
-      if (userAddress && canShare) {
+      if (userAddress && canShare && !hasShared) {
         // Award points immediately (trust-based system)
         await awardSharePoints();
       }
@@ -124,12 +124,12 @@ export default function ShareButton({ battleTopic, battleId, userAddress, classN
     <div className="relative">
       <button
         onClick={handleShare}
-        disabled={isSharing || !canShare || !userAddress}
+        disabled={isSharing || !userAddress}
         className={`
           ${!userAddress 
             ? 'bg-gray-400 cursor-not-allowed' 
             : hasShared 
-              ? 'bg-green-500 hover:bg-green-600' 
+              ? 'bg-blue-500 hover:bg-blue-600 opacity-75' 
               : 'bg-blue-500 hover:bg-blue-600 disabled:bg-blue-400 disabled:cursor-not-allowed'
           }
           ${className}
@@ -138,16 +138,12 @@ export default function ShareButton({ battleTopic, battleId, userAddress, classN
           !userAddress 
             ? "Please connect your wallet to share" 
             : hasShared 
-              ? "You've already shared this battle" 
+              ? "Share this debate on X (already received points)" 
               : "Share this debate on X (Twitter)"
         }
       >
         {isSharing ? (
           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-        ) : hasShared ? (
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-          </svg>
         ) : (
           <img 
             src="/x-square.svg" 
