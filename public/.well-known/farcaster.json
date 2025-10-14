@@ -5,7 +5,7 @@
     "signature": ""
   },
   "baseBuilder": {
-    "allowedAddresses": [""]
+    "allowedAddresses": ["0x1a33D3440C62A4586380ad5269f1F7E55F4C6af7"]
   },
   "miniapp": {
     "version": "1",
@@ -30,5 +30,28 @@
     "ogDescription": "Join intelligent discussions, earn points, and compete with others in AI-powered news debates on Base blockchain.",
     "ogImageUrl": "https://news-debate-app-733567590021.us-central1.run.app/og-image.png",
     "noindex": true
-  }
+  },
+  "version": "1.0.0",
+  "name": "NewsCast Debate",
+  "description": "AI-powered news debates on Base blockchain. Join intelligent discussions, earn points, and compete with others.",
+  "icon": "https://news-debate-app-733567590021.us-central1.run.app/icon.png",
+  "splash": {
+    "imageUrl": "https://news-debate-app-733567590021.us-central1.run.app/icon.png",
+    "backgroundColor": "#ffffff"
+  },
+  "url": "https://news-debate-app-733567590021.us-central1.run.app",
+  "category": "social",
+  "tags": ["AI", "Debate", "News", "Base", "Blockchain"],
+  "permissions": {
+    "camera": false,
+    "microphone": false,
+    "location": false
+  },
+  "features": [
+    "AI-powered debate generation",
+    "Real-time news curation", 
+    "Points and rewards system",
+    "Base blockchain integration",
+    "Social competition"
+  ]
 }

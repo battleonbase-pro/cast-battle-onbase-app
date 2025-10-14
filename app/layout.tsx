@@ -43,14 +43,16 @@ export const metadata: Metadata = {
   },
   other: {
     "fc:miniapp": JSON.stringify({
-      version: "next",
+      version: "1",
       imageUrl: "https://news-debate-app-733567590021.us-central1.run.app/api/og-image",
       button: {
         title: "Join AI Debate",
         action: {
           type: "launch_miniapp",
           name: "NewsCast Debate",
-          url: "https://news-debate-app-733567590021.us-central1.run.app"
+          url: "https://news-debate-app-733567590021.us-central1.run.app",
+          splashImageUrl: "https://news-debate-app-733567590021.us-central1.run.app/api/og-image",
+          splashBackgroundColor: "#0052FF"
         }
       }
     })
@@ -77,8 +79,10 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="NewsCast Debate" />
         
-        {/* Base Mini App Meta Tags */}
-        <meta name="fc:miniapp" content='{"version":"next","imageUrl":"https://news-debate-app-733567590021.us-central1.run.app/api/og-image","button":{"title":"Join AI Debate","action":{"type":"launch_miniapp","name":"NewsCast Debate","url":"https://news-debate-app-733567590021.us-central1.run.app"}}}' />
+        {/* Farcaster Mini App Meta Tags */}
+        <meta name="fc:miniapp" content='{"version":"1","imageUrl":"https://news-debate-app-733567590021.us-central1.run.app/api/og-image","button":{"title":"Join AI Debate","action":{"type":"launch_miniapp","name":"NewsCast Debate","url":"https://news-debate-app-733567590021.us-central1.run.app","splashImageUrl":"https://news-debate-app-733567590021.us-central1.run.app/api/og-image","splashBackgroundColor":"#0052FF"}}}' />
+        {/* For backward compatibility */}
+        <meta name="fc:frame" content='{"version":"1","imageUrl":"https://news-debate-app-733567590021.us-central1.run.app/api/og-image","button":{"title":"Join AI Debate","action":{"type":"launch_miniapp","name":"NewsCast Debate","url":"https://news-debate-app-733567590021.us-central1.run.app","splashImageUrl":"https://news-debate-app-733567590021.us-central1.run.app/api/og-image","splashBackgroundColor":"#0052FF"}}}' />
       </head>
       <body className={inter.variable}>
         <script
