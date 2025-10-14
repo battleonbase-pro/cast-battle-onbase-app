@@ -15,9 +15,9 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
-        source: '/.well-known/farcaster.json',
-        destination: 'https://api.farcaster.xyz/miniapps/hosted-manifest/0199c011-193b-ca61-a963-36fbfaef8937',
-        permanent: false, // This will use a 307 redirect
+        source: '/test-redirect',
+        destination: 'https://google.com',
+        permanent: false,
       },
     ];
   },
