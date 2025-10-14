@@ -126,13 +126,11 @@ export default function ShareButton({ battleTopic, battleId, userAddress, classN
         onClick={handleShare}
         disabled={isSharing || !canShare || !userAddress}
         className={`
-          inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
-          transition-colors duration-200
           ${!userAddress 
-            ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+            ? 'bg-gray-400 cursor-not-allowed' 
             : hasShared 
-              ? 'bg-green-500 hover:bg-green-600 text-white' 
-              : 'bg-blue-500 hover:bg-blue-600 disabled:bg-blue-400 disabled:cursor-not-allowed text-white'
+              ? 'bg-green-500 hover:bg-green-600' 
+              : 'bg-blue-500 hover:bg-blue-600 disabled:bg-blue-400 disabled:cursor-not-allowed'
           }
           ${className}
         `}
@@ -145,26 +143,17 @@ export default function ShareButton({ battleTopic, battleId, userAddress, classN
         }
       >
         {isSharing ? (
-          <>
-            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            Sharing...
-          </>
+          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
         ) : hasShared ? (
-          <>
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-            </svg>
-            Shared ✓
-          </>
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+          </svg>
         ) : (
-          <>
-            <img 
-              src="/x-square.svg" 
-              alt="X (Twitter)" 
-              className="w-4 h-4"
-            />
-            Share on X (+20 pts)
-          </>
+          <img 
+            src="/x-square.svg" 
+            alt="X (Twitter)" 
+            className="w-5 h-5"
+          />
         )}
       </button>
       
