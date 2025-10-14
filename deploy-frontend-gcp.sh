@@ -14,7 +14,7 @@ echo "Image: ${IMAGE_NAME}"
 
 # Build the Docker image
 echo "📦 Building Docker image..."
-docker build -t ${IMAGE_NAME} .
+docker buildx build --platform linux/amd64 -t ${IMAGE_NAME} --load .
 
 # Push the image to Google Container Registry
 echo "📤 Pushing image to Google Container Registry..."
