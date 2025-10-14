@@ -25,8 +25,11 @@ export function isMiniAppEnvironment(): boolean {
     userAgent.includes('cbwallet') ||
     // Check for Base-specific globals
     typeof (window as any).base !== 'undefined' ||
-    // Check for Base SDK presence
-    typeof (window as any).baseApp !== 'undefined'
+    typeof (window as any).baseApp !== 'undefined' ||
+    // Check for Base Account connector
+    typeof (window as any).ethereum?.isBase === true ||
+    // Check for Coinbase Wallet
+    typeof (window as any).ethereum?.isCoinbaseWallet === true
   );
   
   return isFarcaster || isBase;
@@ -61,7 +64,9 @@ export function isBaseEnvironment(): boolean {
     userAgent.includes('coinbase') ||
     userAgent.includes('cbwallet') ||
     typeof (window as any).base !== 'undefined' ||
-    typeof (window as any).baseApp !== 'undefined'
+    typeof (window as any).baseApp !== 'undefined' ||
+    typeof (window as any).ethereum?.isBase === true ||
+    typeof (window as any).ethereum?.isCoinbaseWallet === true
   );
 }
 
@@ -92,4 +97,25 @@ export function getPollingInterval(): number {
     return 30000; // 30 seconds for mobile mini-apps
   }
   return 5000; // 5 seconds for desktop (fallback)
+}
+
+/**
+ * Get environment type for debugging
+ */
+export function getEnvironmentInfo(): {
+  isMiniApp: boolean;
+  isFarcaster: boolean;
+  isBase: boolean;
+  isMobile: boolean;
+  shouldUsePolling: boolean;
+  userAgent: string;
+} {
+  return {
+    isMiniApp: isMiniAppEnvironment(),
+    isFarcaster: isFarcasterEnvironment(),
+    isBase: isBaseEnvironment(),
+    isMobile: isMobileDevice(),
+    shouldUsePolling: shouldUsePolling(),
+    userAgent: typeof window !== 'undefined' ? navigator.userAgent : 'server'
+  };
 }

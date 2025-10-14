@@ -1,5 +1,5 @@
-// Polling service for mobile mini-app environments
-// Replaces WebSocket connections to prevent overheating and performance issues
+// Enhanced mobile polling service with visibility API support
+// Prevents polling when app is in background to reduce CPU usage
 
 interface PollingData {
   battleData?: any;
@@ -28,9 +28,34 @@ class MobilePollingService {
   private userAddress: string | null = null;
   private callbacks: PollingCallbacks = {};
   private pollingInterval: number = 30000; // 30 seconds
+  private isVisible = true; // Track visibility state
+  private visibilityChangeHandler: (() => void) | null = null;
 
   constructor() {
     this.pollingInterval = 30000; // Default 30 seconds for mobile
+    this.setupVisibilityListener();
+  }
+
+  /**
+   * Set up visibility change listener to pause/resume polling
+   */
+  private setupVisibilityListener(): void {
+    if (typeof document === 'undefined') return;
+
+    this.visibilityChangeHandler = () => {
+      const wasVisible = this.isVisible;
+      this.isVisible = !document.hidden;
+      
+      console.log(`📱 App visibility changed: ${this.isVisible ? 'visible' : 'hidden'}`);
+      
+      // If app became visible and we were polling, resume immediately
+      if (this.isVisible && wasVisible === false && this.isPolling) {
+        console.log('📱 App became visible, resuming polling immediately');
+        this.pollData();
+      }
+    };
+
+    document.addEventListener('visibilitychange', this.visibilityChangeHandler);
   }
 
   /**
@@ -53,7 +78,12 @@ class MobilePollingService {
     
     // Set up interval polling
     this.intervalId = setInterval(() => {
-      this.pollData();
+      // Only poll if app is visible
+      if (this.isVisible) {
+        this.pollData();
+      } else {
+        console.log('📱 Skipping poll - app is in background');
+      }
     }, this.pollingInterval);
   }
 
@@ -67,6 +97,18 @@ class MobilePollingService {
     }
     this.isPolling = false;
     console.log('📱 Mobile polling service stopped');
+  }
+
+  /**
+   * Clean up visibility listener
+   */
+  cleanup(): void {
+    this.stopPolling();
+    
+    if (this.visibilityChangeHandler && typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
+      this.visibilityChangeHandler = null;
+    }
   }
 
   /**
@@ -146,14 +188,32 @@ class MobilePollingService {
   }
 
   /**
-   * Fetch user points
+   * Fetch user points with enhanced error handling
    */
   private async fetchUserPoints(): Promise<number> {
     if (!this.userAddress) return 0;
     
-    const response = await fetch(`/api/user/points?address=${this.userAddress}`);
-    const data = await response.json();
-    return data.success ? data.points : 0;
+    try {
+      const response = await fetch(`/api/user/points?address=${this.userAddress}`);
+      
+      if (!response.ok) {
+        console.warn(`📱 User points API returned ${response.status}: ${response.statusText}`);
+        return 0;
+      }
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        console.warn('📱 User points API returned error:', data.error);
+        return 0;
+      }
+      
+      console.log(`📱 Fetched user points: ${data.points} for ${this.userAddress}`);
+      return data.points;
+    } catch (error) {
+      console.error('📱 Error fetching user points:', error);
+      return 0;
+    }
   }
 
   /**
@@ -197,6 +257,23 @@ class MobilePollingService {
    */
   updateUserAddress(userAddress: string): void {
     this.userAddress = userAddress;
+  }
+
+  /**
+   * Get polling status for debugging
+   */
+  getStatus(): {
+    isPolling: boolean;
+    isVisible: boolean;
+    userAddress: string | null;
+    interval: number;
+  } {
+    return {
+      isPolling: this.isPolling,
+      isVisible: this.isVisible,
+      userAddress: this.userAddress,
+      interval: this.pollingInterval
+    };
   }
 }
 

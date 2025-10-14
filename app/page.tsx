@@ -7,7 +7,7 @@ import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { config } from '@/lib/wagmi-config';
-import { shouldUsePolling, isMiniAppEnvironment } from '@/lib/utils/mini-app-detection';
+import { shouldUsePolling, isMiniAppEnvironment, isBaseEnvironment, getEnvironmentInfo } from '@/lib/utils/mini-app-detection';
 import { mobilePollingService } from '@/lib/services/mobile-polling-service';
 import { walletConnectionCache } from '@/lib/services/wallet-connection-cache';
 import {
@@ -99,6 +99,7 @@ const queryClient = new QueryClient()
 
 function Home() {
   const [isFarcasterEnv, setIsFarcasterEnv] = useState<boolean | null>(null); // null = detecting, true = Farcaster, false = browser
+  const [isBaseEnv, setIsBaseEnv] = useState<boolean>(false);
   const [isMobileMiniApp, setIsMobileMiniApp] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -142,6 +143,20 @@ function Home() {
       }
     }
   }, [isConnected, address, isFarcasterEnv, user]);
+
+  // Enhanced Base app user state management
+  useEffect(() => {
+    if (isBaseEnv && isConnected && address && !user) {
+      console.log('🔵 Base app detected with connected wallet, setting up user state');
+      const userData = {
+        address: address,
+        username: 'Base User'
+      };
+      setUser(userData);
+      localStorage.setItem('newscast-battle-user', JSON.stringify(userData));
+      fetchUserPoints(address);
+    }
+  }, [isBaseEnv, isConnected, address, user]);
 
   // Additional effect to handle Base Account connection state
   useEffect(() => {
@@ -417,18 +432,41 @@ function Home() {
       try {
         setLoading(true);
         
-        // Detect mobile mini-app environment
+        // Detect environment
+        const envInfo = getEnvironmentInfo();
+        console.log('🔍 Environment detection:', envInfo);
+        
         const isMobile = shouldUsePolling();
+        const isBase = isBaseEnvironment();
+        
         setIsMobileMiniApp(isMobile);
+        setIsBaseEnv(isBase);
         
         if (isMobile) {
           console.log('📱 Mobile mini-app environment detected - will use polling instead of WebSocket');
+        }
+        
+        if (isBase) {
+          console.log('🔵 Base app environment detected');
+        }
+        
+        // Detect Farcaster environment
+        if (typeof window !== 'undefined') {
+          try {
+            const isFarcaster = await farcasterSDK.isInFarcaster();
+            console.log('🔍 Farcaster environment detection result:', isFarcaster);
+            setIsFarcasterEnv(isFarcaster);
+          } catch (error) {
+            console.log('🔍 Farcaster SDK not available, assuming browser environment');
+            setIsFarcasterEnv(false);
+          }
         }
         
         await Promise.all([
           fetchCurrentBattle(),
           fetchBattleHistory()
         ]);
+        
       } catch (error) {
         console.error('App initialization error:', error);
         setError('Failed to initialize app');
@@ -475,7 +513,7 @@ function Home() {
       }
       // Stop mobile polling if active
       if (isMobileMiniApp) {
-        mobilePollingService.stopPolling();
+        mobilePollingService.cleanup();
       }
     };
   }, [isFarcasterEnv]);
@@ -517,7 +555,7 @@ function Home() {
     
     return () => {
       if (isMobileMiniApp) {
-        mobilePollingService.stopPolling();
+        mobilePollingService.cleanup();
       }
     };
   }, [isMobileMiniApp, user?.address]);
