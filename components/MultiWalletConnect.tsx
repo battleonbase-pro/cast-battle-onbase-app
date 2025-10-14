@@ -1,6 +1,7 @@
 "use client";
 import { useState, useMemo } from 'react';
 import { useConnect, useAccount, useDisconnect } from 'wagmi';
+import { walletConnectionCache } from '@/lib/services/wallet-connection-cache';
 import styles from './MultiWalletConnect.module.css';
 
 interface MultiWalletConnectProps {
@@ -17,6 +18,12 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
   const handleConnect = async (connector: { name: string; id: string }) => {
     try {
       console.log('Attempting to connect to:', connector.name);
+      
+      // Check if we should attempt connection (not too many recent failures)
+      if (!walletConnectionCache.shouldAttemptConnection(connector.name)) {
+        onError('Too many recent connection attempts. Please wait before trying again.');
+        return;
+      }
       
       // Set explicit connection flag to indicate user-initiated connection
       localStorage.setItem('wagmi.explicitConnection', 'true');
@@ -94,9 +101,18 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
       }
       
       console.log('Connection successful');
+      
+      // Cache successful connection
+      walletConnectionCache.cacheConnection('external-user', connector.name, 'external');
+      walletConnectionCache.recordAttempt(connector.name, true);
+      
       setShowWalletList(false);
     } catch (error: unknown) {
       console.error('Connection error:', error);
+      
+      // Record failed attempt
+      walletConnectionCache.recordAttempt(connector.name, false, error instanceof Error ? error.message : 'Unknown error');
+      
       // Clear the explicit connection flag on error
       localStorage.removeItem('wagmi.explicitConnection');
       const errorMessage = error instanceof Error ? error.message : 'Failed to connect wallet';

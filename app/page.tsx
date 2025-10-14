@@ -7,6 +7,9 @@ import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { config } from '@/lib/wagmi-config';
+import { shouldUsePolling, isMiniAppEnvironment } from '@/lib/utils/mini-app-detection';
+import { mobilePollingService } from '@/lib/services/mobile-polling-service';
+import { walletConnectionCache } from '@/lib/services/wallet-connection-cache';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -96,6 +99,7 @@ const queryClient = new QueryClient()
 
 function Home() {
   const [isFarcasterEnv, setIsFarcasterEnv] = useState<boolean | null>(null); // null = detecting, true = Farcaster, false = browser
+  const [isMobileMiniApp, setIsMobileMiniApp] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -178,27 +182,45 @@ function Home() {
       }
     }, [connectors, connect]);
 
-    // Auto-connect when in Farcaster environment
+    // Auto-connect when in Farcaster environment with caching
     useEffect(() => {
       try {
         if (isFarcasterEnv === true && !isConnected && connectors.length > 0) {
+          const connector = connectors[0];
+          const connectorName = connector?.name;
+          
+          // Check if we should attempt connection (not too many recent failures)
+          if (!walletConnectionCache.shouldAttemptConnection(connectorName)) {
+            console.log('🚫 Skipping Farcaster connection due to recent failures');
+            return;
+          }
+          
           console.log('🚀 Auto-connecting Farcaster wallet...', { 
             isFarcasterEnv, 
             isConnected, 
             connectorsCount: connectors.length,
-            connectorName: connectors[0]?.name 
+            connectorName 
           });
           
           const attemptConnect = async () => {
             try {
-              console.log('🔄 Attempting to connect with connector:', connectors[0]?.name);
-              await connect({ connector: connectors[0] });
+              console.log('🔄 Attempting to connect with connector:', connectorName);
+              await connect({ connector });
+              
+              // Cache successful connection
+              walletConnectionCache.cacheConnection('farcaster-user', connectorName, 'farcaster');
+              walletConnectionCache.recordAttempt(connectorName, true);
+              
               console.log('✅ Farcaster wallet connection successful');
             } catch (error) {
               console.error('⚠️ Farcaster wallet connection failed:', error);
-              // Retry after a short delay
+              
+              // Record failed attempt
+              walletConnectionCache.recordAttempt(connectorName, false, error.message);
+              
+              // Retry after a short delay (only if not too many recent failures)
               setTimeout(() => {
-                if (!isConnected) {
+                if (!isConnected && walletConnectionCache.shouldAttemptConnection(connectorName)) {
                   console.log('🔄 Retrying Farcaster wallet connection...');
                   attemptConnect();
                 }
@@ -394,6 +416,15 @@ function Home() {
     const initApp = async () => {
       try {
         setLoading(true);
+        
+        // Detect mobile mini-app environment
+        const isMobile = shouldUsePolling();
+        setIsMobileMiniApp(isMobile);
+        
+        if (isMobile) {
+          console.log('📱 Mobile mini-app environment detected - will use polling instead of WebSocket');
+        }
+        
         await Promise.all([
           fetchCurrentBattle(),
           fetchBattleHistory()
@@ -406,7 +437,19 @@ function Home() {
       }
     };
     initApp();
-    const cleanupBattleSSE = setupBattleStateSSE();
+    
+    // Set up data connection based on environment
+    let cleanupFunction: (() => void) | undefined;
+    
+    if (isMobileMiniApp) {
+      // Use polling for mobile mini-apps
+      console.log('📱 Setting up mobile polling service');
+      // Polling will be started when user connects
+    } else {
+      // Use WebSocket for desktop
+      console.log('🖥️ Setting up WebSocket connection');
+      cleanupFunction = setupBattleStateSSE();
+    }
     
     // Initialize wallet connection on client side only (only in non-Farcaster environments)
     if (typeof window !== 'undefined' && isFarcasterEnv === false) {
@@ -427,11 +470,57 @@ function Home() {
 
     // Cleanup function
     return () => {
-      if (cleanupBattleSSE) {
-        cleanupBattleSSE();
+      if (cleanupFunction) {
+        cleanupFunction();
+      }
+      // Stop mobile polling if active
+      if (isMobileMiniApp) {
+        mobilePollingService.stopPolling();
       }
     };
   }, [isFarcasterEnv]);
+
+  // Start mobile polling when user connects
+  useEffect(() => {
+    if (isMobileMiniApp && user?.address) {
+      console.log('📱 Starting mobile polling for user:', user.address);
+      
+      mobilePollingService.startPolling(user.address, {
+        onBattleData: (data) => {
+          if (data) {
+            setTopic(data);
+            setBattleEndTime(data.endTime ? new Date(data.endTime).getTime() : null);
+            setBattleJoined(data.participants?.some((p: any) => p.userAddress === user.address) || false);
+            setHasSubmittedCast(data.casts?.some((c: any) => c.userAddress === user.address) || false);
+          }
+        },
+        onUserPoints: (points) => {
+          setUserPoints(points);
+        },
+        onLeaderboard: (leaderboard) => {
+          setLeaderboard(leaderboard);
+        },
+        onBattleHistory: (history) => {
+          setBattleHistory(history);
+        },
+        onCasts: (casts) => {
+          setCasts(casts);
+        },
+        onError: (error) => {
+          console.error('📱 Mobile polling error:', error);
+        }
+      });
+    } else if (isMobileMiniApp && !user?.address) {
+      // Stop polling if user disconnects
+      mobilePollingService.stopPolling();
+    }
+    
+    return () => {
+      if (isMobileMiniApp) {
+        mobilePollingService.stopPolling();
+      }
+    };
+  }, [isMobileMiniApp, user?.address]);
 
   // Countdown timer effect
   useEffect(() => {
