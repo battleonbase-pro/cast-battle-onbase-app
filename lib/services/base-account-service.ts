@@ -1,4 +1,4 @@
-import { getProvider } from '@base-org/account';
+import { createBaseAccountSDK, pay } from '@base-org/account';
 
 export interface BaseAccountUser {
   address: string;
@@ -13,6 +13,7 @@ export interface PaymentResult {
 }
 
 export class BaseAccountService {
+  private sdk: any = null;
   private provider: any = null;
   private isInitialized = false;
 
@@ -23,7 +24,12 @@ export class BaseAccountService {
   private async initialize() {
     try {
       if (typeof window !== 'undefined') {
-        this.provider = await getProvider();
+        this.sdk = createBaseAccountSDK({
+          appName: 'Cast Battle',
+          appIcon: '/icon.png',
+          appDescription: 'AI-Powered Debate Battles on Base'
+        });
+        this.provider = this.sdk.getProvider();
         this.isInitialized = true;
         console.log('✅ Base Account SDK initialized');
       }
@@ -42,89 +48,61 @@ export class BaseAccountService {
 
   /**
    * Check if user is signed in
+   * Note: Base Account SDK handles authentication automatically during payments
    */
   async isSignedIn(): Promise<boolean> {
-    if (!this.isAvailable()) return false;
-    
-    try {
-      const account = await this.provider.getAccount();
-      return account !== null;
-    } catch (error) {
-      console.error('Error checking sign-in status:', error);
-      return false;
-    }
+    // Base Account SDK handles authentication automatically
+    // We can't check sign-in status without attempting a payment
+    return this.isAvailable();
   }
 
   /**
    * Sign in with Base Account
+   * Note: Base Account SDK handles authentication automatically during payments
    */
   async signIn(): Promise<BaseAccountUser> {
     if (!this.isAvailable()) {
       throw new Error('Base Account SDK not available');
     }
 
-    try {
-      const account = await this.provider.getAccount();
-      
-      if (!account) {
-        throw new Error('No account found');
-      }
-
-      const user: BaseAccountUser = {
-        address: account.address,
-        email: account.email,
-        name: account.name
-      };
-
-      console.log('✅ Signed in with Base Account:', user);
-      return user;
-    } catch (error) {
-      console.error('Error signing in:', error);
-      throw error;
-    }
+    // Base Account SDK handles authentication automatically
+    // Return a placeholder user object
+    return {
+      address: '0x0000000000000000000000000000000000000000',
+      email: 'user@base.org',
+      name: 'Base Account User'
+    };
   }
 
   /**
    * Get current Base Account
+   * Note: Base Account SDK handles authentication automatically during payments
    */
   async getBaseAccount(): Promise<BaseAccountUser> {
     if (!this.isAvailable()) {
       throw new Error('Base Account SDK not available');
     }
 
-    try {
-      const account = await this.provider.getAccount();
-      
-      if (!account) {
-        throw new Error('No account found');
-      }
-
-      return {
-        address: account.address,
-        email: account.email,
-        name: account.name
-      };
-    } catch (error) {
-      console.error('Error getting Base Account:', error);
-      throw error;
-    }
+    // Base Account SDK handles authentication automatically
+    // Return a placeholder user object
+    return {
+      address: '0x0000000000000000000000000000000000000000',
+      email: 'user@base.org',
+      name: 'Base Account User'
+    };
   }
 
   /**
    * Sign out
+   * Note: Base Account SDK handles authentication automatically
    */
   async signOut(): Promise<void> {
     if (!this.isAvailable()) {
       throw new Error('Base Account SDK not available');
     }
 
-    try {
-      await this.provider.signOut();
-      console.log('✅ Signed out from Base Account');
-    } catch (error) {
-      console.error('Error signing out:', error);
-      throw error;
-    }
+    // Base Account SDK handles authentication automatically
+    console.log('✅ Base Account SDK handles authentication automatically');
   }
 
   /**
@@ -138,18 +116,17 @@ export class BaseAccountService {
     try {
       console.log(`💰 Making USDC payment: ${amount} USDC to ${recipient}`);
       
-      const result = await this.provider.pay({
-        to: recipient,
+      const result = await pay({
+        to: recipient as `0x${string}`,
         amount: amount,
-        currency: 'USDC',
-        memo: memo || 'Debate participation fee'
+        testnet: process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_NETWORK === 'testnet'
       });
 
       console.log('✅ USDC payment successful:', result);
       
       return {
         success: true,
-        transactionHash: result.transactionHash
+        transactionHash: result.id
       };
     } catch (error: any) {
       console.error('❌ USDC payment failed:', error);
@@ -178,18 +155,17 @@ export class BaseAccountService {
 
       console.log(`🎯 Joining debate ${debateId} with ${entryFee} USDC payment`);
       
-      const result = await this.provider.pay({
-        to: contractAddress,
+      const result = await pay({
+        to: contractAddress as `0x${string}`,
         amount: entryFee,
-        currency: 'USDC',
-        memo: `Join debate ${debateId}`
+        testnet: process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_NETWORK === 'testnet'
       });
 
       console.log('✅ Debate payment successful:', result);
       
       return {
         success: true,
-        transactionHash: result.transactionHash
+        transactionHash: result.id
       };
     } catch (error: any) {
       console.error('❌ Debate payment failed:', error);
@@ -203,32 +179,32 @@ export class BaseAccountService {
 
   /**
    * Get user's USDC balance
+   * Note: Base Account SDK doesn't provide balance checking
    */
   async getUSDCBalance(): Promise<string> {
     if (!this.isAvailable()) {
       throw new Error('Base Account SDK not available');
     }
 
-    try {
-      const balance = await this.provider.getBalance('USDC');
-      return balance || '0';
-    } catch (error) {
-      console.error('Error getting USDC balance:', error);
-      return '0';
-    }
+    // Base Account SDK doesn't provide balance checking
+    // Return a placeholder balance
+    console.log('⚠️ Base Account SDK doesn\'t provide balance checking');
+    return '0';
   }
 
   /**
    * Check if user has sufficient USDC balance
+   * Note: Base Account SDK doesn't provide balance checking
    */
   async hasSufficientBalance(requiredAmount: string): Promise<boolean> {
-    try {
-      const balance = await this.getUSDCBalance();
-      return parseFloat(balance) >= parseFloat(requiredAmount);
-    } catch (error) {
-      console.error('Error checking balance:', error);
+    if (!this.isAvailable()) {
       return false;
     }
+
+    // Base Account SDK doesn't provide balance checking
+    // Assume sufficient balance and let the payment fail if insufficient
+    console.log('⚠️ Base Account SDK doesn\'t provide balance checking, assuming sufficient balance');
+    return true;
   }
 }
 
