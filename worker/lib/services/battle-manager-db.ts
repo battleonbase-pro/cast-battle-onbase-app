@@ -4,6 +4,7 @@
  */
 
 import { DatabaseService } from './database';
+import { createDebateOracle } from './debate-oracle';
 
 export interface BattleConfig {
   battleDurationHours: number;
@@ -13,6 +14,7 @@ export interface BattleConfig {
 export class BattleManagerDB {
   private config: BattleConfig;
   private db: DatabaseService;
+  private oracle: any; // DebateOracle instance
 
   constructor() {
     this.config = {
@@ -20,6 +22,15 @@ export class BattleManagerDB {
       maxParticipants: parseInt(process.env.BATTLE_MAX_PARTICIPANTS || '1000')
     };
     this.db = DatabaseService.getInstance();
+    
+    // Initialize oracle if contract is deployed
+    try {
+      this.oracle = createDebateOracle();
+      console.log('🔗 Debate Oracle initialized');
+    } catch (error) {
+      console.log('⚠️  Debate Oracle not initialized (contract not deployed yet)');
+      this.oracle = null;
+    }
   }
 
   static async getInstance(): Promise<BattleManagerDB> {
@@ -317,6 +328,20 @@ export class BattleManagerDB {
 
         // Complete battle with winners
         await this.db.completeBattle(battleId, winners);
+        
+        // Process on-chain payout if oracle is available
+        if (this.oracle) {
+          try {
+            console.log(`🔗 Processing on-chain payout for battle ${battleId}`);
+            await this.oracle.processBattleCompletion(battleId);
+            console.log(`✅ On-chain payout processed successfully`);
+          } catch (error) {
+            console.error(`❌ Failed to process on-chain payout:`, error);
+            // Don't fail the entire process if oracle fails
+          }
+        } else {
+          console.log(`⚠️  Oracle not available, skipping on-chain payout`);
+        }
         
         // Award 100 points to the winner
         try {

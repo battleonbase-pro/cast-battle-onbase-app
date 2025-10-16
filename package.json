@@ -58,7 +58,7 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^2.0.14",
-    "@base-org/account": "^2.2.0",
+    "@base-org/account": "^2.4.0",
     "@base-org/account-ui": "^1.0.1",
     "@coinbase/onchainkit": "latest",
     "@coinbase/wallet-sdk": "^4.3.7",
