@@ -143,12 +143,12 @@ export default function ShareButton({ battleTopic, battleId, userAddress, classN
         }
       >
         {isSharing ? (
-          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
         ) : (
           <img 
             src="/x-square.svg" 
             alt="X (Twitter)" 
-            className="w-5 h-5"
+            className="w-8 h-8"
           />
         )}
       </button>

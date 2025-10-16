@@ -1946,7 +1946,6 @@
 .shareContainer {
   display: flex;
   justify-content: flex-start;
-  gap: 8px;
   margin: 8px 0;
 }
 
@@ -1992,7 +1991,6 @@
 @media (max-width: 768px) {
   .shareContainer {
     margin: 6px 0;
-    gap: 6px;
   }
   
   .shareButton {
