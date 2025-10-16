@@ -10,6 +10,9 @@ import { config } from '@/lib/wagmi-config';
 import { shouldUsePolling, isMiniAppEnvironment, isBaseEnvironment, getEnvironmentInfo } from '@/lib/utils/mini-app-detection';
 import { mobilePollingService } from '@/lib/services/mobile-polling-service';
 import { walletConnectionCache } from '@/lib/services/wallet-connection-cache';
+import BaseAccountAuth from '@/components/BaseAccountAuth';
+import BaseAccountPayment from '@/components/BaseAccountPayment';
+import { BaseAccountUser } from '@/lib/services/base-account-service';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -38,6 +41,7 @@ ChartJS.register(
 
 interface DebateTopic {
   id: string;
+  debateId?: number; // On-chain debate ID
   title: string;
   description: string;
   category: string;
@@ -103,9 +107,11 @@ function Home() {
   const [isBaseEnv, setIsBaseEnv] = useState<boolean>(false);
   const [isMobileMiniApp, setIsMobileMiniApp] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
+  const [baseAccountUser, setBaseAccountUser] = useState<BaseAccountUser | null>(null);
+  const [useBaseAccount, setUseBaseAccount] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Monitor wallet connection state for non-Farcaster environments
   const { isConnected, address } = useAccount();
   const { disconnect } = useDisconnect();
@@ -430,8 +436,8 @@ function Home() {
 
   useEffect(() => {
     const initApp = async () => {
-      try {
-        setLoading(true);
+    try {
+      setLoading(true);
         
         // Detect environment
         const envInfo = getEnvironmentInfo();
@@ -873,28 +879,64 @@ function Home() {
     }
   };
 
+  // Fetch points for Base Account user
+  useEffect(() => {
+    if (baseAccountUser?.address) {
+      fetchUserPoints(baseAccountUser.address);
+    }
+  }, [baseAccountUser]);
+
   const joinBattle = async () => {
-    if (!user) return;
+    if (!user && !baseAccountUser) return;
     
     try {
       setLoading(true);
-      const response = await fetch('/api/battle/current', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userAddress: user.address })
-      });
       
-      const data = await response.json();
-      
-      if (data.success) {
-        setBattleJoined(true);
-        setError(null);
+      // Use Base Account if available and user is signed in
+      if (useBaseAccount && baseAccountUser && topic?.debateId) {
+        console.log('🎯 Using Base Account for battle participation');
+        
+        // Import the base account service
+        const { baseAccountService } = await import('@/lib/services/base-account-service');
+        
+        // Make USDC payment to join debate
+        const result = await baseAccountService.joinDebateWithPayment(topic.debateId, "1"); // 1 USDC entry fee
+        
+        if (result.success) {
+          console.log('✅ Successfully joined debate with Base Account payment');
+          setBattleJoined(true);
+          setError(null);
+          
+          // Also update the backend to track participation
+          await updateBackendParticipation(baseAccountUser.address);
+        } else {
+          throw new Error(result.error || 'Payment failed');
+        }
       } else {
-        if (data.error.includes('already joined')) {
+        // Fallback to regular API-based joining
+        console.log('🔄 Using regular API for battle participation');
+        
+        const userAddress = user?.address || baseAccountUser?.address;
+        if (!userAddress) return;
+        
+        const response = await fetch('/api/battle/current', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userAddress })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
           setBattleJoined(true);
           setError(null);
         } else {
-          setError(data.error);
+          if (data.error.includes('already joined')) {
+            setBattleJoined(true);
+            setError(null);
+          } else {
+            setError(data.error);
+          }
         }
       }
     } catch (error) {
@@ -905,8 +947,26 @@ function Home() {
     }
   };
 
+  const updateBackendParticipation = async (userAddress: string) => {
+    try {
+      const response = await fetch('/api/battle/current', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userAddress })
+      });
+      
+      const data = await response.json();
+      
+      if (!data.success && !data.error.includes('already joined')) {
+        console.warn('Failed to update backend participation:', data.error);
+      }
+    } catch (error) {
+      console.error('Error updating backend participation:', error);
+    }
+  };
+
   const submitCast = async () => {
-    if (!user || !castContent.trim()) return;
+    if ((!user && !baseAccountUser) || !castContent.trim()) return;
     
     try {
       setSubmittingCast(true);
@@ -914,7 +974,7 @@ function Home() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userAddress: user.address,
+          userAddress: baseAccountUser?.address || user?.address,
           content: castContent.trim(),
           side: castSide
         })
@@ -1116,7 +1176,7 @@ function Home() {
           <div className={styles.transitionContent}>
             <div className={styles.transitionSpinner}></div>
             <p className={styles.transitionMessage}>{battleTransition.message}</p>
-          </div>
+        </div>
         </div>
       )}
       
@@ -1141,13 +1201,22 @@ function Home() {
               >
                 ?
               </button>
-            </div>
           </div>
+        </div>
           {user && isFarcasterEnv === false ? (
             <div className={styles.userCompact}>
               <div className={styles.userInfo}>
                 <span className={styles.userAddress}>
-                  {user?.address ? `${user.address.slice(0, 6)}...${user.address.slice(-4)}` : 'Not connected'}
+                  {baseAccountUser ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-blue-500">🔵</span>
+                      <span>{baseAccountUser.name || `${baseAccountUser.address.slice(0, 6)}...${baseAccountUser.address.slice(-4)}`}</span>
+                    </div>
+                  ) : user?.address ? (
+                    `${user.address.slice(0, 6)}...${user.address.slice(-4)}`
+                  ) : (
+                    'Not connected'
+                  )}
                 </span>
                 <span className={`${styles.userPoints} ${pointsAnimation ? styles.pointsAnimated : ''}`}>
                   🔵 {userPoints} pts
@@ -1188,10 +1257,31 @@ function Home() {
             <FarcasterWalletComponent />
           ) : (
             <div className={styles.signInWrapper}>
-              <MultiWalletConnect 
-                onConnect={handleWalletConnect}
-                onError={handleWalletError}
-              />
+              {/* Base Account Authentication */}
+              <div className="mb-4">
+                <BaseAccountAuth
+                  onUserChange={(user) => {
+                    setBaseAccountUser(user);
+                    setUseBaseAccount(!!user);
+                    if (user) {
+                      console.log('✅ Base Account user connected:', user);
+                    }
+                  }}
+                  onError={(error) => {
+                    console.error('Base Account error:', error);
+                    setError(error);
+                  }}
+                />
+        </div>
+
+              {/* Fallback to regular wallet connection */}
+              <div className="text-center">
+                <div className="text-sm text-gray-500 mb-2">Or connect with regular wallet:</div>
+                <MultiWalletConnect 
+                  onConnect={handleWalletConnect}
+                  onError={handleWalletError}
+                />
+              </div>
             </div>
           )}
                 </div>
@@ -1209,10 +1299,10 @@ function Home() {
         </div>
 
         {error ? (
-          <div className={styles.error}>
+            <div className={styles.error}>
             <p>⚠️ {error}</p>
             <button onClick={fetchCurrentBattle} className={styles.retryBtn}>Retry</button>
-          </div>
+            </div>
         ) : topic ? (
           <div className={styles.battleCard}>
             {/* Battle Header */}
@@ -1238,11 +1328,11 @@ function Home() {
                 <ShareButton 
                   battleTopic={topic.title} 
                   battleId={topic.id}
-                  userAddress={user?.address}
+                  userAddress={baseAccountUser?.address || user?.address}
                   className={styles.shareButton}
                 />
               </div>
-              <div className={styles.topicMeta}>
+                <div className={styles.topicMeta}>
                 <span className={styles.topicCategory}>{topic.category}</span>
                 {topic.source && topic.source !== 'System' && (
                   <a 
@@ -1300,13 +1390,34 @@ function Home() {
             {/* Quick Actions */}
             <div className={styles.quickActions}>
               {!battleJoined && !hasSubmittedCast && (
-                <button 
-                  onClick={joinBattle} 
-                  className={styles.joinBtn}
-                  disabled={!user}
-                >
-                  {user ? 'Join Debate' : 'Sign in to Join Debate'}
-                </button>
+                <div>
+                  {/* Base Account Payment Component */}
+                  {useBaseAccount && baseAccountUser && topic?.debateId ? (
+                    <BaseAccountPayment
+                      debateId={topic.debateId}
+                      entryFee="1"
+                      onPaymentSuccess={(result) => {
+                        console.log('✅ Base Account payment successful:', result);
+                        setBattleJoined(true);
+                        setError(null);
+                      }}
+                      onPaymentError={(error) => {
+                        console.error('❌ Base Account payment failed:', error);
+                        setError(error);
+                      }}
+                      className="mb-4"
+                    />
+                  ) : (
+                    /* Fallback to regular join button */
+                    <button 
+                      onClick={joinBattle} 
+                      className={styles.joinBtn}
+                      disabled={!user && !baseAccountUser}
+                    >
+                      {(user || baseAccountUser) ? 'Join Debate' : 'Sign in to Join Debate'}
+                    </button>
+                  )}
+                </div>
               )}
               {battleJoined && !hasSubmittedCast && (
                 <div className={styles.submitForm}>
@@ -1406,9 +1517,9 @@ function Home() {
                       <span className={styles.emptyState}>No votes yet - be the first to participate!</span>
           )}
         </div>
-      </div>
-    </div>
-            )}
+              </div>
+            </div>
+          )}
 
             {activeTab === 'arguments' && (
               <div className={styles.tabContent}>
@@ -1423,9 +1534,9 @@ function Home() {
                           <span className={styles.argumentUser}>
                             {cast.userAddress ? `${cast.userAddress.slice(0, 6)}...${cast.userAddress.slice(-4)}` : 'Unknown'}
                           </span>
-                        </div>
+        </div>
                         <div className={styles.argumentContent}>{cast.content}</div>
-                      </div>
+      </div>
                     ))
                   ) : (
                     <div className={styles.loading}>No arguments submitted yet.</div>

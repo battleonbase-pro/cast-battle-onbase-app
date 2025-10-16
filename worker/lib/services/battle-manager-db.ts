@@ -15,6 +15,7 @@ export class BattleManagerDB {
   private config: BattleConfig;
   private db: DatabaseService;
   private oracle: any; // DebateOracle instance
+  private onChainDebateService: any; // OnChainDebateService instance
 
   constructor() {
     this.config = {
@@ -28,8 +29,18 @@ export class BattleManagerDB {
       this.oracle = createDebateOracle();
       console.log('🔗 Debate Oracle initialized');
     } catch (error) {
-      console.log('⚠️  Debate Oracle not initialized (contract not deployed yet)');
+      console.log('⚠️  Debate Oracle not initialized (contract not deployed yet):', error.message);
       this.oracle = null;
+    }
+
+    // Initialize on-chain debate service
+    try {
+      const { createOnChainDebateService } = require('./onchain-debate-service');
+      this.onChainDebateService = createOnChainDebateService();
+      console.log('🔗 OnChainDebateService initialized');
+    } catch (error) {
+      console.log('⚠️  OnChainDebateService not initialized:', error.message);
+      this.onChainDebateService = null;
     }
   }
 
@@ -208,12 +219,33 @@ export class BattleManagerDB {
       const actualStartTime = new Date();
       const endTime = new Date(actualStartTime.getTime() + (this.config.battleDurationHours * 60 * 60 * 1000));
 
+      let debateId: number | undefined;
+
+      // Create on-chain debate if service is available
+      if (this.onChainDebateService && this.onChainDebateService.isReady()) {
+        try {
+          console.log('🔗 Creating on-chain debate...');
+          debateId = await this.onChainDebateService.createDebate(
+            topic.title,
+            "1", // 1 USDC entry fee
+            this.config.maxParticipants,
+            this.config.battleDurationHours
+          );
+          console.log(`✅ On-chain debate created with ID: ${debateId}`);
+        } catch (error) {
+          console.error('❌ Failed to create on-chain debate:', error);
+          console.log('⚠️  Creating battle without on-chain integration');
+        }
+      } else {
+        console.log('⚠️  OnChainDebateService not available, creating battle without on-chain integration');
+      }
+
       const battle = await this.db.createBattle({
         title: topic.title,
         description: topic.description,
         category: topic.category,
         source: topic.source,
-        sourceUrl: topic.articleUrl || topic.sourceUrl,
+        sourceUrl: topic.articleUrl || topic.source,
         imageUrl: topic.imageUrl,
         thumbnail: topic.thumbnail,
         startTime: actualStartTime,
@@ -221,15 +253,19 @@ export class BattleManagerDB {
         durationHours: this.config.battleDurationHours,
         maxParticipants: this.config.maxParticipants,
         debatePoints: topic.debatePoints,
-        overallScore: topic.qualityAnalysis?.overallScore,
-        balanceScore: topic.qualityAnalysis?.balanceScore,
-        complexity: topic.complexity,
-        controversyLevel: topic.controversyLevel,
+        overallScore: 0, // topic.qualityAnalysis?.overallScore,
+        balanceScore: 0, // topic.qualityAnalysis?.balanceScore,
+        complexity: 'medium', // topic.complexity,
+        controversyLevel: 'medium', // topic.controversyLevel,
+        debateId: debateId, // Link to on-chain debate
       });
 
       console.log(`New battle created: ${battle.id}`);
       console.log(`Battle topic: ${battle.title}`);
       console.log(`Battle ends at: ${battle.endTime}`);
+      if (debateId) {
+        console.log(`🔗 Linked to on-chain debate ID: ${debateId}`);
+      }
       console.log(`Automatic battle generation scheduled every ${this.config.battleDurationHours} hours`);
 
     } catch (error) {
@@ -317,9 +353,9 @@ export class BattleManagerDB {
         }];
 
         // Store insights if generated
-        if (result.judgment.insights) {
+        if ((result.judgment as any).insights) {
           try {
-            await this.db.updateBattleInsights(battleId, result.judgment.insights);
+            await this.db.updateBattleInsights(battleId, (result.judgment as any).insights);
             console.log(`💡 Insights stored for battle ${battleId}`);
           } catch (error) {
             console.error(`❌ Failed to store insights for battle ${battleId}:`, error);
@@ -357,7 +393,7 @@ export class BattleManagerDB {
         console.log(`✅ Battle ${battleId} completed successfully`);
         console.log(`🏆 Winner: ${winner.userId} (${winner.selectionMethod})`);
         console.log(`📈 Winning side: ${winner.groupAnalysis?.winningSide || 'Unknown'}`);
-        console.log(`💡 Insights generated: ${result.judgment.insights ? 'Yes' : 'No'}`);
+        console.log(`💡 Insights generated: ${(result.judgment as any).insights ? 'Yes' : 'No'}`);
         
         return { success: true, winner: winner };
       } else {

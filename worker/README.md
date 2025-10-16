@@ -125,7 +125,6 @@ The service uses the following environment variables (set as secrets in Cloud Ru
 - `DATABASE_URL` - PostgreSQL connection string
 - `GOOGLE_GENERATIVE_AI_API_KEY` - Google AI API key
 - `SERPER_API_KEY` - Serper API key for news
-- `CURRENTS_API_KEY` - Currents API key for news
 - `WORKER_API_KEY` - API key for securing endpoints
 
 ## 📊 Monitoring

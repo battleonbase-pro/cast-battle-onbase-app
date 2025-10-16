@@ -1,5 +1,4 @@
 // lib/services/news-source-factory.ts
-import CurrentsNewsService from './currents-news-service';
 import SerperNewsService from './serper-news-service';
 
 interface Article {
@@ -26,7 +25,7 @@ class NewsSourceFactory {
   private newsSource: string;
 
   private constructor() {
-    this.newsSource = process.env.NEWS_SOURCE || 'currents';
+    this.newsSource = 'serper'; // Always use Serper API
     this.currentService = this.createService(this.newsSource);
     console.log(`[News Source Factory] Initialized with ${this.newsSource} API`);
   }
@@ -41,10 +40,8 @@ class NewsSourceFactory {
   private createService(source: string): NewsService {
     switch (source.toLowerCase()) {
       case 'serper':
-        return new SerperNewsService();
-      case 'currents':
       default:
-        return new CurrentsNewsService();
+        return new SerperNewsService();
     }
   }
 

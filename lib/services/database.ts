@@ -194,6 +194,34 @@ export class DatabaseService {
     });
   }
 
+  // Link battle to on-chain debate
+  async linkBattleToDebate(battleId: string, debateId: number) {
+    return await prisma.battle.update({
+      where: { id: battleId },
+      data: { debateId },
+    });
+  }
+
+  // Get debate ID for a battle
+  async getDebateIdForBattle(battleId: string): Promise<number | null> {
+    const battle = await prisma.battle.findUnique({
+      where: { id: battleId },
+      select: { debateId: true },
+    });
+    return battle?.debateId || null;
+  }
+
+  // Get battle by debate ID
+  async getBattleByDebateId(debateId: number) {
+    return await prisma.battle.findFirst({
+      where: { debateId },
+      include: {
+        participants: true,
+        winners: true,
+      },
+    });
+  }
+
   // User Management
   async createOrUpdateUser(address: string, username?: string) {
     return await prisma.user.upsert({

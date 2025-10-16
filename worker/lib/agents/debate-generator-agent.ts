@@ -232,7 +232,7 @@ DEBATE TOPIC:
 
 DEBATE POINTS:
 ${Object.entries(debateTopic.debatePoints).map(([side, points]) => 
-  `${side}: ${points.map(p => `• ${p}`).join('\n')}`
+  `${side}: ${(points as string[]).map(p => `• ${p}`).join('\n')}`
 ).join('\n\n')}
 
 EVALUATE ON THESE CRITERIA:

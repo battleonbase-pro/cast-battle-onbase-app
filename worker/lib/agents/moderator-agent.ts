@@ -263,7 +263,7 @@ Provide a comprehensive moderation assessment.`;
     });
 
     return Object.entries(violations)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([,a], [,b]) => (b as number) - (a as number))
       .slice(0, 5)
       .map(([violation, count]) => ({ violation, count }));
   }

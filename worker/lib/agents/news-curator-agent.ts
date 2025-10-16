@@ -207,7 +207,7 @@ class NewsCuratorAgent extends BaseAgent {
   }
 
   // Fetch news by category
-  async fetchNewsByCategory(category: string) {
+  async fetchNewsByCategory(category: string, country?: string) {
     try {
       console.log(`[News Curator] Fetching ${category} news...`);
       const articles = await this.newsSourceFactory.getNewsByCategory(category);

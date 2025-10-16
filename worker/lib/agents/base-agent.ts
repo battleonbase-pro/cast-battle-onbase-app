@@ -1,12 +1,17 @@
-// lib/agents/base-agent.js
+// lib/agents/base-agent.ts
 import { generateObject, generateText } from 'ai';
 import { google } from '@ai-sdk/google';
 
 class BaseAgent {
-  constructor(name, role, apiKey) {
+  public name: string;
+  public role: string;
+  public apiKey: string;
+  public model: string;
+
+  constructor(name: string, role: string, apiKey?: string) {
     this.name = name;
     this.role = role;
-    this.apiKey = apiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    this.apiKey = apiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY || '';
     this.model = 'gemini-2.0-flash';
   }
 
@@ -14,9 +19,7 @@ class BaseAgent {
   async generateStructuredContent(prompt, schema, temperature = 0.7) {
     try {
       const { object } = await generateObject({
-        model: google(this.model, {
-          apiKey: this.apiKey,
-        }),
+        model: google(this.model),
         prompt,
         schema,
         temperature,
@@ -43,9 +46,7 @@ class BaseAgent {
   async generateTextContent(prompt, temperature = 0.7) {
     try {
       const { text } = await generateText({
-        model: google(this.model, {
-          apiKey: this.apiKey,
-        }),
+        model: google(this.model),
         prompt,
         temperature,
       });

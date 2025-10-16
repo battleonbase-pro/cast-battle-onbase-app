@@ -24,6 +24,7 @@ model User {
 
 model Battle {
   id               String                @id @default(cuid())
+  debateId         Int?                  // Link to on-chain debate ID (nullable for existing battles)
   title            String
   description      String
   category         String

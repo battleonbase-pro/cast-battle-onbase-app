@@ -1,12 +1,30 @@
-// lib/agents/agent-orchestrator.js
+// lib/agents/agent-orchestrator.ts
 import NewsCuratorAgent from './news-curator-agent';
 import DebateGeneratorAgent from './debate-generator-agent';
 import ModeratorAgent from './moderator-agent';
 import JudgeAgent from './judge-agent';
 
+interface WorkflowEntry {
+  id: string;
+  timestamp: string;
+  status: string;
+  type?: string;
+  details?: any;
+  error?: string;
+  testResult?: string;
+  result?: any;
+}
+
 class AgentOrchestrator {
-  constructor(apiKey) {
-    this.apiKey = apiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  public apiKey: string;
+  public newsCurator: NewsCuratorAgent;
+  public debateGenerator: DebateGeneratorAgent;
+  public moderator: ModeratorAgent;
+  public judge: JudgeAgent;
+  public workflowHistory: WorkflowEntry[];
+
+  constructor(apiKey?: string) {
+    this.apiKey = apiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY || '';
     
     // Initialize agents
     this.newsCurator = new NewsCuratorAgent(this.apiKey);
@@ -272,7 +290,7 @@ class AgentOrchestrator {
   // Get workflow history
   getWorkflowHistory(limit = 10) {
     return this.workflowHistory
-      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, limit);
   }
 
@@ -308,9 +326,9 @@ class AgentOrchestrator {
 
   // Test all agents
   async testAllAgents() {
-    this.logWorkflow('Testing all agents');
+    this.logWorkflow('Testing all agents', 'test_workflow');
 
-    const results = {
+    const results: any = {
       newsCurator: { status: 'pending' },
       debateGenerator: { status: 'pending' },
       moderator: { status: 'pending' },
@@ -409,7 +427,7 @@ class AgentOrchestrator {
       };
     }
 
-    const allSuccessful = Object.values(results).every(r => r.status === 'success');
+    const allSuccessful = Object.values(results).every((r: any) => r.status === 'success');
     
     this.logWorkflow('Agent testing completed', null, {
       allSuccessful,

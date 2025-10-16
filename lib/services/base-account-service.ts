@@ -1,42 +1,34 @@
-import { createBaseAccountSDK } from '@base-org/account';
-import { ethers } from 'ethers';
+import { getProvider } from '@base-org/account';
 
-/**
- * Base Account SDK service for gasless transactions
- */
+export interface BaseAccountUser {
+  address: string;
+  email?: string;
+  name?: string;
+}
+
+export interface PaymentResult {
+  success: boolean;
+  transactionHash?: string;
+  error?: string;
+}
+
 export class BaseAccountService {
-  private sdk: any = null;
+  private provider: any = null;
   private isInitialized = false;
 
   constructor() {
-    this.initializeSDK();
+    this.initialize();
   }
 
-  /**
-   * Initialize Base Account SDK
-   */
-  private async initializeSDK() {
+  private async initialize() {
     try {
-      if (typeof window === 'undefined') {
-        console.log('⚠️  Base Account SDK: Window not available (SSR)');
-        return;
+      if (typeof window !== 'undefined') {
+        this.provider = await getProvider();
+        this.isInitialized = true;
+        console.log('✅ Base Account SDK initialized');
       }
-
-      // Initialize Base Account SDK
-      this.sdk = await createBaseAccountSDK({
-        // Base Sepolia configuration
-        chainId: 84532,
-        rpcUrl: 'https://sepolia.base.org',
-        // Add your app-specific configuration
-        appName: 'NewsCast Debate',
-        appIcon: '/icon.png',
-        appDescription: 'AI-powered news debates on Base blockchain'
-      });
-
-      this.isInitialized = true;
-      console.log('✅ Base Account SDK initialized');
     } catch (error) {
-      console.error('❌ Failed to initialize Base Account SDK:', error);
+      console.log('⚠️ Base Account SDK not available:', error);
       this.isInitialized = false;
     }
   }
@@ -45,202 +37,172 @@ export class BaseAccountService {
    * Check if Base Account SDK is available
    */
   isAvailable(): boolean {
-    return this.isInitialized && this.sdk !== null;
+    return this.isInitialized && this.provider !== null;
   }
 
   /**
-   * Get user's Base Account
+   * Check if user is signed in
    */
-  async getBaseAccount(): Promise<any> {
-    if (!this.isAvailable()) {
-      throw new Error('Base Account SDK not available');
-    }
-
+  async isSignedIn(): Promise<boolean> {
+    if (!this.isAvailable()) return false;
+    
     try {
-      const account = await this.sdk.getAccount();
-      return account;
+      const account = await this.provider.getAccount();
+      return account !== null;
     } catch (error) {
-      console.error('Failed to get Base Account:', error);
-      throw error;
+      console.error('Error checking sign-in status:', error);
+      return false;
     }
   }
 
   /**
    * Sign in with Base Account
    */
-  async signInWithBase(): Promise<{ address: string; account: any }> {
+  async signIn(): Promise<BaseAccountUser> {
     if (!this.isAvailable()) {
       throw new Error('Base Account SDK not available');
     }
 
     try {
-      console.log('🔐 Signing in with Base Account...');
+      const account = await this.provider.getAccount();
       
-      const account = await this.sdk.signIn();
-      const address = account.address;
-      
-      console.log('✅ Signed in with Base Account:', address);
-      return { address, account };
-    } catch (error) {
-      console.error('❌ Failed to sign in with Base Account:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Execute gasless transaction
-   */
-  async executeGaslessTransaction(
-    to: string,
-    data: string,
-    value: string = '0'
-  ): Promise<string> {
-    if (!this.isAvailable()) {
-      throw new Error('Base Account SDK not available');
-    }
-
-    try {
-      console.log('⛽ Executing gasless transaction...');
-      
-      const tx = await this.sdk.executeTransaction({
-        to,
-        data,
-        value,
-        // Gasless configuration
-        gasless: true
-      });
-
-      console.log('✅ Gasless transaction executed:', tx.hash);
-      return tx.hash;
-    } catch (error) {
-      console.error('❌ Failed to execute gasless transaction:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Execute gasless contract call
-   */
-  async executeGaslessContractCall(
-    contractAddress: string,
-    abi: any[],
-    methodName: string,
-    params: any[] = []
-  ): Promise<string> {
-    if (!this.isAvailable()) {
-      throw new Error('Base Account SDK not available');
-    }
-
-    try {
-      console.log(`📞 Executing gasless contract call: ${methodName}`);
-      
-      const contract = new ethers.Contract(contractAddress, abi, this.sdk.getSigner());
-      
-      const tx = await contract[methodName](...params, {
-        gasless: true
-      });
-
-      console.log('✅ Gasless contract call executed:', tx.hash);
-      return tx.hash;
-    } catch (error) {
-      console.error('❌ Failed to execute gasless contract call:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Join debate with gasless transaction
-   */
-  async joinDebateGasless(debateId: number): Promise<string> {
-    if (!this.isAvailable()) {
-      throw new Error('Base Account SDK not available');
-    }
-
-    try {
-      console.log(`🎯 Joining debate ${debateId} with gasless transaction...`);
-      
-      const contractAddress = process.env.NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS;
-      if (!contractAddress) {
-        throw new Error('Debate pool contract address not configured');
+      if (!account) {
+        throw new Error('No account found');
       }
 
-      // Contract ABI for joinDebate function
-      const abi = [
-        "function joinDebate(uint256 debateId) external"
-      ];
+      const user: BaseAccountUser = {
+        address: account.address,
+        email: account.email,
+        name: account.name
+      };
 
-      const txHash = await this.executeGaslessContractCall(
-        contractAddress,
-        abi,
-        'joinDebate',
-        [debateId]
-      );
-
-      console.log('✅ Joined debate with gasless transaction:', txHash);
-      return txHash;
+      console.log('✅ Signed in with Base Account:', user);
+      return user;
     } catch (error) {
-      console.error('❌ Failed to join debate with gasless transaction:', error);
+      console.error('Error signing in:', error);
       throw error;
     }
   }
 
   /**
-   * Approve USDC with gasless transaction
+   * Get current Base Account
    */
-  async approveUSDCGasless(
-    spender: string,
-    amount: string
-  ): Promise<string> {
+  async getBaseAccount(): Promise<BaseAccountUser> {
     if (!this.isAvailable()) {
       throw new Error('Base Account SDK not available');
     }
 
     try {
-      console.log(`🔐 Approving USDC with gasless transaction...`);
+      const account = await this.provider.getAccount();
       
-      const usdcAddress = '0x036CbD53842c5426634e7929541eC2318f3dCF7e'; // Base Sepolia USDC
-      const amountWei = ethers.parseUnits(amount, 6);
+      if (!account) {
+        throw new Error('No account found');
+      }
 
-      // USDC ABI for approve function
-      const abi = [
-        "function approve(address spender, uint256 amount) external returns (bool)"
-      ];
-
-      const txHash = await this.executeGaslessContractCall(
-        usdcAddress,
-        abi,
-        'approve',
-        [spender, amountWei]
-      );
-
-      console.log('✅ USDC approved with gasless transaction:', txHash);
-      return txHash;
+      return {
+        address: account.address,
+        email: account.email,
+        name: account.name
+      };
     } catch (error) {
-      console.error('❌ Failed to approve USDC with gasless transaction:', error);
+      console.error('Error getting Base Account:', error);
       throw error;
     }
   }
 
   /**
-   * Get account balance
+   * Sign out
    */
-  async getAccountBalance(): Promise<string> {
+  async signOut(): Promise<void> {
     if (!this.isAvailable()) {
       throw new Error('Base Account SDK not available');
     }
 
     try {
-      const account = await this.getBaseAccount();
-      const balance = await account.getBalance();
-      return ethers.formatEther(balance);
+      await this.provider.signOut();
+      console.log('✅ Signed out from Base Account');
     } catch (error) {
-      console.error('Failed to get account balance:', error);
+      console.error('Error signing out:', error);
       throw error;
     }
   }
 
   /**
-   * Get USDC balance
+   * Make a USDC payment using Base Account
+   */
+  async payUSDC(recipient: string, amount: string, memo?: string): Promise<PaymentResult> {
+    if (!this.isAvailable()) {
+      throw new Error('Base Account SDK not available');
+    }
+
+    try {
+      console.log(`💰 Making USDC payment: ${amount} USDC to ${recipient}`);
+      
+      const result = await this.provider.pay({
+        to: recipient,
+        amount: amount,
+        currency: 'USDC',
+        memo: memo || 'Debate participation fee'
+      });
+
+      console.log('✅ USDC payment successful:', result);
+      
+      return {
+        success: true,
+        transactionHash: result.transactionHash
+      };
+    } catch (error: any) {
+      console.error('❌ USDC payment failed:', error);
+      
+      return {
+        success: false,
+        error: error.message || 'Payment failed'
+      };
+    }
+  }
+
+  /**
+   * Join debate with USDC payment
+   */
+  async joinDebateWithPayment(debateId: number, entryFee: string): Promise<PaymentResult> {
+    if (!this.isAvailable()) {
+      throw new Error('Base Account SDK not available');
+    }
+
+    try {
+      // Get contract address from environment
+      const contractAddress = process.env.NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS;
+      if (!contractAddress) {
+        throw new Error('Contract address not configured');
+      }
+
+      console.log(`🎯 Joining debate ${debateId} with ${entryFee} USDC payment`);
+      
+      const result = await this.provider.pay({
+        to: contractAddress,
+        amount: entryFee,
+        currency: 'USDC',
+        memo: `Join debate ${debateId}`
+      });
+
+      console.log('✅ Debate payment successful:', result);
+      
+      return {
+        success: true,
+        transactionHash: result.transactionHash
+      };
+    } catch (error: any) {
+      console.error('❌ Debate payment failed:', error);
+      
+      return {
+        success: false,
+        error: error.message || 'Debate payment failed'
+      };
+    }
+  }
+
+  /**
+   * Get user's USDC balance
    */
   async getUSDCBalance(): Promise<string> {
     if (!this.isAvailable()) {
@@ -248,66 +210,32 @@ export class BaseAccountService {
     }
 
     try {
-      const account = await this.getBaseAccount();
-      const usdcAddress = '0x036CbD53842c5426634e7929541eC2318f3dCF7e'; // Base Sepolia USDC
-      
-      // USDC ABI for balanceOf function
-      const abi = [
-        "function balanceOf(address account) external view returns (uint256)",
-        "function decimals() external view returns (uint8)"
-      ];
-
-      const contract = new ethers.Contract(usdcAddress, abi, account.getSigner());
-      const balance = await contract.balanceOf(account.address);
-      
-      return ethers.formatUnits(balance, 6); // USDC has 6 decimals
+      const balance = await this.provider.getBalance('USDC');
+      return balance || '0';
     } catch (error) {
-      console.error('Failed to get USDC balance:', error);
-      throw error;
+      console.error('Error getting USDC balance:', error);
+      return '0';
     }
   }
 
   /**
-   * Check if user is signed in
+   * Check if user has sufficient USDC balance
    */
-  async isSignedIn(): Promise<boolean> {
-    if (!this.isAvailable()) {
-      return false;
-    }
-
+  async hasSufficientBalance(requiredAmount: string): Promise<boolean> {
     try {
-      const account = await this.getBaseAccount();
-      return account && account.address;
+      const balance = await this.getUSDCBalance();
+      return parseFloat(balance) >= parseFloat(requiredAmount);
     } catch (error) {
+      console.error('Error checking balance:', error);
       return false;
-    }
-  }
-
-  /**
-   * Sign out from Base Account
-   */
-  async signOut(): Promise<void> {
-    if (!this.isAvailable()) {
-      return;
-    }
-
-    try {
-      await this.sdk.signOut();
-      console.log('✅ Signed out from Base Account');
-    } catch (error) {
-      console.error('❌ Failed to sign out:', error);
     }
   }
 }
 
-/**
- * Create a singleton instance
- */
-let baseAccountService: BaseAccountService | null = null;
+// Export singleton instance
+export const baseAccountService = new BaseAccountService();
 
-export function getBaseAccountService(): BaseAccountService {
-  if (!baseAccountService) {
-    baseAccountService = new BaseAccountService();
-  }
-  return baseAccountService;
+// Export factory function for testing
+export function createBaseAccountService(): BaseAccountService {
+  return new BaseAccountService();
 }

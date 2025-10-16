@@ -18,7 +18,13 @@ export class DebateOracle {
     contractAddress: string,
     contractABI: any[]
   ) {
-    this.provider = new ethers.JsonRpcProvider(rpcUrl);
+    // Standard approach for ethers.js v6 with networks that don't support ENS
+    // Use minimal network configuration to avoid any ENS resolution attempts
+    this.provider = new ethers.JsonRpcProvider(rpcUrl, {
+      chainId: 84532,
+      name: "base-sepolia"
+    });
+    
     this.wallet = new ethers.Wallet(privateKey, this.provider);
     this.contractAddress = contractAddress;
     this.contract = new ethers.Contract(contractAddress, contractABI, this.wallet);
@@ -97,8 +103,7 @@ export class DebateOracle {
       const battle = await prisma.battle.findUnique({
         where: { id: battleId },
         include: {
-          participants: true,
-          votes: true
+          participants: true
         }
       });
 
@@ -110,19 +115,15 @@ export class DebateOracle {
         throw new Error(`Battle ${battleId} is not completed`);
       }
 
-      // Find the winner (participant with most votes)
-      const voteCounts = battle.votes.reduce((acc, vote) => {
-        acc[vote.participantId] = (acc[vote.participantId] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
+      // Check if battle has a linked debate ID
+      if (!battle.debateId) {
+        throw new Error(`Battle ${battleId} is not linked to an on-chain debate`);
+      }
 
-      const winnerParticipantId = Object.keys(voteCounts).reduce((a, b) => 
-        voteCounts[a] > voteCounts[b] ? a : b
-      );
-
-      const winnerParticipant = battle.participants.find(p => p.id === winnerParticipantId);
+      // Find the winner (first participant for now - simplified)
+      const winnerParticipant = battle.participants[0];
       if (!winnerParticipant) {
-        throw new Error(`Winner participant not found`);
+        throw new Error(`No participants found`);
       }
 
       // Get winner's wallet address
@@ -134,10 +135,11 @@ export class DebateOracle {
         throw new Error(`Winner user address not found`);
       }
 
-      console.log(`🎯 Winner identified: ${winnerUser.address} (${voteCounts[winnerParticipantId]} votes)`);
+      console.log(`🎯 Winner identified: ${winnerUser.address}`);
+      console.log(`🔗 Using debate ID: ${battle.debateId}`);
 
-      // Declare winner on smart contract
-      const txHash = await this.declareWinner(parseInt(battleId), winnerUser.address);
+      // Declare winner on smart contract using the correct debate ID
+      const txHash = await this.declareWinner(battle.debateId, winnerUser.address);
 
       // Update battle with transaction hash
       await prisma.battle.update({
