@@ -147,6 +147,39 @@ BATTLE_MAX_PARTICIPANTS=1000
 BATTLE_GENERATION_ENABLED=true
 ```
 
+## Security
+
+### Environment Variables
+
+**⚠️ CRITICAL**: Never commit API keys or sensitive data to version control!
+
+- Create a `.env` file for local development
+- Use Google Cloud Secrets Manager for production
+- The `setup-frontend-secrets.sh` script reads from `.env` and creates GCP secrets
+- All API keys are injected from environment variables, not hardcoded
+
+### API Key Management
+
+- **Google AI API**: Get from [Google AI Studio](https://aistudio.google.com/)
+- **Serper API**: Get from [Serper.dev](https://serper.dev/)
+- **WalletConnect**: Get from [WalletConnect Cloud](https://cloud.walletconnect.com/)
+- **Database**: Use secure connection strings with SSL
+
+### Production Deployment
+
+For production deployment, use the secure setup script:
+
+```bash
+# 1. Create .env file with your API keys
+# 2. Run the secure setup script
+./setup-frontend-secrets.sh
+```
+
+This script will:
+- Read API keys from your local `.env` file
+- Create Google Cloud Secrets Manager entries
+- Never expose keys in the repository
+
 ### Battle Configuration
 
 The battle duration is fully configurable via environment variables:
