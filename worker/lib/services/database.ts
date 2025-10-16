@@ -606,6 +606,14 @@ export class DatabaseService {
       },
     });
   }
+
+  // Update battle insights
+  async updateBattleInsights(battleId: string, insights: string) {
+    return await prisma.battle.update({
+      where: { id: battleId },
+      data: { insights },
+    });
+  }
 }
 
 const databaseService = new DatabaseService();

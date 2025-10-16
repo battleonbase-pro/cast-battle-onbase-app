@@ -71,6 +71,7 @@ interface BattleHistory {
   endTime: string;
   status: string;
   winnerAddress?: string;
+  insights?: string; // AI-generated insights
   winner?: {
     address: string;
     username?: string;
@@ -1488,6 +1489,14 @@ function Home() {
                                 </span>
                               </div>
                             ))}
+                          </div>
+                        )}
+                        {battle.insights && (
+                          <div className={styles.historyInsights}>
+                            <div className={styles.insightsLabel}>💡 AI Insights:</div>
+                            <div className={styles.insightsContent}>
+                              {battle.insights}
+                            </div>
                           </div>
                         )}
                       </div>

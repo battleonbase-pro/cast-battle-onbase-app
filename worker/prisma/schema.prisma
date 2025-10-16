@@ -54,6 +54,7 @@ model Battle {
   balanceScore    Int?
   complexity      String?
   controversyLevel String?
+  insights        String?  // AI-generated insights from battle analysis
   
   // Metadata
   createdAt DateTime @default(now())

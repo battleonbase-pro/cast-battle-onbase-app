@@ -305,6 +305,16 @@ export class BattleManagerDB {
           prize: 'Winner of the battle'
         }];
 
+        // Store insights if generated
+        if (result.judgment.insights) {
+          try {
+            await this.db.updateBattleInsights(battleId, result.judgment.insights);
+            console.log(`💡 Insights stored for battle ${battleId}`);
+          } catch (error) {
+            console.error(`❌ Failed to store insights for battle ${battleId}:`, error);
+          }
+        }
+
         // Complete battle with winners
         await this.db.completeBattle(battleId, winners);
         

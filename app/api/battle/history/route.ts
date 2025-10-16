@@ -29,6 +29,7 @@ export async function GET(_request: NextRequest) {
       participants: historyEntry.totalParticipants,
       casts: historyEntry.totalCasts,
       winnerAddress: historyEntry.winnerAddress,
+      insights: historyEntry.battle.insights, // Include AI-generated insights
       winner: historyEntry.battle.winners.length > 0 ? {
         address: historyEntry.battle.winners[0].user.address,
         username: historyEntry.battle.winners[0].user.username,

@@ -187,6 +187,13 @@ export class DatabaseService {
     });
   }
 
+  async updateBattleInsights(battleId: string, insights: string) {
+    return await prisma.battle.update({
+      where: { id: battleId },
+      data: { insights },
+    });
+  }
+
   // User Management
   async createOrUpdateUser(address: string, username?: string) {
     return await prisma.user.upsert({
