@@ -65,7 +65,7 @@ export class OnChainDebateService {
       console.log(`   Duration: ${durationHours} hours`);
 
       const entryFeeWei = ethers.parseUnits(entryFee, 6); // USDC has 6 decimals
-      const durationSeconds = durationHours * 3600;
+      const durationSeconds = Math.floor(durationHours * 3600); // Ensure integer seconds
 
       const tx = await this.contract.createDebate(
         topic,
@@ -80,19 +80,43 @@ export class OnChainDebateService {
 
       // Extract debate ID from event
       let debateId = 0;
+      console.log(`🔍 Parsing ${receipt?.logs?.length || 0} transaction logs...`);
+      
       for (const log of receipt?.logs || []) {
+        console.log(`🔍 Log: ${log.address} topics: ${log.topics?.length || 0}`);
+        
+        // Try to parse with contract interface first
+        let parsed = null;
         try {
-          const parsed = this.contract.interface.parseLog(log);
+          parsed = this.contract.interface.parseLog(log);
+          console.log(`🔍 Parsed log: ${parsed?.name}, args:`, parsed?.args);
+          
           if (parsed?.name === "DebateCreated") {
             debateId = Number(parsed.args.debateId);
+            console.log(`✅ Found DebateCreated event with ID: ${debateId}`);
             break;
           }
-        } catch {
-          // Skip logs that can't be parsed
+        } catch (error) {
+          console.log(`⚠️ Could not parse log with contract interface:`, error.message);
+        }
+        
+        // Fallback: Extract debate ID directly from topics
+        // The debate ID is typically in the second topic (index 1)
+        if (debateId === 0 && log.topics && log.topics.length >= 2) {
+          const debateIdHex = log.topics[1];
+          debateId = parseInt(debateIdHex, 16);
+          console.log(`✅ Extracted debate ID from topic: ${debateId} (from ${debateIdHex})`);
+          break;
         }
       }
 
       if (debateId === 0) {
+        console.log(`❌ No DebateCreated event found in transaction logs`);
+        console.log(`📋 Available logs:`, receipt?.logs?.map(log => ({
+          address: log.address,
+          topics: log.topics,
+          data: log.data
+        })));
         throw new Error('Failed to extract debate ID from transaction');
       }
 

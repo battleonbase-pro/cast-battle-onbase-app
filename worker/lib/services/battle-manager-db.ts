@@ -19,7 +19,7 @@ export class BattleManagerDB {
 
   constructor() {
     this.config = {
-      battleDurationHours: parseFloat(process.env.BATTLE_DURATION_HOURS || '4'), // 4 hours
+      battleDurationHours: parseFloat(process.env.BATTLE_DURATION_HOURS || '0.0083'), // 30 seconds
       maxParticipants: parseInt(process.env.BATTLE_MAX_PARTICIPANTS || '1000')
     };
     this.db = DatabaseService.getInstance();
