@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { MultiWalletConnect } from '@/components/MultiWalletConnect';
 import ShareButton from '@/components/ShareButton';
+import LinkedInShareButton from '@/components/LinkedInShareButton';
 import { sdk as farcasterSDK } from '@farcaster/miniapp-sdk';
 import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -1233,9 +1234,15 @@ function Home() {
               </div>
               <h2 className={styles.topicTitle}>{topic.title}</h2>
               
-              {/* Share Button */}
+              {/* Share Buttons */}
               <div className={styles.shareContainer}>
                 <ShareButton 
+                  battleTopic={topic.title} 
+                  battleId={topic.id}
+                  userAddress={user?.address}
+                  className={styles.shareButton}
+                />
+                <LinkedInShareButton 
                   battleTopic={topic.title} 
                   battleId={topic.id}
                   userAddress={user?.address}
