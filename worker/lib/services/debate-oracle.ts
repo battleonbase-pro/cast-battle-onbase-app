@@ -123,7 +123,8 @@ export class DebateOracle {
       // Find the winner (first participant for now - simplified)
       const winnerParticipant = battle.participants[0];
       if (!winnerParticipant) {
-        throw new Error(`No participants found`);
+        console.log(`⚠️ No participants found for battle ${battleId}, skipping on-chain processing`);
+        return; // Skip on-chain processing, not an error
       }
 
       // Get winner's wallet address
