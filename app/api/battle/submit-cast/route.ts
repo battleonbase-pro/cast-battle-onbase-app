@@ -110,7 +110,41 @@ export async function POST(request: NextRequest) {
     // Log user submitting cast
     console.log(`📝 User ${userAddress} submitted cast (${side}) and earned 10 points! Total points: ${userPoints}`);
     
-    // Note: Sentiment updates are now handled through the unified state stream
+    // Broadcast cast submission event to SSE connections
+    try {
+      const { broadcastBattleEvent } = await import('@/lib/services/battle-broadcaster');
+      
+      // Get updated casts for sentiment calculation
+      const updatedCasts = await db.getCastsForBattle(currentBattle.id);
+      const support = updatedCasts.filter((c: any) => c.side === 'SUPPORT').length;
+      const oppose = updatedCasts.filter((c: any) => c.side === 'OPPOSE').length;
+      const total = support + oppose;
+      
+      if (total > 0) {
+        const sentiment = {
+          support,
+          oppose,
+          supportPercent: Math.round((support / total) * 100),
+          opposePercent: Math.round((oppose / total) * 100)
+        };
+        
+        // Broadcast sentiment update
+        broadcastBattleEvent('SENTIMENT_UPDATE', { sentiment });
+      }
+      
+      // Broadcast cast submission
+      broadcastBattleEvent('CAST_SUBMITTED', {
+        cast: {
+          id: cast.id,
+          content: cast.content,
+          side: cast.side,
+          userAddress: userAddress,
+          createdAt: cast.createdAt
+        }
+      });
+    } catch (broadcastError) {
+      console.error('Failed to broadcast cast submission event:', broadcastError);
+    }
     
     return NextResponse.json({ 
       success: true, 

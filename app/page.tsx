@@ -1,18 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { MultiWalletConnect } from '@/components/MultiWalletConnect';
-import ShareButton from '@/components/ShareButton';
-import { sdk as farcasterSDK } from '@farcaster/miniapp-sdk';
-import { WagmiProvider } from 'wagmi';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { config } from '@/lib/wagmi-config';
-import { shouldUsePolling, isMiniAppEnvironment, isBaseEnvironment, getEnvironmentInfo } from '@/lib/utils/mini-app-detection';
-import { mobilePollingService } from '@/lib/services/mobile-polling-service';
-import { walletConnectionCache } from '@/lib/services/wallet-connection-cache';
-import BaseAccountAuth from '@/components/BaseAccountAuth';
-import BaseAccountPayment from '@/components/BaseAccountPayment';
-import { BaseAccountUser } from '@/lib/services/base-account-service';
+import BaseAccountAuth from '../components/BaseAccountAuth';
+import { baseAccountAuthService, BaseAccountUser } from '../lib/services/base-account-auth-service';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -39,20 +28,27 @@ ChartJS.register(
   Filler
 );
 
-interface DebateTopic {
+interface Battle {
   id: string;
-  debateId?: number; // On-chain debate ID
   title: string;
   description: string;
   category: string;
   source: string;
-  sourceUrl?: string;
-  imageUrl?: string;
-  thumbnail?: string;
+  sourceUrl: string;
+  imageUrl: string;
+  thumbnail: string;
+  status: string;
+  startTime: string;
+  endTime: string;
+  durationHours: number;
+  maxParticipants: number;
   debatePoints: {
     Support: string[];
     Oppose: string[];
   };
+  participants: any[];
+  casts: any[];
+  winners: any[];
 }
 
 interface Cast {
@@ -75,7 +71,7 @@ interface BattleHistory {
   endTime: string;
   status: string;
   winnerAddress?: string;
-  insights?: string; // AI-generated insights
+  insights?: string;
   winner?: {
     address: string;
     username?: string;
@@ -93,236 +89,21 @@ interface BattleHistory {
   completedAt: string;
 }
 
-interface User {
-  address: string;
-  username?: string;
-  points?: number;
-}
-
-// Create a client
-const queryClient = new QueryClient()
-
-function Home() {
-  const [isFarcasterEnv, setIsFarcasterEnv] = useState<boolean | null>(null); // null = detecting, true = Farcaster, false = browser
-  const [isBaseEnv, setIsBaseEnv] = useState<boolean>(false);
-  const [isMobileMiniApp, setIsMobileMiniApp] = useState<boolean>(false);
-  const [user, setUser] = useState<User | null>(null);
+export default function Home() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [baseAccountUser, setBaseAccountUser] = useState<BaseAccountUser | null>(null);
-  const [useBaseAccount, setUseBaseAccount] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Monitor wallet connection state for non-Farcaster environments
-  const { isConnected, address } = useAccount();
-  const { disconnect } = useDisconnect();
-
-  // Handle wallet disconnection for non-Farcaster environments
-  useEffect(() => {
-    if (isFarcasterEnv === false) {
-      if (!isConnected || !address) {
-        // Wallet disconnected - clear user state
-        console.log('🔌 Wallet disconnected, clearing user state');
-        setUser(null);
-        localStorage.removeItem('newscast-battle-user');
-        setBattleJoined(false);
-        setHasSubmittedCast(false);
-        setUserPoints(0);
-      } else if (isConnected && address && !user) {
-        // Wallet connected but no user state - this should only happen on fresh connection
-        // Check if this is a fresh connection by looking for explicit user action
-        const hasExplicitConnection = localStorage.getItem('wagmi.explicitConnection');
-        
-        if (hasExplicitConnection) {
-          console.log('🔌 Wallet connected, restoring user state:', address);
-          const userData = {
-            address: address,
-            username: undefined
-          };
-          setUser(userData);
-          localStorage.setItem('newscast-battle-user', JSON.stringify(userData));
-          fetchUserPoints(address);
-          
-          // Clear the explicit connection flag
-          localStorage.removeItem('wagmi.explicitConnection');
-        } else {
-          console.log('🔌 Wallet connected but no explicit user action - not restoring state');
-        }
-      }
-    }
-  }, [isConnected, address, isFarcasterEnv, user]);
-
-  // Enhanced Base app user state management
-  useEffect(() => {
-    if (isBaseEnv && isConnected && address && !user) {
-      console.log('🔵 Base app detected with connected wallet, setting up user state');
-      const userData = {
-        address: address,
-        username: 'Base User'
-      };
-      setUser(userData);
-      localStorage.setItem('newscast-battle-user', JSON.stringify(userData));
-      fetchUserPoints(address);
-    }
-  }, [isBaseEnv, isConnected, address, user]);
-
-  // Additional effect to handle Base Account connection state
-  useEffect(() => {
-    if (isFarcasterEnv === false && isConnected && address && !user) {
-      // Check if this might be a Base Account connection that needs state restoration
-      const savedUser = localStorage.getItem('newscast-battle-user');
-      if (!savedUser) {
-        console.log('🔵 Potential Base Account connection detected, setting up user state');
-        const userData = {
-          address: address,
-          username: undefined
-        };
-        setUser(userData);
-        localStorage.setItem('newscast-battle-user', JSON.stringify(userData));
-        fetchUserPoints(address);
-      }
-    }
-  }, [isConnected, address, isFarcasterEnv, user]);
-
-  // Farcaster Wallet Component
-  function FarcasterWalletComponent() {
-    const { isConnected, address } = useAccount()
-    const { connect, connectors } = useConnect()
-    
-    // Immediate auto-connect attempt when component mounts in Farcaster
-    useEffect(() => {
-      try {
-        if (isFarcasterEnv === true && connectors.length > 0) {
-          console.log('🎯 Farcaster environment detected, attempting immediate connection...');
-          try {
-            connect({ connector: connectors[0] });
-          } catch (error) {
-            console.error('⚠️ Immediate connection failed:', error);
-          }
-        }
-      } catch (error) {
-        console.error('❌ Error in immediate connection attempt:', error);
-      }
-    }, [connectors, connect]);
-
-    // Auto-connect when in Farcaster environment with caching
-    useEffect(() => {
-      try {
-        if (isFarcasterEnv === true && !isConnected && connectors.length > 0) {
-          const connector = connectors[0];
-          const connectorName = connector?.name;
-          
-          // Check if we should attempt connection (not too many recent failures)
-          if (!walletConnectionCache.shouldAttemptConnection(connectorName)) {
-            console.log('🚫 Skipping Farcaster connection due to recent failures');
-            return;
-          }
-          
-          console.log('🚀 Auto-connecting Farcaster wallet...', { 
-            isFarcasterEnv, 
-            isConnected, 
-            connectorsCount: connectors.length,
-            connectorName 
-          });
-          
-          const attemptConnect = async () => {
-            try {
-              console.log('🔄 Attempting to connect with connector:', connectorName);
-              await connect({ connector });
-              
-              // Cache successful connection
-              walletConnectionCache.cacheConnection('farcaster-user', connectorName, 'farcaster');
-              walletConnectionCache.recordAttempt(connectorName, true);
-              
-              console.log('✅ Farcaster wallet connection successful');
-            } catch (error) {
-              console.error('⚠️ Farcaster wallet connection failed:', error);
-              
-              // Record failed attempt
-              walletConnectionCache.recordAttempt(connectorName, false, error.message);
-              
-              // Retry after a short delay (only if not too many recent failures)
-              setTimeout(() => {
-                if (!isConnected && walletConnectionCache.shouldAttemptConnection(connectorName)) {
-                  console.log('🔄 Retrying Farcaster wallet connection...');
-                  attemptConnect();
-                }
-              }, 2000);
-            }
-          };
-          
-          // Start connection attempt
-          attemptConnect();
-        }
-      } catch (error) {
-        console.error('❌ Error in auto-connect logic:', error);
-      }
-    }, [isConnected, connect, connectors]);
-
-    // Update user state when wallet connects
-    useEffect(() => {
-      try {
-        if (isConnected && address) {
-          const userData = {
-            address: address,
-            username: 'Farcaster User'
-          };
-          setUser(userData);
-          localStorage.setItem('newscast-battle-user', JSON.stringify(userData));
-          fetchUserPoints(address);
-          console.log('✅ Farcaster wallet connected:', address);
-        } else {
-          setUser(null);
-        }
-      } catch (error) {
-        console.error('❌ Error updating user state:', error);
-        setUser(null);
-      }
-    }, [isConnected, address]);
-
-    if (isConnected && address) {
-      return (
-        <div className={styles.userCompact}>
-          <div className={styles.userInfo}>
-            <span className={styles.userAddress}>
-              {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Not connected'}
-            </span>
-            <span className={styles.userPoints}>
-              🔵 {user?.points || 0} pts
-            </span>
-          </div>
-          {/* No disconnect button in Farcaster environment */}
-        </div>
-      )
-    }
-
-    // In Farcaster environment, show loading while connecting
-    if (isFarcasterEnv === true) {
-      // Show loading state while auto-connecting
-      return (
-        <div className={styles.signInWrapper}>
-          <div className={styles.loadingSpinner}></div>
-          <span style={{ marginLeft: '8px', fontSize: '0.875rem', color: '#6b7280' }}>
-            Connecting to Farcaster...
-          </span>
-        </div>
-      );
-    }
-
-    // This component should never be used in non-Farcaster environments
-    // Non-Farcaster environments use SignInWithBaseButton instead
-    return null;
-  }
-
-  const [topic, setTopic] = useState<DebateTopic | null>(null);
-  const [battleJoined, setBattleJoined] = useState(false);
+  const [currentBattle, setCurrentBattle] = useState<Battle | null>(null);
+  const [battleLoading, setBattleLoading] = useState(false);
+  
+  // Tab and UI state
+  const [activeTab, setActiveTab] = useState<'debate' | 'arguments' | 'history' | 'leaderboard'>('debate');
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [battleEndTime, setBattleEndTime] = useState<number | null>(null);
+  
+  // Battle data
   const [casts, setCasts] = useState<Cast[]>([]);
-  const [submittingCast, setSubmittingCast] = useState(false);
-  const [castContent, setCastContent] = useState('');
-  const [castSide, setCastSide] = useState<'SUPPORT' | 'OPPOSE'>('SUPPORT');
-  const [activeTab, setActiveTab] = useState<'debate' | 'arguments' | 'history' | 'leaderboard'>('debate');
-  const [hasSubmittedCast, setHasSubmittedCast] = useState(false);
   const [battleHistory, setBattleHistory] = useState<BattleHistory[]>([]);
   const [leaderboard, setLeaderboard] = useState<Array<{
     address: string;
@@ -339,6 +120,8 @@ function Home() {
       wonAt: string;
     }>;
   }>>([]);
+  
+  // Real-time data
   const [sentimentData, setSentimentData] = useState({ support: 0, oppose: 0, supportPercent: 0, opposePercent: 0 });
   const [sentimentHistory, setSentimentHistory] = useState<Array<{
     timestamp: number;
@@ -348,224 +131,39 @@ function Home() {
     opposePercent: number;
   }>>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'polling' | 'disconnected'>('connecting');
-  const [pulseAnimation, setPulseAnimation] = useState(0);
-  const [battleTransition, setBattleTransition] = useState<{
-    isTransitioning: boolean;
-    message: string;
-    newBattle?: DebateTopic;
-  }>({ isTransitioning: false, message: '' });
+  
+  // User interaction state
+  const [hasSubmittedCast, setHasSubmittedCast] = useState(false);
   const [userPoints, setUserPoints] = useState<number>(0);
   const [pointsAnimation, setPointsAnimation] = useState(false);
-  const [battleStatusMessage, setBattleStatusMessage] = useState<string | null>(null);
-  const [battleStatusType, setBattleStatusType] = useState<'info' | 'success' | 'warning' | 'error'>('info');
-  const [showHelpPopup, setShowHelpPopup] = useState(false);
-
-  // Mobile-specific handlers
-  const handleHelpPopupClose = () => {
-    setShowHelpPopup(false);
-  };
-
-  const handleHelpOverlayClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      handleHelpPopupClose();
-    }
-  };
-
-  // Prevent body scroll when popup is open (mobile optimization)
   
-  // Detect Farcaster environment using official SDK method
+  // Cast submission state
+  const [battleJoined, setBattleJoined] = useState(false);
+  const [submittingCast, setSubmittingCast] = useState(false);
+  const [castContent, setCastContent] = useState('');
+  const [castSide, setCastSide] = useState<'SUPPORT' | 'OPPOSE'>('SUPPORT');
+  
+  // SSE and polling state
+  const [isMobile, setIsMobile] = useState(false);
+  const [sseConnection, setSseConnection] = useState<EventSource | null>(null);
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+
+  // Base Account authentication initialization
   useEffect(() => {
-    const detectEnvironment = async () => {
+    const initializeAuth = async () => {
       try {
-        console.log('🔍 Detecting environment using sdk.isInMiniApp()...');
-        const isMiniApp = await farcasterSDK.isInMiniApp();
-        
-        if (isMiniApp) {
-          console.log('✅ Farcaster Mini App environment detected');
-          setIsFarcasterEnv(true);
-          
-          // Call ready() immediately after detection
-          try {
-            await farcasterSDK.actions.ready();
-            console.log('✅ Farcaster app is ready');
-            
-            // Get user context if available
-            try {
-              const context = await farcasterSDK.context;
-              if (context?.user) {
-                console.log('👤 Farcaster user context available:', context.user);
-                // You can use context.user here if needed
-              }
-            } catch (contextError) {
-              console.log('⚠️ Could not get Farcaster context:', contextError);
-            }
-          } catch (error) {
-            console.log('⚠️ Farcaster ready() failed:', error);
-          }
+        if (baseAccountAuthService.isAvailable()) {
+          console.log('✅ Base Account SDK is available');
         } else {
-          console.log('🌐 Regular browser environment detected');
-          setIsFarcasterEnv(false);
+          console.log('⚠️ Base Account SDK not available');
         }
       } catch (error) {
-        console.log('🌐 Regular browser environment (error):', error);
-        setIsFarcasterEnv(false);
+        console.error('❌ Base Account authentication error:', error);
       }
     };
-    
-    detectEnvironment();
+
+    initializeAuth();
   }, []);
-
-  useEffect(() => {
-    if (showHelpPopup) {
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.width = '100%';
-    } else {
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.width = '';
-    }
-
-    // Cleanup on unmount
-    return () => {
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.width = '';
-    };
-  }, [showHelpPopup]);
-
-  useEffect(() => {
-    const initApp = async () => {
-    try {
-      setLoading(true);
-        
-        // Detect environment
-        const envInfo = getEnvironmentInfo();
-        console.log('🔍 Environment detection:', envInfo);
-        
-        const isMobile = shouldUsePolling();
-        const isBase = isBaseEnvironment();
-        
-        setIsMobileMiniApp(isMobile);
-        setIsBaseEnv(isBase);
-        
-        if (isMobile) {
-          console.log('📱 Mobile mini-app environment detected - will use polling instead of WebSocket');
-        }
-        
-        if (isBase) {
-          console.log('🔵 Base app environment detected');
-        }
-        
-        // Detect Farcaster environment
-        if (typeof window !== 'undefined') {
-          try {
-            const isFarcaster = await farcasterSDK.isInFarcaster();
-            console.log('🔍 Farcaster environment detection result:', isFarcaster);
-            setIsFarcasterEnv(isFarcaster);
-          } catch (error) {
-            console.log('🔍 Farcaster SDK not available, assuming browser environment');
-            setIsFarcasterEnv(false);
-          }
-        }
-        
-        await Promise.all([
-          fetchCurrentBattle(),
-          fetchBattleHistory()
-        ]);
-        
-      } catch (error) {
-        console.error('App initialization error:', error);
-        setError('Failed to initialize app');
-      } finally {
-        setLoading(false);
-      }
-    };
-    initApp();
-    
-    // Set up data connection based on environment
-    let cleanupFunction: (() => void) | undefined;
-    
-    if (isMobileMiniApp) {
-      // Use polling for mobile mini-apps
-      console.log('📱 Setting up mobile polling service');
-      // Polling will be started when user connects
-    } else {
-      // Use WebSocket for desktop
-      console.log('🖥️ Setting up WebSocket connection');
-      cleanupFunction = setupBattleStateSSE();
-    }
-    
-    // Initialize wallet connection on client side only (only in non-Farcaster environments)
-    if (typeof window !== 'undefined' && isFarcasterEnv === false) {
-      try {
-        // Check for existing authentication
-        const savedUser = localStorage.getItem('newscast-battle-user');
-        if (savedUser) {
-          const userData = JSON.parse(savedUser);
-          setUser(userData);
-          // Fetch user points when they're authenticated
-          fetchUserPoints(userData.address);
-        }
-      } catch (error) {
-        console.error('Failed to initialize wallet connection:', error);
-        setError('Failed to initialize wallet connection');
-      }
-    }
-
-    // Cleanup function
-    return () => {
-      if (cleanupFunction) {
-        cleanupFunction();
-      }
-      // Stop mobile polling if active
-      if (isMobileMiniApp) {
-        mobilePollingService.cleanup();
-      }
-    };
-  }, [isFarcasterEnv]);
-
-  // Start mobile polling when user connects
-  useEffect(() => {
-    if (isMobileMiniApp && user?.address) {
-      console.log('📱 Starting mobile polling for user:', user.address);
-      
-      mobilePollingService.startPolling(user.address, {
-        onBattleData: (data) => {
-          if (data) {
-            setTopic(data);
-            setBattleEndTime(data.endTime ? new Date(data.endTime).getTime() : null);
-            setBattleJoined(data.participants?.some((p: any) => p.userAddress === user.address) || false);
-            setHasSubmittedCast(data.casts?.some((c: any) => c.userAddress === user.address) || false);
-          }
-        },
-        onUserPoints: (points) => {
-          setUserPoints(points);
-        },
-        onLeaderboard: (leaderboard) => {
-          setLeaderboard(leaderboard);
-        },
-        onBattleHistory: (history) => {
-          setBattleHistory(history);
-        },
-        onCasts: (casts) => {
-          setCasts(casts);
-        },
-        onError: (error) => {
-          console.error('📱 Mobile polling error:', error);
-        }
-      });
-    } else if (isMobileMiniApp && !user?.address) {
-      // Stop polling if user disconnects
-      mobilePollingService.stopPolling();
-    }
-    
-    return () => {
-      if (isMobileMiniApp) {
-        mobilePollingService.cleanup();
-      }
-    };
-  }, [isMobileMiniApp, user?.address]);
 
   // Countdown timer effect
   useEffect(() => {
@@ -575,18 +173,6 @@ function Home() {
       const now = Date.now();
       const remaining = Math.max(0, Math.floor((battleEndTime - now) / 1000));
       setTimeRemaining(remaining);
-      
-      // Show status message when timer reaches 0
-      if (remaining === 0 && !battleStatusMessage) {
-        setBattleStatusMessage('⏰ Battle ended! Judging in progress...');
-        setBattleStatusType('info');
-      }
-      
-      // Clear status message when timer is running (new battle started)
-      if (remaining > 0 && battleStatusMessage) {
-        setBattleStatusMessage(null);
-        setBattleStatusType('info'); // Reset to default type
-      }
     };
 
     // Update immediately
@@ -596,191 +182,34 @@ function Home() {
     const interval = setInterval(updateCountdown, 1000);
 
     return () => clearInterval(interval);
-  }, [battleEndTime, battleStatusMessage]);
+  }, [battleEndTime]);
 
-
-  // Pulse animation effect for chart end points
+  // Fetch current battle
   useEffect(() => {
-    const pulseInterval = setInterval(() => {
-      setPulseAnimation(prev => prev + 1);
-    }, 1000);
-
-    return () => clearInterval(pulseInterval);
-  }, []);
-
-  const setupBattleStateSSE = useCallback(() => {
-    if (typeof window === 'undefined') return;
-
-    try {
-      // Use the battle state stream for all events (timer + battle + sentiment)
-      const eventSource = new EventSource('/api/battle/state-stream');
-      
-      eventSource.onopen = () => {
-        console.log('Battle state SSE connection opened');
-        setConnectionStatus('connected');
-      };
-
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          switch (data.type) {
-            case 'CONNECTION_ESTABLISHED':
-              console.log('Battle state SSE connected:', data.connectionId);
-              break;
-              
-            case 'BATTLE_ENDED':
-              console.log('Battle ended:', data.data);
-              setBattleStatusMessage('🏁 Debate completed! Judging in progress...');
-              setBattleStatusType('info');
-              setBattleJoined(false); // Reset join state for next battle
-              setHasSubmittedCast(false); // Reset cast submission state
-              setError(null); // Clear any errors
-              setBattleTransition({
-                isTransitioning: true,
-                message: 'Debate ending...'
-              });
-              break;
-              
-            case 'BATTLE_STARTED':
-              console.log('New battle started:', data.data);
-              setBattleStatusMessage(null); // Clear status message
-              setBattleStatusType('info'); // Reset to default type
-              setBattleJoined(false); // Reset join state for new battle
-              setHasSubmittedCast(false); // Reset cast submission state
-              setError(null); // Clear any previous errors
-              setBattleTransition({
-                isTransitioning: true,
-                message: 'New debate starting...',
-                newBattle: data.data
-              });
-              
-              // Update the battle data after a short delay for smooth transition
-              setTimeout(async () => {
-                // Fetch complete battle data to ensure UI is fully updated
-                await fetchCurrentBattle();
-                setBattleTransition({ isTransitioning: false, message: '' });
-              }, 1000);
-              break;
-              
-            case 'BATTLE_TRANSITION':
-              console.log('Battle transition:', data.data);
-              break;
-              
-            case 'STATUS_UPDATE':
-              console.log('Status update:', data.data);
-              setBattleStatusMessage(data.data.message);
-              setBattleStatusType(data.data.type || 'info');
-              break;
-              
-            case 'LEADERBOARD_UPDATE':
-              console.log('📡 Received leaderboard update:', data.data);
-              // Refresh leaderboard when winner is selected
-              if (activeTab === 'leaderboard') {
-                fetchLeaderboard();
-              }
-              break;
-              
-            case 'TIMER_UPDATE':
-              console.log('Timer update from server:', data.data.timeRemaining, 'seconds remaining');
-              // Update battle end time if it changed (new battle)
-              if (data.data.endTime && data.data.endTime !== battleEndTime) {
-                setBattleEndTime(new Date(data.data.endTime).getTime());
-              }
-              break;
-              
-            case 'SENTIMENT_UPDATE':
-              console.log('Sentiment update received:', data.data);
-              // Update sentiment data
-              setSentimentData(data.data.sentiment);
-              
-              // Update sentiment history for chart
-              const historyEntry = {
-                timestamp: data.data.timestamp,
-                ...data.data.sentiment
-              };
-              
-              setSentimentHistory(prev => {
-                const newHistory = [...prev, historyEntry];
-                return newHistory.slice(-20); // Keep last 20 data points
-              });
-
-              // Update casts if provided
-              if (data.data.casts) {
-                setCasts(data.data.casts);
-              }
-
-              // Update user submission status if provided
-              if (data.data.userSubmissionStatus !== undefined && user) {
-                setHasSubmittedCast(data.data.userSubmissionStatus);
-              }
-              break;
-              
-            case 'HEARTBEAT':
-              // Keep connection alive
-              break;
-              
-            default:
-              console.log('Unknown battle state event:', data);
+    const fetchCurrentBattle = async () => {
+      setBattleLoading(true);
+      try {
+        const response = await fetch('/api/battle/current');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.battle) {
+            setCurrentBattle(data.battle);
+            // Set battle end time for countdown timer
+            const endTime = new Date(data.battle.endTime).getTime();
+            setBattleEndTime(endTime);
           }
-        } catch (error) {
-          console.error('Error parsing battle state SSE data:', error);
         }
-      };
-
-      eventSource.onerror = (error) => {
-        console.error('Battle state SSE connection error:', error);
-        setConnectionStatus('disconnected');
-        
-        // Attempt to reconnect after 5 seconds
-        setTimeout(() => {
-          if (eventSource.readyState === EventSource.CLOSED) {
-            console.log('Attempting to reconnect battle state SSE...');
-            setupBattleStateSSE();
-          }
-        }, 5000);
-      };
-
-      // Return cleanup function
-      return () => {
-        eventSource.close();
-        setConnectionStatus('disconnected');
-      };
-    } catch (error) {
-      console.error('Failed to setup battle state SSE connection:', error);
-      setConnectionStatus('disconnected');
-      return () => {}; // Return empty cleanup function
-    }
-  }, []);
-
-  const fetchCurrentBattle = useCallback(async () => {
-    try {
-      const response = await fetch('/api/battle/current');
-      const data = await response.json();
-      
-      if (data.success && data.battle) {
-        setTopic(data.battle);
-        
-        // Set battle end time for countdown timer
-        const endTime = new Date(data.battle.endTime).getTime();
-        setBattleEndTime(endTime);
-        
-        // Fetch casts, but don't let it fail the entire function
-        try {
-          await fetchCasts();
-        } catch (castError) {
-          console.error('Failed to fetch casts:', castError);
-          // Continue anyway - casts are not critical for battle display
-        }
-      } else {
-        setError(data.error || 'No active debate available');
+      } catch (error) {
+        console.error('❌ Failed to fetch current battle:', error);
+      } finally {
+        setBattleLoading(false);
       }
-    } catch (error) {
-      console.error('Error fetching battle:', error);
-        setError('Failed to fetch debate data');
-    }
+    };
+
+    fetchCurrentBattle();
   }, []);
 
+  // Fetch casts
   const fetchCasts = useCallback(async () => {
     try {
       const response = await fetch('/api/battle/submit-cast');
@@ -816,31 +245,35 @@ function Home() {
           });
         }
         
-        // Check if user has submitted
-        if (user) {
+        // Check if user has submitted and is a participant
+        if (baseAccountUser) {
+          console.log('🔍 Checking if user has submitted cast:', {
+            userAddress: baseAccountUser.address,
+            casts: data.casts.map((c: Cast) => ({ id: c.id, userAddress: c.userAddress, content: c.content }))
+          });
+          
           const userCast = data.casts.find((cast: Cast) => 
-            cast.userAddress && user.address && 
-            cast.userAddress.toLowerCase() === user.address.toLowerCase()
+            cast.userAddress && baseAccountUser.address && 
+            cast.userAddress.toLowerCase() === baseAccountUser.address.toLowerCase()
           );
+          
+          console.log('🔍 User cast found:', userCast);
+          console.log('🔍 Setting hasSubmittedCast to:', !!userCast);
           setHasSubmittedCast(!!userCast);
-        } else {
-          // Check localStorage for user data if state is not ready
-          const savedUser = localStorage.getItem('newscast-battle-user');
-          if (savedUser) {
-            const userData = JSON.parse(savedUser);
-            const userCast = data.casts.find((cast: Cast) => 
-              cast.userAddress && userData.address && 
-              cast.userAddress.toLowerCase() === userData.address.toLowerCase()
-            );
-            setHasSubmittedCast(!!userCast);
+          
+          // If user has submitted a cast, they are definitely a participant
+          if (userCast) {
+            console.log('🔍 User has submitted cast, setting battleJoined to true');
+            setBattleJoined(true);
           }
         }
       }
     } catch (error) {
       console.error('Failed to fetch casts:', error);
     }
-  }, [user]);
+  }, [baseAccountUser]);
 
+  // Fetch battle history
   const fetchBattleHistory = useCallback(async () => {
     try {
       const response = await fetch('/api/battle/history');
@@ -854,10 +287,12 @@ function Home() {
     }
   }, []);
 
+  // Fetch leaderboard
   const fetchLeaderboard = useCallback(async () => {
     try {
-      const response = await fetch('/api/user/leaderboard?limit=10');
+      const response = await fetch('/api/user/leaderboard');
       const data = await response.json();
+      
       if (data.success) {
         setLeaderboard(data.leaderboard);
       }
@@ -866,107 +301,58 @@ function Home() {
     }
   }, []);
 
-  const fetchUserPoints = async (address: string) => {
+  // Fetch user points
+  const fetchUserPoints = useCallback(async (address: string) => {
     try {
-      const response = await fetch(`/api/user/points?address=${address}`);
+      console.log('🔍 Fetching points for address:', address);
+      const response = await fetch(`/api/user/points?address=${encodeURIComponent(address)}`);
       const data = await response.json();
       
+      console.log('📊 Points API response:', data);
+      
       if (data.success) {
-        setUserPoints(data.points);
+        setUserPoints(data.points || 0);
+        console.log('✅ User points fetched:', data.points);
+      } else {
+        console.error('❌ Failed to fetch user points:', data.error);
+        setUserPoints(0);
       }
     } catch (error) {
-      console.error('Failed to fetch user points:', error);
+      console.error('❌ Failed to fetch user points:', error);
+      setUserPoints(0);
     }
-  };
+  }, []);
 
-  // Fetch points for Base Account user
-  useEffect(() => {
-    if (baseAccountUser?.address) {
-      fetchUserPoints(baseAccountUser.address);
-    }
-  }, [baseAccountUser]);
-
+  // Join battle
   const joinBattle = async () => {
-    if (!user && !baseAccountUser) return;
+    if (!baseAccountUser) return;
     
     try {
-      setLoading(true);
-      
-      // Use Base Account if available and user is signed in
-      if (useBaseAccount && baseAccountUser && topic?.debateId) {
-        console.log('🎯 Using Base Account for battle participation');
-        
-        // Import the base account service
-        const { baseAccountService } = await import('@/lib/services/base-account-service');
-        
-        // Make USDC payment to join debate
-        const result = await baseAccountService.joinDebateWithPayment(topic.debateId, "1"); // 1 USDC entry fee
-        
-        if (result.success) {
-          console.log('✅ Successfully joined debate with Base Account payment');
-          setBattleJoined(true);
-          setError(null);
-          
-          // Also update the backend to track participation
-          await updateBackendParticipation(baseAccountUser.address);
-        } else {
-          throw new Error(result.error || 'Payment failed');
-        }
-      } else {
-        // Fallback to regular API-based joining
-        console.log('🔄 Using regular API for battle participation');
-        
-        const userAddress = user?.address || baseAccountUser?.address;
-        if (!userAddress) return;
-        
-        const response = await fetch('/api/battle/current', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userAddress })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-          setBattleJoined(true);
-          setError(null);
-        } else {
-          if (data.error.includes('already joined')) {
-            setBattleJoined(true);
-            setError(null);
-          } else {
-            setError(data.error);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error joining battle:', error);
-      setError('Failed to join debate');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateBackendParticipation = async (userAddress: string) => {
-    try {
-      const response = await fetch('/api/battle/current', {
+      const response = await fetch('/api/battle/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userAddress })
+        body: JSON.stringify({
+          userAddress: baseAccountUser.address
+        })
       });
       
       const data = await response.json();
       
-      if (!data.success && !data.error.includes('already joined')) {
-        console.warn('Failed to update backend participation:', data.error);
+      if (data.success) {
+        setBattleJoined(true);
+        console.log('✅ Successfully joined battle');
+      } else {
+        setError(data.error || 'Failed to join battle');
       }
     } catch (error) {
-      console.error('Error updating backend participation:', error);
+      console.error('Failed to join battle:', error);
+      setError('Failed to join battle. Please try again.');
     }
   };
 
+  // Submit cast
   const submitCast = async () => {
-    if ((!user && !baseAccountUser) || !castContent.trim()) return;
+    if (!baseAccountUser || !castContent.trim()) return;
     
     try {
       setSubmittingCast(true);
@@ -974,7 +360,7 @@ function Home() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userAddress: baseAccountUser?.address || user?.address,
+          userAddress: baseAccountUser.address,
           content: castContent.trim(),
           side: castSide
         })
@@ -993,477 +379,416 @@ function Home() {
           setTimeout(() => setPointsAnimation(false), 2000);
         }
         
+        // Refresh casts immediately
         await fetchCasts();
+        
+        // Update sentiment data
+        const support = casts.filter(cast => cast.side === 'SUPPORT').length + 1; // +1 for new cast
+        const oppose = casts.filter(cast => cast.side === 'OPPOSE').length + (castSide === 'OPPOSE' ? 1 : 0);
+        const total = support + oppose;
+        
+        if (total > 0) {
+          const newSentiment = {
+            support,
+            oppose,
+            supportPercent: Math.round((support / total) * 100),
+            opposePercent: Math.round((oppose / total) * 100)
+          };
+          
+          setSentimentData(newSentiment);
+          setSentimentHistory(prev => [...prev.slice(-19), {
+            timestamp: Date.now(),
+            ...newSentiment
+          }]);
+        }
       } else {
         setError(data.error);
       }
     } catch (error) {
-      console.error('Error submitting cast:', error);
-      setError('Failed to submit argument');
+      console.error('Failed to submit cast:', error);
+      setError('Failed to submit cast. Please try again.');
     } finally {
       setSubmittingCast(false);
     }
   };
 
-  const handleSignOut = async () => {
-    try {
-      console.log('🔌 Starting wallet disconnection...');
-      
-      // Disconnect the wallet first
-      await disconnect();
-      
-      // Clear all local storage related to wallet connection
-      localStorage.removeItem('newscast-battle-user');
-      localStorage.removeItem('wagmi.store');
-      localStorage.removeItem('wagmi.connected');
-      localStorage.removeItem('wagmi.recentConnectorId');
-      localStorage.removeItem('wagmi.explicitConnection'); // Clear explicit connection flag
-      
-      // Clear session storage as well
-      sessionStorage.clear();
-      
-      // Then clear local state
-      setUser(null);
-      setBattleJoined(false);
-      setHasSubmittedCast(false);
-      setUserPoints(0);
-      
-      console.log('✅ Wallet disconnected and state cleared');
-    } catch (error) {
-      console.error('Error during wallet disconnection:', error);
-      // Still clear local state even if disconnection fails
-      setUser(null);
-      setBattleJoined(false);
-      setHasSubmittedCast(false);
-      setUserPoints(0);
-      localStorage.removeItem('newscast-battle-user');
-      localStorage.removeItem('wagmi.explicitConnection');
+  // Load initial data
+  useEffect(() => {
+    if (currentBattle) {
+      console.log('🔄 Loading initial data - currentBattle:', currentBattle.id);
+      console.log('🔄 baseAccountUser:', baseAccountUser?.address);
+      console.log('🔄 hasSubmittedCast before fetch:', hasSubmittedCast);
+      fetchCasts();
+      fetchBattleHistory();
     }
-  };
+  }, [currentBattle, fetchCasts, fetchBattleHistory]);
 
-  // Multi-wallet connection handlers
-  const handleWalletConnect = (address: string) => {
-    console.log('✅ Wallet connected:', address);
-    // User state will be handled by the useEffect above
-  };
-
-  const handleWalletError = (error: string) => {
-    console.error('❌ Wallet connection error:', error);
-    setError(error);
-  };
-
-  const formatTimeRemaining = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    
-    if (hours > 0) {
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    } else {
-      return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  // Fetch user points when authenticated
+  useEffect(() => {
+    if (baseAccountUser?.address) {
+      fetchUserPoints(baseAccountUser.address);
     }
-  };
+  }, [baseAccountUser, fetchUserPoints]);
 
-  // Chart.js configuration
+  // Mobile detection
+  useEffect(() => {
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent.toLowerCase();
+      const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+      const isSmallScreen = window.innerWidth <= 768;
+      setIsMobile(isMobileDevice || isSmallScreen);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // SSE connection management
+  useEffect(() => {
+    if (!currentBattle) return;
+
+    const connectSSE = () => {
+      if (isMobile) {
+        console.log('📱 Mobile device detected - using polling fallback');
+        setConnectionStatus('polling');
+        
+        // Start polling every 30 seconds
+        const interval = setInterval(async () => {
+          try {
+            await fetchCasts();
+            await fetchBattleHistory();
+            if (baseAccountUser?.address) {
+              await fetchUserPoints(baseAccountUser.address);
+            }
+          } catch (error) {
+            console.error('Polling error:', error);
+          }
+        }, 30000);
+        
+        setPollingInterval(interval);
+        
+        // Initial fetch
+        fetchCasts();
+        fetchBattleHistory();
+        if (baseAccountUser?.address) {
+          fetchUserPoints(baseAccountUser.address);
+        }
+        
+      } else {
+        console.log('🖥️ Desktop device detected - using SSE');
+        setConnectionStatus('connecting');
+        
+        const eventSource = new EventSource('/api/battle/state-stream');
+        setSseConnection(eventSource);
+
+        eventSource.onopen = () => {
+          console.log('✅ SSE connection established');
+          setConnectionStatus('connected');
+        };
+
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            console.log('📡 SSE event received:', data.type);
+            
+            switch (data.type) {
+              case 'CONNECTION_ESTABLISHED':
+                console.log('🔌 SSE connection confirmed');
+                break;
+              case 'TIMER_UPDATE':
+                if (data.data.timeRemaining !== undefined) {
+                  setTimeRemaining(data.data.timeRemaining);
+                }
+                break;
+              case 'CAST_SUBMITTED':
+                // Refresh casts when new cast is submitted
+                fetchCasts();
+                break;
+              case 'BATTLE_COMPLETED':
+                // Refresh battle data when battle completes
+                fetchCasts();
+                fetchBattleHistory();
+                break;
+              case 'SENTIMENT_UPDATE':
+                if (data.data.sentiment) {
+                  setSentimentData(data.data.sentiment);
+                  setSentimentHistory(prev => [...prev.slice(-19), {
+                    timestamp: Date.now(),
+                    ...data.data.sentiment
+                  }]);
+                }
+                break;
+            }
+          } catch (error) {
+            console.error('Error parsing SSE data:', error);
+          }
+        };
+
+        eventSource.onerror = (error) => {
+          console.error('❌ SSE connection error:', error);
+          setConnectionStatus('disconnected');
+          
+          // Fallback to polling on error
+          console.log('🔄 Falling back to polling due to SSE error');
+          eventSource.close();
+          setSseConnection(null);
+          
+          const interval = setInterval(async () => {
+            try {
+              await fetchCasts();
+              await fetchBattleHistory();
+              if (baseAccountUser?.address) {
+                await fetchUserPoints(baseAccountUser.address);
+              }
+            } catch (error) {
+              console.error('Polling error:', error);
+            }
+          }, 30000);
+          
+          setPollingInterval(interval);
+          setConnectionStatus('polling');
+        };
+      }
+    };
+
+    connectSSE();
+
+    // Cleanup function
+    return () => {
+      if (sseConnection) {
+        console.log('🔌 Closing SSE connection');
+        sseConnection.close();
+        setSseConnection(null);
+      }
+      if (pollingInterval) {
+        console.log('⏰ Clearing polling interval');
+        clearInterval(pollingInterval);
+        setPollingInterval(null);
+      }
+    };
+  }, [currentBattle, isMobile, baseAccountUser, fetchCasts, fetchBattleHistory, fetchUserPoints]);
+
+  // Chart data configuration
   const chartData = {
-    labels: sentimentHistory.length > 0 ? sentimentHistory.map((_, index) => {
-      if (sentimentHistory.length <= 1) return 'Now';
-      const timeDiff = Date.now() - sentimentHistory[index].timestamp;
-      const minutes = Math.floor(timeDiff / 60000);
-      return minutes === 0 ? 'Now' : `${minutes}m ago`;
-    }) : ['Now'],
+    labels: sentimentHistory.map((_, index) => ''),
     datasets: [
       {
-        label: 'Support %',
-        data: sentimentHistory.length > 0 ? sentimentHistory.map(point => point.supportPercent) : [0],
+        label: 'Support',
+        data: sentimentHistory.map(data => data.supportPercent),
         borderColor: '#10b981',
         backgroundColor: 'rgba(16, 185, 129, 0.1)',
         fill: true,
         tension: 0.4,
-        pointRadius: sentimentHistory.length > 0 ? sentimentHistory.map((_, index) => 
-          index === sentimentHistory.length - 1 ? 6 + Math.sin(pulseAnimation * Math.PI / 2) * 2 : 3
-        ) : [0],
-        pointHoverRadius: 8,
-        pointBackgroundColor: sentimentHistory.length > 0 ? sentimentHistory.map((_, index) => 
-          index === sentimentHistory.length - 1 ? '#10b981' : '#10b981'
-        ) : ['#10b981'],
-        pointBorderColor: sentimentHistory.length > 0 ? sentimentHistory.map((_, index) => 
-          index === sentimentHistory.length - 1 ? '#ffffff' : '#10b981'
-        ) : ['#10b981'],
-        pointBorderWidth: sentimentHistory.length > 0 ? sentimentHistory.map((_, index) => 
-          index === sentimentHistory.length - 1 ? 3 : 1
-        ) : [1],
       },
       {
-        label: 'Oppose %',
-        data: sentimentHistory.length > 0 ? sentimentHistory.map(point => point.opposePercent) : [0],
+        label: 'Oppose',
+        data: sentimentHistory.map(data => data.opposePercent),
         borderColor: '#ef4444',
         backgroundColor: 'rgba(239, 68, 68, 0.1)',
         fill: true,
         tension: 0.4,
-        pointRadius: sentimentHistory.length > 0 ? sentimentHistory.map((_, index) => 
-          index === sentimentHistory.length - 1 ? 6 + Math.sin(pulseAnimation * Math.PI / 2) * 2 : 3
-        ) : [0],
-        pointHoverRadius: 8,
-        pointBackgroundColor: sentimentHistory.length > 0 ? sentimentHistory.map((_, index) => 
-          index === sentimentHistory.length - 1 ? '#ef4444' : '#ef4444'
-        ) : ['#ef4444'],
-        pointBorderColor: sentimentHistory.length > 0 ? sentimentHistory.map((_, index) => 
-          index === sentimentHistory.length - 1 ? '#ffffff' : '#ef4444'
-        ) : ['#ef4444'],
-        pointBorderWidth: sentimentHistory.length > 0 ? sentimentHistory.map((_, index) => 
-          index === sentimentHistory.length - 1 ? 3 : 1
-        ) : [1],
-      }
-    ]
+      },
+    ],
   };
 
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    animation: {
-      duration: 1000,
-      easing: 'easeInOutQuart' as const
-    },
     plugins: {
       legend: {
-        position: 'top' as const,
-        labels: {
-          usePointStyle: true,
-          padding: 15,
-          font: { size: 11, weight: 'normal' as const }
-        }
+        display: false,
       },
-      tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        titleColor: '#ffffff',
-        bodyColor: '#ffffff',
-        borderColor: '#e2e8f0',
-        borderWidth: 1,
-        cornerRadius: 6,
-        displayColors: true,
-      }
     },
     scales: {
-      x: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#6b7280' } },
       y: {
         beginAtZero: true,
-        max: 105,
-        grid: { color: '#f3f4f6', drawBorder: false },
-        ticks: { 
-          font: { size: 9 }, 
-          color: '#6b7280', 
-          callback: (value: string | number) => {
-            const numValue = typeof value === 'string' ? parseFloat(value) : value;
-            if (numValue <= 100) {
-              return numValue + '%';
-            }
-            return '';
+        max: 100,
+        ticks: {
+          callback: function(value: any) {
+            return value + '%';
           },
-          stepSize: 20
-        }
-      }
+        },
+      },
     },
-    interaction: { intersect: false, mode: 'index' as const },
-    elements: { point: { hoverBackgroundColor: '#ffffff', hoverBorderWidth: 2 } }
+    elements: {
+      point: {
+        radius: 0,
+      },
+    },
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await baseAccountAuthService.signOut();
+      setIsAuthenticated(false);
+      setBaseAccountUser(null);
+      console.log('✅ Signed out successfully');
+    } catch (error: any) {
+      console.error('❌ Sign out error:', error);
+      setError(error.message);
+    }
   };
 
   return (
     <div className={styles.container}>
-      {/* Battle Transition Overlay */}
-      {battleTransition.isTransitioning && (
-        <div className={styles.transitionOverlay}>
-          <div className={styles.transitionContent}>
-            <div className={styles.transitionSpinner}></div>
-            <p className={styles.transitionMessage}>{battleTransition.message}</p>
-        </div>
-        </div>
-      )}
-      
-      {/* Minimal Header */}
-      <header className={styles.header}>
-        <div className={styles.headerTop}>
-          <div className={styles.headerLeft}>
-            <div className={styles.titleRow}>
-              <h1 className={styles.title}>
-                <span className={styles.baseText}>NewsCast</span> 
-                <span className={styles.debateContainer}>
-                  <span className={styles.betaLabel}>Beta</span>
-                  <span className={styles.debateText}>Debate</span>
-                </span>
-              </h1>
-              <button 
-                className={styles.helpBtn}
-                onClick={() => setShowHelpPopup(true)}
-                title="How to play"
-                aria-label="Open help popup"
-                type="button"
-              >
-                ?
-              </button>
-          </div>
-        </div>
-          {user && isFarcasterEnv === false ? (
-            <div className={styles.userCompact}>
-              <div className={styles.userInfo}>
-                <span className={styles.userAddress}>
-                  {baseAccountUser ? (
+      {/* Authentication Landing Page */}
+      {!baseAccountUser ? (
+        <section className={styles.authSection}>
+          <BaseAccountAuth
+            onAuthSuccess={(user) => {
+              if (user) {
+                console.log('🔐 Auth success callback - user:', user.address);
+                console.log('🔐 Current hasSubmittedCast state:', hasSubmittedCast);
+                console.log('🔐 User object:', user);
+                setBaseAccountUser(user);
+                setIsAuthenticated(true);
+                console.log('✅ Base Account authentication successful');
+                
+                // Fetch user points immediately after authentication
+                console.log('🔍 Fetching points immediately after auth...');
+                fetchUserPoints(user.address);
+              } else {
+                setBaseAccountUser(null);
+                setIsAuthenticated(false);
+                console.log('✅ Base Account sign out successful');
+              }
+            }}
+            onAuthError={(error) => {
+              console.error('❌ Base Account authentication error:', error);
+              setError(error);
+            }}
+          />
+
+          {error && (
+            <div className={styles.error}>
+              <p>⚠️ {error}</p>
+              <button onClick={() => setError(null)} className={styles.retryBtn}>Dismiss</button>
+            </div>
+          )}
+        </section>
+      ) : (
+        /* Main App Content - Only visible when authenticated */
+        <section className={styles.appSection}>
+          {/* App Header */}
+          <header className={styles.appHeader}>
+            <div className={styles.appHeaderContent}>
+              <div className={styles.appTitle}>
+                <h1 className={styles.title}>
+                  <span className={styles.baseText}>NewsCast</span> 
+                  <span className={styles.debateContainer}>
+                    <span className={styles.betaLabel}>Beta</span>
+                    <span className={styles.debateText}>Debate</span>
+                  </span>
+                </h1>
+              </div>
+              
+              <div className={styles.userCompact}>
+                <div className={styles.userInfo}>
+                  <span className={styles.userAddress}>
                     <div className="flex items-center gap-2">
                       <span className="text-blue-500">🔵</span>
-                      <span>{baseAccountUser.name || `${baseAccountUser.address.slice(0, 6)}...${baseAccountUser.address.slice(-4)}`}</span>
+                      <span>{baseAccountUser.address.slice(0, 6)}...{baseAccountUser.address.slice(-4)}</span>
                     </div>
-                  ) : user?.address ? (
-                    `${user.address.slice(0, 6)}...${user.address.slice(-4)}`
-                  ) : (
-                    'Not connected'
-                  )}
-                </span>
-                <span className={`${styles.userPoints} ${pointsAnimation ? styles.pointsAnimated : ''}`}>
-                  🔵 {userPoints} pts
-                </span>
-              </div>
-              {/* Only show signout button in non-Farcaster environments */}
-              <button 
-                onClick={handleSignOut}
-                className={styles.signOutBtn}
-                title="Sign Out"
-              >
-                <svg 
-                  width="16" 
-                  height="16" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  xmlns="http://www.w3.org/2000/svg"
-                  className={styles.powerIcon}
+                  </span>
+                  <span className={styles.userPoints}>
+                    🔵 {userPoints} pts
+                  </span>
+                </div>
+                <button 
+                  onClick={handleSignOut}
+                  className={styles.signOutBtn}
+                  title="Sign Out"
                 >
-                  <path 
-                    d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9M16 17L21 12L16 7M21 12H9" 
-                    stroke="currentColor" 
-                    strokeWidth="2" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-        </div>
-          ) : isFarcasterEnv === null ? (
-            <div className={styles.signInWrapper}>
-              <div className={styles.loadingSpinner}></div>
-              <span style={{ marginLeft: '8px', fontSize: '0.875rem', color: '#6b7280' }}>
-                Detecting environment...
-              </span>
+                  <svg 
+                    width="16" 
+                    height="16" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    xmlns="http://www.w3.org/2000/svg"
+                    className={styles.powerIcon}
+                  >
+                    <path 
+                      d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9M16 17L21 12L16 7M21 12H9"
+                      stroke="currentColor" 
+                      strokeWidth="2" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              </div>
             </div>
-          ) : isFarcasterEnv ? (
-            <FarcasterWalletComponent />
-          ) : (
-            <div className={styles.signInWrapper}>
-              {/* Base Account Authentication */}
-              <div className="mb-4">
-                <BaseAccountAuth
-                  onUserChange={(user) => {
-                    setBaseAccountUser(user);
-                    setUseBaseAccount(!!user);
-                    if (user) {
-                      console.log('✅ Base Account user connected:', user);
-                    }
-                  }}
-                  onError={(error) => {
-                    console.error('Base Account error:', error);
-                    setError(error);
-                  }}
-                />
-        </div>
+          </header>
 
-              {/* Fallback to regular wallet connection */}
-              <div className="text-center">
-                <div className="text-sm text-gray-500 mb-2">Or connect with regular wallet:</div>
-                <MultiWalletConnect 
-                  onConnect={handleWalletConnect}
-                  onError={handleWalletError}
-                />
+          {/* Thank You Message - Prominently displayed below header */}
+          {hasSubmittedCast && (
+            <div className={styles.thankYouBanner}>
+              <div className={styles.thankYouContent}>
+                <span className={styles.thankYouIcon}>✅</span>
+                <span className={styles.thankYouText}>Thank you for participating! Good luck winning the pot! 🍀</span>
               </div>
             </div>
           )}
-                </div>
-      </header>
 
-      {/* Main Content */}
-      <main className={styles.main}>
-        {/* Hero Section */}
-        <div className={styles.heroSection}>
-          <div className={styles.heroContent}>
-            <h2 className={styles.heroTitle}>
-              AI-Powered News Debates
-            </h2>
-          </div>
-        </div>
+          {/* Main App Content */}
+          <main className={styles.appMain}>
 
-        {error ? (
-            <div className={styles.error}>
-            <p>⚠️ {error}</p>
-            <button onClick={fetchCurrentBattle} className={styles.retryBtn}>Retry</button>
-            </div>
-        ) : topic ? (
+        {battleLoading ? (
           <div className={styles.battleCard}>
-            {/* Battle Header */}
             <div className={styles.battleHeader}>
-              <div className={styles.battleStatus}>
-                <span className={`${styles.statusBadge} ${styles.active}`}>ACTIVE</span>
-                {battleStatusMessage ? (
-                  <span className={`${styles.timer} ${styles.statusMessage} ${styles[battleStatusType]}`}>
-                    {battleStatusMessage}
+              <h2 className={styles.topicTitle}>Loading battle...</h2>
+              <p className={styles.topicDescription}>Fetching the latest debate topic...</p>
+            </div>
+          </div>
+        ) : currentBattle ? (
+          <div className={styles.battleCard}>
+            <div className={styles.battleHeader}>
+              <div className={styles.topicMeta}>
+                <span className={styles.topicCategory}>{currentBattle.category}</span>
+                <span className={styles.topicSource}>Source: {currentBattle.source}</span>
+                {timeRemaining !== null && (
+                  <span className={styles.timer}>
+                    ⏰ {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
                   </span>
-                ) : timeRemaining && timeRemaining > 0 ? (
-                  <span className={styles.timer}>{formatTimeRemaining(timeRemaining)}</span>
-                ) : (
-                  <span className={`${styles.timer} ${styles.statusMessage} ${styles.info}`}>
-                    ⏰ Battle ended! Judging in progress...
-                  </span>
                 )}
               </div>
-              <h2 className={styles.topicTitle}>{topic.title}</h2>
-              
-              {/* Share Button */}
-              <div className={styles.shareContainer}>
-                <ShareButton 
-                  battleTopic={topic.title} 
-                  battleId={topic.id}
-                  userAddress={baseAccountUser?.address || user?.address}
-                  className={styles.shareButton}
-                />
-              </div>
-                <div className={styles.topicMeta}>
-                <span className={styles.topicCategory}>{topic.category}</span>
-                {topic.source && topic.source !== 'System' && (
-                  <a 
-                    href={topic.sourceUrl || `https://www.google.com/search?q=${encodeURIComponent(topic.source)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={styles.topicSource}
-                    title={topic.sourceUrl ? 'View original article' : 'Search for source'}
-                  >
-                    📰 {topic.source}
-                    {topic.sourceUrl && <span className={styles.linkIcon}>↗</span>}
-                  </a>
-                )}
-              </div>
-
-              {/* Article Image and Description */}
-              <div className={styles.topicContent}>
-                {(topic.imageUrl || topic.thumbnail) && (
-                  <img 
-                    src={topic.imageUrl || topic.thumbnail} 
-                    alt={topic.title}
-                    className={styles.topicImage}
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                    }}
-                  />
-                )}
-                <p className={styles.topicDescription}>{topic.description}</p>
-              </div>
-
-              {/* Debate Points */}
-              {topic.debatePoints && (
-              <div className={styles.debatePoints}>
-                  <div className={`${styles.debateSide} ${styles.support}`}>
-                    <h4>Support</h4>
-                  <ul>
-                      {topic.debatePoints?.Support?.map((point, index) => (
-                      <li key={index}>{point}</li>
-                    ))}
-                  </ul>
-                </div>
-                  <div className={`${styles.debateSide} ${styles.oppose}`}>
-                    <h4>Oppose</h4>
-                  <ul>
-                      {topic.debatePoints?.Oppose?.map((point, index) => (
-                      <li key={index}>{point}</li>
-                    ))}
-                  </ul>
-                </div>
-                </div>
-              )}
-              </div>
-
-            {/* Quick Actions */}
-            <div className={styles.quickActions}>
-              {!battleJoined && !hasSubmittedCast && (
-                <div>
-                  {/* Base Account Payment Component */}
-                  {useBaseAccount && baseAccountUser && topic?.debateId ? (
-                    <BaseAccountPayment
-                      debateId={topic.debateId}
-                      entryFee="1"
-                      onPaymentSuccess={(result) => {
-                        console.log('✅ Base Account payment successful:', result);
-                        setBattleJoined(true);
-                        setError(null);
-                      }}
-                      onPaymentError={(error) => {
-                        console.error('❌ Base Account payment failed:', error);
-                        setError(error);
-                      }}
-                      className="mb-4"
-                    />
-                  ) : (
-                    /* Fallback to regular join button */
-                    <button 
-                      onClick={joinBattle} 
-                      className={styles.joinBtn}
-                      disabled={!user && !baseAccountUser}
-                    >
-                      {(user || baseAccountUser) ? 'Join Debate' : 'Sign in to Join Debate'}
-                    </button>
-                  )}
-                </div>
-              )}
-              {battleJoined && !hasSubmittedCast && (
-                <div className={styles.submitForm}>
-                  <div className={styles.sideToggle}>
-                    <button 
-                      className={`${styles.sideBtn} ${castSide === 'SUPPORT' ? styles.active : ''}`}
-                      onClick={() => setCastSide('SUPPORT')}
-                    >
-                      Support
-                  </button>
-                    <button 
-                      className={`${styles.sideBtn} ${castSide === 'OPPOSE' ? styles.active : ''}`}
-                      onClick={() => setCastSide('OPPOSE')}
-                    >
-                      Oppose
-                    </button>
-                  </div>
-                  <textarea
-                    className={styles.argumentInput}
-                    placeholder="Your argument... (140 chars max)"
-                    value={castContent}
-                    onChange={(e) => setCastContent(e.target.value)}
-                    rows={3}
-                    maxLength={140}
-                  />
-                  <div className={styles.charCounter}>
-                    {castContent.length}/140 characters
-                  </div>
-                  <button
-                    onClick={submitCast}
-                    disabled={submittingCast || castContent.trim().length < 10 || castContent.trim().length > 140}
-                    className={styles.submitBtn}
-                  >
-                    {submittingCast ? 'Submitting...' : 'Submit'}
-                  </button>
-                  </div>
-                )}
-              {hasSubmittedCast && (
-                <div className={styles.thankYou}>
-                  <span>✅ Thank you for participating!</span>
-              </div>
-              )}
+              <h2 className={styles.topicTitle}>{currentBattle.title}</h2>
+              <p className={styles.topicDescription}>{currentBattle.description}</p>
             </div>
 
-            {/* Compact Navigation */}
-            <nav className={styles.compactNav}>
+            <div className={styles.topicContent}>
+              {currentBattle.imageUrl && (
+                <img 
+                  src={currentBattle.imageUrl} 
+                  alt={currentBattle.title}
+                  className={styles.topicImage}
+                />
+              )}
+              
+              <div className={styles.debatePoints}>
+                <div className={`${styles.debateSide} ${styles.oppose}`}>
+                  <h4>❌ Oppose</h4>
+                  <ul>
+                    {currentBattle.debatePoints.Oppose.map((point, index) => (
+                      <li key={index}>{point}</li>
+                    ))}
+                  </ul>
+                </div>
+                
+                <div className={`${styles.debateSide} ${styles.support}`}>
+                  <h4>✅ Support</h4>
+                  <ul>
+                    {currentBattle.debatePoints.Support.map((point, index) => (
+                      <li key={index}>{point}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Tab Navigation */}
+            <nav className={styles.tabNav}>
               <button 
                 className={`${styles.navBtn} ${activeTab === 'debate' ? styles.active : ''}`}
                 onClick={() => setActiveTab('debate')}
@@ -1515,11 +840,11 @@ function Home() {
                     <span>Total: {sentimentData.support + sentimentData.oppose}</span>
                     {casts.length === 0 && (
                       <span className={styles.emptyState}>No votes yet - be the first to participate!</span>
-          )}
-        </div>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
             {activeTab === 'arguments' && (
               <div className={styles.tabContent}>
@@ -1534,9 +859,9 @@ function Home() {
                           <span className={styles.argumentUser}>
                             {cast.userAddress ? `${cast.userAddress.slice(0, 6)}...${cast.userAddress.slice(-4)}` : 'Unknown'}
                           </span>
-        </div>
+                        </div>
                         <div className={styles.argumentContent}>{cast.content}</div>
-      </div>
+                      </div>
                     ))
                   ) : (
                     <div className={styles.loading}>No arguments submitted yet.</div>
@@ -1584,42 +909,21 @@ function Home() {
                             </div>
                           </div>
                         )}
-                        {battle.winners.length > 1 && (
-                          <div className={styles.historyAllWinners}>
-                            <div className={styles.allWinnersLabel}>All winners:</div>
-                            {battle.winners.map((winner, index) => (
-                              <div key={index} className={styles.winnerItem}>
-                                <span className={styles.winnerPosition}>
-                                  {winner.position === 1 ? '🥇' : winner.position === 2 ? '🥈' : '🥉'}
-                                </span>
-                                <span className={styles.winnerAddress}>
-                                  {winner.address?.slice(0, 6)}...{winner.address?.slice(-4)}
-                                </span>
-                                <span className={styles.winnerPoints}>
-                                  +{winner.pointsAwarded} pts
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
                         {battle.insights && (
                           <div className={styles.historyInsights}>
                             <div className={styles.insightsLabel}>💡 AI Insights:</div>
-                            <div className={styles.insightsContent}>
-                              {battle.insights}
-                            </div>
+                            <div className={styles.insightsContent}>{battle.insights}</div>
                           </div>
                         )}
                       </div>
                     ))
                   ) : (
-                    <div className={styles.loading}>No previous debates.</div>
+                    <div className={styles.loading}>Loading battle history...</div>
                   )}
                 </div>
               </div>
             )}
 
-            {/* Leaderboard Tab */}
             {activeTab === 'leaderboard' && (
               <div className={styles.tabContent}>
                 <div className={styles.leaderboardHeader}>
@@ -1668,101 +972,72 @@ function Home() {
                 </div>
               </div>
             )}
+
+            {baseAccountUser ? (
+              <div className={styles.quickActions}>
+                {!battleJoined ? (
+                  <button 
+                    className={styles.joinBtn}
+                    onClick={joinBattle}
+                  >
+                    🎯 Join Debate
+                  </button>
+                ) : !hasSubmittedCast ? (
+                  <div className={styles.submitForm}>
+                    <div className={styles.sideToggle}>
+                      <button 
+                        className={`${styles.sideBtn} ${castSide === 'SUPPORT' ? styles.active : ''}`}
+                        onClick={() => setCastSide('SUPPORT')}
+                      >
+                        ✅ Support
+                      </button>
+                      <button 
+                        className={`${styles.sideBtn} ${castSide === 'OPPOSE' ? styles.active : ''}`}
+                        onClick={() => setCastSide('OPPOSE')}
+                      >
+                        ❌ Oppose
+                      </button>
+                    </div>
+                    <textarea
+                      className={styles.argumentInput}
+                      placeholder="Your argument... (140 chars max)"
+                      value={castContent}
+                      onChange={(e) => setCastContent(e.target.value)}
+                      rows={3}
+                      maxLength={140}
+                    />
+                    <div className={styles.charCounter}>
+                      {castContent.length}/140 characters
+                    </div>
+                    <button
+                      onClick={submitCast}
+                      disabled={submittingCast || castContent.trim().length < 10 || castContent.trim().length > 140}
+                      className={styles.submitBtn}
+                    >
+                      {submittingCast ? 'Submitting...' : 'Submit'}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className={styles.quickActions}>
+                <p className={styles.signInPrompt}>Sign in with Base Account to participate in this debate!</p>
+              </div>
+            )}
           </div>
         ) : (
-          <div className={styles.loading}>No active debate available.</div>
+          <div className={styles.battleCard}>
+            <div className={styles.battleHeader}>
+              <h2 className={styles.topicTitle}>No active battle</h2>
+              <p className={styles.topicDescription}>
+                There's currently no active debate. Check back soon for the next battle!
+              </p>
+            </div>
+          </div>
         )}
-      </main>
-
-      {/* Help Popup */}
-      {showHelpPopup && (
-        <div className={styles.helpOverlay} onClick={handleHelpOverlayClick}>
-          <div className={styles.helpPopup} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.helpHeader}>
-              <h2 className={styles.helpTitle}>Agentic AI-Powered NewsCast Debate (Beta)</h2>
-              <button 
-                className={styles.helpCloseBtn}
-                onClick={handleHelpPopupClose}
-                aria-label="Close help popup"
-              >
-                ×
-              </button>
-            </div>
-            
-            <div className={styles.helpContent}>
-              <div className={styles.helpSection}>
-                <h3 className={styles.helpSectionTitle}>🎯 The Game</h3>
-                <p className={styles.helpText}>
-                  NewsCast Debate (Beta) is an <strong className={styles.aiHighlight}>Agentic AI-powered</strong> debate platform where you engage in intelligent discussions about trending news topics. 
-                  Each battle lasts <strong>4 hours</strong> and features real news articles autonomously curated by our <strong className={styles.aiHighlight}>advanced AI agents</strong>.
-                </p>
-              </div>
-
-              <div className={styles.helpSection}>
-                <h3 className={styles.helpSectionTitle}>🤖 Agentic AI Features</h3>
-                <ul className={styles.helpList}>
-                  <li><strong className={styles.aiHighlight}>Intelligent Topic Curation:</strong> Agentic AI autonomously discovers trending news stories and selects the most debate-worthy topics</li>
-                  <li><strong className={styles.aiHighlight}>Dynamic Argument Generation:</strong> Advanced AI creates balanced, compelling debate points for both sides in real-time</li>
-                  <li><strong className={styles.aiHighlight}>Autonomous Judging System:</strong> Agentic AI evaluates arguments with superhuman objectivity and selects winners based on merit</li>
-                  <li><strong className={styles.aiHighlight}>Intelligent Battle Analytics:</strong> AI generates deep insights and summaries of winning strategies</li>
-                </ul>
-              </div>
-
-              <div className={styles.helpSection}>
-                <h3 className={styles.helpSectionTitle}>🎮 How to Play</h3>
-                <ol className={styles.helpSteps}>
-                  <li><strong>Connect Wallet:</strong> Click &quot;Sign In with Base&quot; to connect your Base wallet</li>
-                  <li><strong>Join Debate:</strong> Click &quot;Join Debate&quot; to participate</li>
-                  <li><strong>Choose Side:</strong> Pick SUPPORT or OPPOSE</li>
-                  <li><strong>Write Argument:</strong> Submit your 140-character argument</li>
-                  <li><strong>Earn Points:</strong> Get 10 points for participating</li>
-                  <li><strong>Win Big:</strong> Winners get 100 bonus points!</li>
-                </ol>
-              </div>
-
-              <div className={styles.helpSection}>
-                <h3 className={styles.helpSectionTitle}>🏆 Autonomous Judging</h3>
-                <p className={styles.helpText}>
-                  Our <strong className={styles.aiHighlight}>Agentic AI Judge</strong> operates with superhuman analytical capabilities, 
-                  evaluating all arguments for quality, relevance, and persuasive power. It ensures completely fair competition 
-                  by analyzing both sides with perfect objectivity, then autonomously selects the most compelling arguments 
-                  to determine the winner.
-                </p>
-              </div>
-
-              <div className={styles.helpSection}>
-                <h3 className={styles.helpSectionTitle}>⚡ Intelligent Automation</h3>
-                <p className={styles.helpText}>
-                  Experience <strong className={styles.aiHighlight}>autonomous battle management</strong> with live sentiment tracking, 
-                  instant winner notifications, and seamless transitions as our <strong className={styles.aiHighlight}>Agentic AI</strong> 
-                  automatically generates new battles and manages the entire debate ecosystem.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Disabled Overlay for Loading States */}
-      {loading && (
-        <div className={styles.disabledOverlay}>
-          <div className={styles.loading}>
-            <div className={styles.loadingSpinner}></div>
-               <div className={styles.loadingText}>Initializing Agentic AI Debate Platform...</div>
-               <div className={styles.loadingSubtext}>Activating AI agents and synchronizing debate ecosystem</div>
-          </div>
-        </div>
+          </main>
+        </section>
       )}
     </div>
-  );
-}
-
-export default function App() {
-  return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <Home />
-      </QueryClientProvider>
-    </WagmiProvider>
   );
 }

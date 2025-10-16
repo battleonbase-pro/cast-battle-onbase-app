@@ -60,7 +60,6 @@
     "@ai-sdk/google": "^2.0.14",
     "@base-org/account": "^2.4.0",
     "@base-org/account-ui": "^1.0.1",
-    "@coinbase/onchainkit": "latest",
     "@coinbase/wallet-sdk": "^4.3.7",
     "@farcaster/frame-sdk": "^0.1.10",
     "@farcaster/miniapp-wagmi-connector": "^1.0.0",
@@ -74,7 +73,7 @@
     "@walletconnect/ethereum-provider": "^2.22.2",
     "ai": "^5.0.47",
     "axios": "^1.12.2",
-    "chart.js": "^4.5.0",
+    "chart.js": "^4.5.1",
     "dotenv": "^17.2.2",
     "ethers": "^6.15.0",
     "hardhat": "^3.0.6",
@@ -92,11 +91,11 @@
     "@eslint/eslintrc": "^3",
     "@next/eslint-plugin-next": "^15.3.4",
     "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@types/react": "18.2.0",
+    "@types/react-dom": "^19.2.2",
     "eslint": "^9",
     "eslint-config-next": "15.3.4",
     "tsx": "^4.20.5",
-    "typescript": "^5"
+    "typescript": "5.8.3"
   }
 }
