@@ -146,6 +146,14 @@ export default function Home() {
   const [showForm, setShowForm] = useState(false);
   const [selectedSide, setSelectedSide] = useState<'SUPPORT' | 'OPPOSE' | null>(null);
   
+  // Card interaction state
+  const [hoveredCard, setHoveredCard] = useState<'SUPPORT' | 'OPPOSE' | null>(null);
+  
+  // Card interaction handlers
+  const handleCardHover = (side: 'SUPPORT' | 'OPPOSE' | null) => {
+    setHoveredCard(side);
+  };
+
   // Handle side selection
   const handleSideSelection = (side: 'SUPPORT' | 'OPPOSE') => {
     setSelectedSide(side);
@@ -751,28 +759,51 @@ export default function Home() {
             <div className={styles.topicContent}>
               {!showForm ? (
                 <div className={styles.debatePoints}>
-                  <div 
-                    className={`${styles.debateSide} ${styles.oppose} ${styles.clickableSide}`}
-                    onClick={() => handleSideSelection('OPPOSE')}
-                  >
-                    <h4>❌ Oppose</h4>
-                    <ul>
-                      {currentBattle.debatePoints.Oppose.map((point, index) => (
-                        <li key={index}>{point}</li>
-                      ))}
-                    </ul>
-                  </div>
-                  
-                  <div 
-                    className={`${styles.debateSide} ${styles.support} ${styles.clickableSide}`}
-                    onClick={() => handleSideSelection('SUPPORT')}
-                  >
-                    <h4>✅ Support</h4>
-                    <ul>
-                      {currentBattle.debatePoints.Support.map((point, index) => (
-                        <li key={index}>{point}</li>
-                      ))}
-                    </ul>
+                  {/* Cards container */}
+                  <div className={styles.debateCardsContainer}>
+                    {/* Oppose Card */}
+                    <div 
+                      className={`${styles.debateCard} ${styles.oppose} ${hoveredCard === 'OPPOSE' ? styles.swipingLeft : ''}`}
+                      onClick={() => handleSideSelection('OPPOSE')}
+                      onMouseEnter={() => handleCardHover('OPPOSE')}
+                      onMouseLeave={() => handleCardHover(null)}
+                    >
+                      <div className={styles.debateCardContent}>
+                        <div className={styles.debateCardHeader}>
+                          <h3 className={styles.debateCardTitle}>❌ Oppose</h3>
+                          <p className={styles.debateCardSubtitle}>Tap to oppose this argument</p>
+                        </div>
+                        <div className={styles.debateCardPoints}>
+                          <ul>
+                            {currentBattle.debatePoints.Oppose.map((point, index) => (
+                              <li key={index}>{point}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Support Card */}
+                    <div 
+                      className={`${styles.debateCard} ${styles.support} ${hoveredCard === 'SUPPORT' ? styles.swipingRight : ''}`}
+                      onClick={() => handleSideSelection('SUPPORT')}
+                      onMouseEnter={() => handleCardHover('SUPPORT')}
+                      onMouseLeave={() => handleCardHover(null)}
+                    >
+                      <div className={styles.debateCardContent}>
+                        <div className={styles.debateCardHeader}>
+                          <h3 className={styles.debateCardTitle}>✅ Support</h3>
+                          <p className={styles.debateCardSubtitle}>Tap to support this argument</p>
+                        </div>
+                        <div className={styles.debateCardPoints}>
+                          <ul>
+                            {currentBattle.debatePoints.Support.map((point, index) => (
+                              <li key={index}>{point}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ) : (

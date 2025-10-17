@@ -562,110 +562,190 @@
   opacity: 0.7;
 }
 
-/* Debate Points - Coinbase Style */
+/* Debate Points - Side-by-Side Card Interface */
 .debatePoints {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  position: relative;
   margin-top: 20px;
+  height: 400px;
+  overflow: hidden;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
 }
 
-.debateSide {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.debateSide h4 {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #1a1a1a;
-  margin: 0 0 16px 0;
+.debateCardsContainer {
+  position: relative;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  padding: 20px;
+  gap: 20px;
 }
 
-.debateSide.support h4 {
+.debateCard {
+  flex: 1;
+  max-width: calc(50% - 10px);
+  height: 350px;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  cursor: pointer;
+  user-select: none;
+  overflow: hidden;
+  transform-origin: center;
+  position: relative;
+}
+
+.debateCard:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+}
+
+.debateCard.support {
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+  border: 2px solid #059669;
+}
+
+.debateCard.oppose {
+  background: linear-gradient(135deg, #fef2f2 0%, #ffffff 100%);
+  border: 2px solid #dc2626;
+}
+
+/* Swipe states for individual cards */
+.debateCard.swiping-left {
+  transform: translateX(-20px) rotate(-5deg) scale(0.98);
+  opacity: 0.9;
+}
+
+.debateCard.swiping-right {
+  transform: translateX(20px) rotate(5deg) scale(0.98);
+  opacity: 0.9;
+}
+
+/* Card content styling */
+.debateCardContent {
+  padding: 30px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.debateCardHeader {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.debateCardTitle {
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin: 0 0 10px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.debateCard.support .debateCardTitle {
   color: #059669;
 }
 
-.debateSide.oppose h4 {
+.debateCard.oppose .debateCardTitle {
   color: #dc2626;
 }
 
-.debateSide h4:before {
-  content: "";
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
-  background: #0000ff;
-  flex-shrink: 0;
+.debateCardSubtitle {
+  font-size: 1rem;
+  color: #6b7280;
+  font-weight: 500;
+  margin: 0;
 }
 
-.debateSide.support h4:before {
-  background: #059669;
+.debateCardPoints {
+  flex: 1;
+  padding: 0;
 }
 
-.debateSide.oppose h4:before {
-  background: #dc2626;
-}
-
-.debateSide ul {
+/* Card list styling - Minimal design */
+.debateCardPoints ul {
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
-.debateSide li {
-  font-size: 1rem;
+.debateCardPoints li {
+  font-size: 0.95rem;
   color: #374151;
   line-height: 1.5;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   padding-left: 20px;
   position: relative;
   font-weight: 400;
 }
 
-.debateSide li:before {
+.debateCardPoints li:before {
   content: "";
-  width: 4px;
-  height: 4px;
-  border-radius: 1px;
-  background: #0000ff;
+  width: 6px;
+  height: 6px;
+  background: #6b7280;
   position: absolute;
   left: 0;
   top: 8px;
+  border-radius: 1px;
 }
 
-.debateSide.support li:before {
+.debateCard.support .debateCardPoints li:before {
   background: #059669;
 }
 
-.debateSide.oppose li:before {
+.debateCard.oppose .debateCardPoints li:before {
   background: #dc2626;
 }
 
-.debateSide li:last-child {
+.debateCardPoints li:last-child {
   margin-bottom: 0;
 }
 
-/* Clickable debate sides */
+/* Card hover effects */
+.debateCard:hover .debateCardTitle {
+  transform: scale(1.05);
+}
+
+.debateCard:hover .debateCardSubtitle {
+  opacity: 0.8;
+}
+
+/* Clickable debate sides - Enhanced for stacked layout */
 .clickableSide {
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   position: relative;
 }
 
 .clickableSide:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  border-color: #cbd5e1;
 }
 
 .clickableSide:active {
-  transform: translateY(0);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Add a subtle overlay effect on hover */
+.clickableSide:hover::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+  border-radius: 16px;
+  pointer-events: none;
 }
 
 /* Form container */
@@ -1740,7 +1820,7 @@
   .clickableSide {
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
-    min-height: 120px; /* Ensure adequate touch target */
+    min-height: 140px; /* Ensure adequate touch target for stacked layout */
   }
   
   .clickableSide:hover {
@@ -1748,8 +1828,52 @@
   }
   
   .clickableSide:active {
-    background: #f8fafc;
+    background: rgba(255, 255, 255, 0.9);
     transform: scale(0.98);
+  }
+  
+  /* Mobile-specific stacked layout */
+  .debatePoints {
+    height: auto;
+    margin-top: 16px;
+  }
+  
+  .debateCardsContainer {
+    flex-direction: column;
+    padding: 16px;
+    gap: 16px;
+    height: auto;
+  }
+  
+  .debateCard {
+    flex: none;
+    max-width: 100%;
+    height: auto;
+    min-height: 280px;
+  }
+  
+  .debateCardContent {
+    padding: 24px;
+  }
+  
+  .debateCardTitle {
+    font-size: 1.5rem;
+  }
+  
+  .debateCardSubtitle {
+    font-size: 1rem;
+  }
+  
+  .debateCardPoints li {
+    font-size: 1rem;
+    margin-bottom: 8px;
+    padding-left: 20px;
+  }
+  
+  .debateCardPoints li:before {
+    width: 6px;
+    height: 6px;
+    top: 8px;
   }
   
   /* Mobile form adjustments */
