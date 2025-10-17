@@ -756,99 +756,20 @@ export default function Home() {
               <p className={styles.topicDescription}>{currentBattle.description}</p>
             </div>
 
-            <div className={styles.topicContent}>
-              {!showForm ? (
-                <div className={styles.debatePoints}>
-                  {/* Cards container */}
-                  <div className={styles.debateCardsContainer}>
-                    {/* Oppose Card */}
-                    <div 
-                      className={`${styles.debateCard} ${styles.oppose} ${hoveredCard === 'OPPOSE' ? styles.swipingLeft : ''}`}
-                      onClick={() => handleSideSelection('OPPOSE')}
-                      onMouseEnter={() => handleCardHover('OPPOSE')}
-                      onMouseLeave={() => handleCardHover(null)}
-                    >
-                      <div className={styles.debateCardContent}>
-                        <div className={styles.debateCardHeader}>
-                          <h3 className={styles.debateCardTitle}>❌ Oppose</h3>
-                          <p className={styles.debateCardSubtitle}>Tap to oppose this argument</p>
-                        </div>
-                        <div className={styles.debateCardPoints}>
-                          <ul>
-                            {currentBattle.debatePoints.Oppose.map((point, index) => (
-                              <li key={index}>{point}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Support Card */}
-                    <div 
-                      className={`${styles.debateCard} ${styles.support} ${hoveredCard === 'SUPPORT' ? styles.swipingRight : ''}`}
-                      onClick={() => handleSideSelection('SUPPORT')}
-                      onMouseEnter={() => handleCardHover('SUPPORT')}
-                      onMouseLeave={() => handleCardHover(null)}
-                    >
-                      <div className={styles.debateCardContent}>
-                        <div className={styles.debateCardHeader}>
-                          <h3 className={styles.debateCardTitle}>✅ Support</h3>
-                          <p className={styles.debateCardSubtitle}>Tap to support this argument</p>
-                        </div>
-                        <div className={styles.debateCardPoints}>
-                          <ul>
-                            {currentBattle.debatePoints.Support.map((point, index) => (
-                              <li key={index}>{point}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className={styles.formContainer}>
-                  <div className={styles.formHeader}>
-                    <button 
-                      className={styles.backButton}
-                      onClick={handleBackToSelection}
-                      aria-label="Back to side selection"
-                    >
-                      ← Back
-                    </button>
-                    <h3 className={styles.formTitle}>
-                      {selectedSide === 'SUPPORT' ? '✅ Supporting' : '❌ Opposing'} the argument
-                    </h3>
-                  </div>
-                  
-                  {baseAccountUser ? (
-                    <div className={styles.submitForm}>
-                      <textarea
-                        className={styles.argumentInput}
-                        placeholder="Your argument... (140 chars max)"
-                        value={castContent}
-                        onChange={(e) => setCastContent(e.target.value)}
-                        rows={3}
-                        maxLength={140}
-                      />
-                      <div className={styles.charCounter}>
-                        {castContent.length}/140 characters
-                      </div>
-                      <button
-                        onClick={submitCast}
-                        disabled={submittingCast || castContent.trim().length < 10 || castContent.trim().length > 140}
-                        className={styles.submitBtn}
-                      >
-                        {submittingCast ? 'Submitting...' : 'Submit Argument'}
-                      </button>
-                    </div>
-                  ) : (
-                    <div className={styles.signInPrompt}>
-                      Sign in with Base Account to participate in this debate!
-                    </div>
-                  )}
-                </div>
-              )}
+            {/* Market Sentiment Graph - Always Visible */}
+            <div className={styles.compactGraph}>
+              <div className={styles.graphHeader}>
+                <h3>Market Sentiment</h3>
+                <span className={`${styles.connectionStatus} ${styles[connectionStatus]}`}>
+                  {connectionStatus === 'connected' && '🟢 Live'}
+                  {connectionStatus === 'polling' && '🟡 Polling'}
+                  {connectionStatus === 'connecting' && '🟠 Connecting'}
+                  {connectionStatus === 'disconnected' && '🔴 Offline'}
+                </span>
+              </div>
+              <div className={styles.chartContainer}>
+                <Line data={chartData} options={chartOptions} />
+              </div>
             </div>
 
             {/* Tab Navigation */}
@@ -885,28 +806,98 @@ export default function Home() {
             {/* Tab Content */}
             {activeTab === 'debate' && (
               <div className={styles.tabContent}>
-                <div className={styles.compactGraph}>
-                  <div className={styles.graphHeader}>
-                    <h3>Market Sentiment</h3>
-                    <span className={`${styles.connectionStatus} ${styles[connectionStatus]}`}>
-                      {connectionStatus === 'connected' && '🟢 Live'}
-                      {connectionStatus === 'polling' && '🟡 Polling'}
-                      {connectionStatus === 'connecting' && '🟠 Connecting'}
-                      {connectionStatus === 'disconnected' && '🔴 Offline'}
-                    </span>
+                {!showForm ? (
+                  <div className={styles.debatePoints}>
+                    {/* Cards container */}
+                    <div className={styles.debateCardsContainer}>
+                      {/* Oppose Card */}
+                      <div 
+                        className={`${styles.debateCard} ${styles.oppose} ${hoveredCard === 'OPPOSE' ? styles.swipingLeft : ''}`}
+                        onClick={() => handleSideSelection('OPPOSE')}
+                        onMouseEnter={() => handleCardHover('OPPOSE')}
+                        onMouseLeave={() => handleCardHover(null)}
+                      >
+                        <div className={styles.debateCardContent}>
+                          <div className={styles.debateCardHeader}>
+                            <h3 className={styles.debateCardTitle}>❌ Oppose</h3>
+                            <p className={styles.debateCardSubtitle}>Tap to oppose this argument</p>
+                          </div>
+                          <div className={styles.debateCardPoints}>
+                            <ul>
+                              {currentBattle.debatePoints.Oppose.map((point, index) => (
+                                <li key={index}>{point}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Support Card */}
+                      <div 
+                        className={`${styles.debateCard} ${styles.support} ${hoveredCard === 'SUPPORT' ? styles.swipingRight : ''}`}
+                        onClick={() => handleSideSelection('SUPPORT')}
+                        onMouseEnter={() => handleCardHover('SUPPORT')}
+                        onMouseLeave={() => handleCardHover(null)}
+                      >
+                        <div className={styles.debateCardContent}>
+                          <div className={styles.debateCardHeader}>
+                            <h3 className={styles.debateCardTitle}>✅ Support</h3>
+                            <p className={styles.debateCardSubtitle}>Tap to support this argument</p>
+                          </div>
+                          <div className={styles.debateCardPoints}>
+                            <ul>
+                              {currentBattle.debatePoints.Support.map((point, index) => (
+                                <li key={index}>{point}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className={styles.chartContainer}>
-                    <Line data={chartData} options={chartOptions} />
-                  </div>
-                  <div className={styles.compactStats}>
-                    <span>Support: {sentimentData.supportPercent}%</span>
-                    <span>Oppose: {sentimentData.opposePercent}%</span>
-                    <span>Total: {sentimentData.support + sentimentData.oppose}</span>
-                    {casts.length === 0 && (
-                      <span className={styles.emptyState}>No votes yet - be the first to participate!</span>
+                ) : (
+                  <div className={styles.formContainer}>
+                    <div className={styles.formHeader}>
+                      <button 
+                        className={styles.backButton}
+                        onClick={handleBackToSelection}
+                        aria-label="Back to side selection"
+                      >
+                        ← Back
+                      </button>
+                      <h3 className={styles.formTitle}>
+                        {selectedSide === 'SUPPORT' ? '✅ Supporting' : '❌ Opposing'} the argument
+                      </h3>
+                    </div>
+                    
+                    {baseAccountUser ? (
+                      <div className={styles.submitForm}>
+                        <textarea
+                          className={styles.argumentInput}
+                          placeholder="Your argument... (140 chars max)"
+                          value={castContent}
+                          onChange={(e) => setCastContent(e.target.value)}
+                          rows={3}
+                          maxLength={140}
+                        />
+                        <div className={styles.charCounter}>
+                          {castContent.length}/140 characters
+                        </div>
+                        <button
+                          onClick={submitCast}
+                          disabled={submittingCast || castContent.trim().length < 10 || castContent.trim().length > 140}
+                          className={styles.submitBtn}
+                        >
+                          {submittingCast ? 'Submitting...' : 'Submit Argument'}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className={styles.signInPrompt}>
+                        Sign in with Base Account to participate in this debate!
+                      </div>
                     )}
                   </div>
-                </div>
+                )}
               </div>
             )}
 

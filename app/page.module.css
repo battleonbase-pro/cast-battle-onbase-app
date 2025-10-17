@@ -639,8 +639,8 @@
 }
 
 .debateCardTitle {
-  font-size: 1.8rem;
-  font-weight: 800;
+  font-size: 1.25rem;
+  font-weight: 600;
   margin: 0 0 10px 0;
   display: flex;
   align-items: center;
@@ -1857,7 +1857,7 @@
   }
   
   .debateCardTitle {
-    font-size: 1.5rem;
+    font-size: 1.125rem;
   }
   
   .debateCardSubtitle {
