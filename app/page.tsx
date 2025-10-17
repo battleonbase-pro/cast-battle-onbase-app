@@ -138,10 +138,27 @@ export default function Home() {
   const [pointsAnimation, setPointsAnimation] = useState(false);
   
   // Cast submission state
-  const [battleJoined, setBattleJoined] = useState(false);
   const [submittingCast, setSubmittingCast] = useState(false);
   const [castContent, setCastContent] = useState('');
   const [castSide, setCastSide] = useState<'SUPPORT' | 'OPPOSE'>('SUPPORT');
+  
+  // Form interaction state
+  const [showForm, setShowForm] = useState(false);
+  const [selectedSide, setSelectedSide] = useState<'SUPPORT' | 'OPPOSE' | null>(null);
+  
+  // Handle side selection
+  const handleSideSelection = (side: 'SUPPORT' | 'OPPOSE') => {
+    setSelectedSide(side);
+    setCastSide(side);
+    setShowForm(true);
+  };
+  
+  // Handle back to side selection
+  const handleBackToSelection = () => {
+    setShowForm(false);
+    setSelectedSide(null);
+    setCastContent('');
+  };
   
   // SSE and polling state
   const [isMobile, setIsMobile] = useState(false);
@@ -261,10 +278,9 @@ export default function Home() {
           console.log('🔍 Setting hasSubmittedCast to:', !!userCast);
           setHasSubmittedCast(!!userCast);
           
-          // If user has submitted a cast, they are definitely a participant
+          // User has submitted a cast, they are automatically a participant
           if (userCast) {
-            console.log('🔍 User has submitted cast, setting battleJoined to true');
-            setBattleJoined(true);
+            console.log('🔍 User has submitted cast and is automatically a participant');
           }
         }
       }
@@ -322,33 +338,6 @@ export default function Home() {
       setUserPoints(0);
     }
   }, []);
-
-  // Join battle
-  const joinBattle = async () => {
-    if (!baseAccountUser) return;
-    
-    try {
-      const response = await fetch('/api/battle/join', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userAddress: baseAccountUser.address
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        setBattleJoined(true);
-        console.log('✅ Successfully joined battle');
-      } else {
-        setError(data.error || 'Failed to join battle');
-      }
-    } catch (error) {
-      console.error('Failed to join battle:', error);
-      setError('Failed to join battle. Please try again.');
-    }
-  };
 
   // Submit cast
   const submitCast = async () => {
@@ -656,16 +645,9 @@ export default function Home() {
             }}
             onAuthError={(error) => {
               console.error('❌ Base Account authentication error:', error);
-              setError(error);
+              // Error is now handled within the BaseAccountAuth component
             }}
           />
-
-          {error && (
-            <div className={styles.error}>
-              <p>⚠️ {error}</p>
-              <button onClick={() => setError(null)} className={styles.retryBtn}>Dismiss</button>
-            </div>
-          )}
         </section>
       ) : (
         /* Main App Content - Only visible when authenticated */
@@ -753,11 +735,7 @@ export default function Home() {
                   </span>
                 )}
               </div>
-              <h2 className={styles.topicTitle}>{currentBattle.title}</h2>
-              <p className={styles.topicDescription}>{currentBattle.description}</p>
-            </div>
-
-            <div className={styles.topicContent}>
+              
               {currentBattle.imageUrl && (
                 <img 
                   src={currentBattle.imageUrl} 
@@ -766,25 +744,80 @@ export default function Home() {
                 />
               )}
               
-              <div className={styles.debatePoints}>
-                <div className={`${styles.debateSide} ${styles.oppose}`}>
-                  <h4>❌ Oppose</h4>
-                  <ul>
-                    {currentBattle.debatePoints.Oppose.map((point, index) => (
-                      <li key={index}>{point}</li>
-                    ))}
-                  </ul>
+              <h2 className={styles.topicTitle}>{currentBattle.title}</h2>
+              <p className={styles.topicDescription}>{currentBattle.description}</p>
+            </div>
+
+            <div className={styles.topicContent}>
+              {!showForm ? (
+                <div className={styles.debatePoints}>
+                  <div 
+                    className={`${styles.debateSide} ${styles.oppose} ${styles.clickableSide}`}
+                    onClick={() => handleSideSelection('OPPOSE')}
+                  >
+                    <h4>❌ Oppose</h4>
+                    <ul>
+                      {currentBattle.debatePoints.Oppose.map((point, index) => (
+                        <li key={index}>{point}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  
+                  <div 
+                    className={`${styles.debateSide} ${styles.support} ${styles.clickableSide}`}
+                    onClick={() => handleSideSelection('SUPPORT')}
+                  >
+                    <h4>✅ Support</h4>
+                    <ul>
+                      {currentBattle.debatePoints.Support.map((point, index) => (
+                        <li key={index}>{point}</li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
-                
-                <div className={`${styles.debateSide} ${styles.support}`}>
-                  <h4>✅ Support</h4>
-                  <ul>
-                    {currentBattle.debatePoints.Support.map((point, index) => (
-                      <li key={index}>{point}</li>
-                    ))}
-                  </ul>
+              ) : (
+                <div className={styles.formContainer}>
+                  <div className={styles.formHeader}>
+                    <button 
+                      className={styles.backButton}
+                      onClick={handleBackToSelection}
+                      aria-label="Back to side selection"
+                    >
+                      ← Back
+                    </button>
+                    <h3 className={styles.formTitle}>
+                      {selectedSide === 'SUPPORT' ? '✅ Supporting' : '❌ Opposing'} the argument
+                    </h3>
+                  </div>
+                  
+                  {baseAccountUser ? (
+                    <div className={styles.submitForm}>
+                      <textarea
+                        className={styles.argumentInput}
+                        placeholder="Your argument... (140 chars max)"
+                        value={castContent}
+                        onChange={(e) => setCastContent(e.target.value)}
+                        rows={3}
+                        maxLength={140}
+                      />
+                      <div className={styles.charCounter}>
+                        {castContent.length}/140 characters
+                      </div>
+                      <button
+                        onClick={submitCast}
+                        disabled={submittingCast || castContent.trim().length < 10 || castContent.trim().length > 140}
+                        className={styles.submitBtn}
+                      >
+                        {submittingCast ? 'Submitting...' : 'Submit Argument'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className={styles.signInPrompt}>
+                      Sign in with Base Account to participate in this debate!
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Tab Navigation */}
@@ -973,57 +1006,6 @@ export default function Home() {
               </div>
             )}
 
-            {baseAccountUser ? (
-              <div className={styles.quickActions}>
-                {!battleJoined ? (
-                  <button 
-                    className={styles.joinBtn}
-                    onClick={joinBattle}
-                  >
-                    🎯 Join Debate
-                  </button>
-                ) : !hasSubmittedCast ? (
-                  <div className={styles.submitForm}>
-                    <div className={styles.sideToggle}>
-                      <button 
-                        className={`${styles.sideBtn} ${castSide === 'SUPPORT' ? styles.active : ''}`}
-                        onClick={() => setCastSide('SUPPORT')}
-                      >
-                        ✅ Support
-                      </button>
-                      <button 
-                        className={`${styles.sideBtn} ${castSide === 'OPPOSE' ? styles.active : ''}`}
-                        onClick={() => setCastSide('OPPOSE')}
-                      >
-                        ❌ Oppose
-                      </button>
-                    </div>
-                    <textarea
-                      className={styles.argumentInput}
-                      placeholder="Your argument... (140 chars max)"
-                      value={castContent}
-                      onChange={(e) => setCastContent(e.target.value)}
-                      rows={3}
-                      maxLength={140}
-                    />
-                    <div className={styles.charCounter}>
-                      {castContent.length}/140 characters
-                    </div>
-                    <button
-                      onClick={submitCast}
-                      disabled={submittingCast || castContent.trim().length < 10 || castContent.trim().length > 140}
-                      className={styles.submitBtn}
-                    >
-                      {submittingCast ? 'Submitting...' : 'Submit'}
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <div className={styles.quickActions}>
-                <p className={styles.signInPrompt}>Sign in with Base Account to participate in this debate!</p>
-              </div>
-            )}
           </div>
         ) : (
           <div className={styles.battleCard}>

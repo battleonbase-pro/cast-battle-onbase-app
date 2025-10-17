@@ -414,6 +414,7 @@
 
 .battleHeader {
   margin-bottom: 24px;
+  overflow: hidden; /* Clearfix for floating image */
 }
 
 .battleStatus {
@@ -487,6 +488,7 @@
   color: #1a1a1a;
   margin: 0 0 12px 0;
   line-height: 1.4;
+  overflow: hidden; /* Ensure text wraps properly around floating image */
 }
 
 .topicContent {
@@ -505,7 +507,9 @@
   border-radius: 8px;
   margin-right: 20px;
   margin-bottom: 10px;
+  margin-top: 8px; /* Add top margin to align with text */
   background: #f8fafc;
+  clear: left; /* Ensure image starts on a new line */
 }
 
 .topicDescription {
@@ -544,6 +548,7 @@
   align-items: center;
   gap: 4px;
   transition: color 0.2s ease;
+  cursor: pointer; /* Ensure link shows hand pointer cursor */
 }
 
 .topicSource:hover {
@@ -645,6 +650,74 @@
 
 .debateSide li:last-child {
   margin-bottom: 0;
+}
+
+/* Clickable debate sides */
+.clickableSide {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.clickableSide:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.clickableSide:active {
+  transform: translateY(0);
+}
+
+/* Form container */
+.formContainer {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-top: 20px;
+}
+
+.formHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.backButton {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.backButton:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.backButton:active {
+  transform: translateY(1px);
+}
+
+.formTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+  flex: 1;
 }
 
 /* Quick Actions */
@@ -1661,6 +1734,46 @@
     height: 28px;
     font-size: 1rem;
     /* Larger touch target for mobile */
+  }
+  
+  /* Mobile touch optimization for clickable sides */
+  .clickableSide {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    min-height: 120px; /* Ensure adequate touch target */
+  }
+  
+  .clickableSide:hover {
+    transform: none; /* Disable hover effects on mobile */
+  }
+  
+  .clickableSide:active {
+    background: #f8fafc;
+    transform: scale(0.98);
+  }
+  
+  /* Mobile form adjustments */
+  .formContainer {
+    padding: 16px;
+    margin-top: 16px;
+  }
+  
+  .formHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .backButton {
+    padding: 10px 16px;
+    font-size: 1rem;
+    min-height: 44px; /* iOS recommended touch target */
+  }
+  
+  .formTitle {
+    font-size: 1rem;
+    text-align: center;
+    width: 100%;
   }
 }
 

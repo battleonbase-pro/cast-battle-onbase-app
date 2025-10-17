@@ -91,13 +91,18 @@ export async function POST(request: NextRequest) {
       }, { status: 404 });
     }
     
-    // Check if user has already joined the battle
+    // Check if user has already joined the battle, if not, join them automatically
     const isParticipant = currentBattle.participants.some((p: { user: { address: string } }) => p.user.address === userAddress);
     if (!isParticipant) {
-      console.log(`❌ User ${userAddress} attempted to submit cast without joining battle`);
-      return NextResponse.json({ 
-        error: 'You must join the battle before submitting arguments' 
-      }, { status: 403 });
+      console.log(`🔄 User ${userAddress} not yet joined battle, joining automatically...`);
+      const joinSuccess = await battleManager.joinBattle(userAddress);
+      if (!joinSuccess) {
+        console.log(`❌ Failed to join user ${userAddress} to battle`);
+        return NextResponse.json({ 
+          error: 'Failed to join battle' 
+        }, { status: 500 });
+      }
+      console.log(`✅ User ${userAddress} automatically joined battle`);
     }
     
     // Create the cast

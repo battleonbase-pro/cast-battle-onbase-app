@@ -201,6 +201,7 @@
   color: #1e293b;
   margin: 0 0 8px 0;
   line-height: 1.4;
+  text-align: left;
 }
 
 .previewDescription {
@@ -212,6 +213,7 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-align: left;
 }
 
 .previewStats {
@@ -262,6 +264,57 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* Error Display */
+.errorContainer {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 16px;
+  animation: slideInUp 0.3s ease-out;
+}
+
+.errorMessage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.errorIcon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.errorText {
+  color: #dc2626;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.dismissButton {
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.dismissButton:hover {
+  background: #b91c1c;
+  transform: translateY(-1px);
+}
+
+.dismissButton:active {
+  transform: translateY(0);
 }
 
 /* Animations */

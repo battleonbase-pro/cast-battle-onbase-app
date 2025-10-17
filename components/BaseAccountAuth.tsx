@@ -1,11 +1,11 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { SignInWithBaseButton } from '@base-org/account-ui/react';
-import { baseAccountAuthService } from '../lib/services/base-account-auth-service';
+import { baseAccountAuthService, BaseAccountUser } from '../lib/services/base-account-auth-service';
 import styles from './BaseAccountAuth.module.css';
 
 interface BaseAccountAuthProps {
-  onAuthSuccess: (user: any) => void;
+  onAuthSuccess: (user: BaseAccountUser | null) => void;
   onAuthError: (error: string) => void;
 }
 
@@ -20,12 +20,9 @@ interface BattlePreview {
 }
 
 export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAccountAuthProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isJoined, setIsJoined] = useState(false);
-  const [isCheckingJoinStatus, setIsCheckingJoinStatus] = useState(false);
   const [battlePreview, setBattlePreview] = useState<BattlePreview | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
+  const [error, setError] = useState<string | null>(null);
 
   // Fetch battle preview for marketing
   const fetchBattlePreview = async () => {
@@ -94,7 +91,6 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
   };
 
   const checkJoinStatus = async () => {
-    setIsCheckingJoinStatus(true);
     try {
       const response = await fetch('/api/battle/current');
       if (response.ok) {
@@ -104,141 +100,49 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
           const userAddress = baseAccountAuthService.getCurrentUser()?.address;
           if (userAddress && battleData.battle.participants) {
             const isParticipant = battleData.battle.participants.some(
-              (p: any) => p.user?.address?.toLowerCase() === userAddress.toLowerCase()
+              (p: { user?: { address?: string } }) => p.user?.address?.toLowerCase() === userAddress.toLowerCase()
             );
             console.log('🔍 Checking join status:', {
               userAddress,
-              participants: battleData.battle.participants.map((p: any) => p.user?.address),
+              participants: battleData.battle.participants.map((p: { user?: { address?: string } }) => p.user?.address),
               isParticipant
             });
-            setIsJoined(isParticipant);
             if (isParticipant) {
-              // User is already joined, automatically show debate UI
-              console.log('✅ User already joined, showing debate UI');
-              onAuthSuccess(baseAccountAuthService.getCurrentUser());
+              // User is already joined, log this for debugging
+              console.log('✅ User already joined the current battle');
+            } else {
+              console.log('ℹ️ User is not yet joined to the current battle');
             }
           }
         }
       }
     } catch (error) {
       console.error('Error checking join status:', error);
-    } finally {
-      setIsCheckingJoinStatus(false);
     }
   };
 
   const handleSignInWithBase = async () => {
-    setIsLoading(true);
+    setError(null); // Clear any previous errors
     try {
       const result = await baseAccountAuthService.signInWithBase();
       if (result.success && result.user) {
-        setIsAuthenticated(true);
         // Check if user is already joined after authentication
         await checkJoinStatus();
-        // Don't call onAuthSuccess immediately - wait for join status check
+        // Always call onAuthSuccess after successful authentication
+        console.log('✅ Authentication successful, calling onAuthSuccess');
+        onAuthSuccess(result.user);
       } else {
-        onAuthError(result.error || 'Authentication failed');
+        const errorMessage = result.error || 'Authentication failed';
+        setError(errorMessage);
+        onAuthError(errorMessage);
       }
-    } catch (error: any) {
-      onAuthError(error.message || 'Authentication failed');
-    } finally {
-      setIsLoading(false);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
+      setError(errorMessage);
+      onAuthError(errorMessage);
     }
   };
 
-  const handleJoinBattle = async () => {
-    setIsLoading(true);
-    try {
-      const userAddress = baseAccountAuthService.getCurrentUser()?.address;
-      if (!userAddress) {
-        onAuthError('User not authenticated');
-        return;
-      }
-
-      const response = await fetch('/api/battle/join', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userAddress })
-      });
-
-      if (response.ok) {
-        console.log('✅ Successfully joined battle');
-        setIsJoined(true);
-        onAuthSuccess(baseAccountAuthService.getCurrentUser());
-      } else {
-        const errorData = await response.json();
-        console.log('⚠️ Join battle response:', errorData);
-        
-        if (errorData.error?.includes('already joined')) {
-          // User is already joined, just show the debate UI
-          console.log('✅ User already joined, showing debate UI');
-          setIsJoined(true);
-          onAuthSuccess(baseAccountAuthService.getCurrentUser());
-        } else {
-          onAuthError(errorData.error || 'Failed to join battle');
-        }
-      }
-    } catch (error: any) {
-      console.error('❌ Error joining battle:', error);
-      onAuthError(error.message || 'Failed to join battle');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSignOut = async () => {
-    try {
-      await baseAccountAuthService.signOut();
-      setIsAuthenticated(false);
-      onAuthSuccess(null);
-    } catch (error: any) {
-      onAuthError(error.message || 'Sign out failed');
-    }
-  };
-
-  if (isAuthenticated && !isJoined) {
-    return (
-      <div className={styles.authContainer}>
-        <div className={styles.authContent}>
-          {/* NewsCast Branding */}
-          <div className={styles.brandingSection}>
-            <h1 className={styles.brandTitle}>
-              <span className={styles.baseText}>NewsCast</span> 
-              <span className={styles.debateContainer}>
-                <span className={styles.betaLabel}>Beta</span>
-                <span className={styles.debateText}>Debate</span>
-              </span>
-            </h1>
-            <h2 className={styles.brandSubtitle}>
-              AI-Powered News Debates
-            </h2>
-            <p className={styles.brandDescription}>
-              Ready to join the current debate? Click below to participate!
-            </p>
-          </div>
-
-          {/* Join Battle Section */}
-          <div className={styles.authSection}>
-            <button
-              onClick={handleJoinBattle}
-              disabled={isLoading || isCheckingJoinStatus}
-              className={styles.signInButton}
-            >
-              {isLoading ? 'Joining...' : isCheckingJoinStatus ? 'Checking...' : 'Join News Debate'}
-            </button>
-            <button
-              onClick={handleSignOut}
-              className={styles.signOutButton}
-            >
-              Sign Out
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={styles.authContainer}>
@@ -306,8 +210,23 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
           <SignInWithBaseButton
             colorScheme="light"
             onClick={handleSignInWithBase}
-            disabled={isLoading}
           />
+          
+          {/* Error Display */}
+          {error && (
+            <div className={styles.errorContainer}>
+              <div className={styles.errorMessage}>
+                <span className={styles.errorIcon}>⚠️</span>
+                <span className={styles.errorText}>{error}</span>
+              </div>
+              <button 
+                onClick={() => setError(null)} 
+                className={styles.dismissButton}
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

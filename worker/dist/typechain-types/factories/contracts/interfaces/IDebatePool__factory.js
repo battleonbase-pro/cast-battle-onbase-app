@@ -1,0 +1,277 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.IDebatePool__factory = void 0;
+const ethers_1 = require("ethers");
+const _abi = [
+    {
+        anonymous: false,
+        inputs: [
+            {
+                indexed: true,
+                internalType: "uint256",
+                name: "debateId",
+                type: "uint256",
+            },
+            {
+                indexed: false,
+                internalType: "string",
+                name: "topic",
+                type: "string",
+            },
+            {
+                indexed: false,
+                internalType: "uint256",
+                name: "entryFee",
+                type: "uint256",
+            },
+        ],
+        name: "DebateCreated",
+        type: "event",
+    },
+    {
+        anonymous: false,
+        inputs: [
+            {
+                indexed: true,
+                internalType: "address",
+                name: "to",
+                type: "address",
+            },
+            {
+                indexed: false,
+                internalType: "uint256",
+                name: "amount",
+                type: "uint256",
+            },
+        ],
+        name: "FundsWithdrawn",
+        type: "event",
+    },
+    {
+        anonymous: false,
+        inputs: [
+            {
+                indexed: true,
+                internalType: "uint256",
+                name: "debateId",
+                type: "uint256",
+            },
+            {
+                indexed: true,
+                internalType: "address",
+                name: "participant",
+                type: "address",
+            },
+        ],
+        name: "ParticipantJoined",
+        type: "event",
+    },
+    {
+        anonymous: false,
+        inputs: [
+            {
+                indexed: true,
+                internalType: "uint256",
+                name: "debateId",
+                type: "uint256",
+            },
+            {
+                indexed: true,
+                internalType: "address",
+                name: "winner",
+                type: "address",
+            },
+            {
+                indexed: false,
+                internalType: "uint256",
+                name: "prize",
+                type: "uint256",
+            },
+        ],
+        name: "WinnerDeclared",
+        type: "event",
+    },
+    {
+        inputs: [
+            {
+                internalType: "string",
+                name: "topic",
+                type: "string",
+            },
+            {
+                internalType: "uint256",
+                name: "entryFee",
+                type: "uint256",
+            },
+            {
+                internalType: "uint256",
+                name: "maxParticipants",
+                type: "uint256",
+            },
+            {
+                internalType: "uint256",
+                name: "duration",
+                type: "uint256",
+            },
+        ],
+        name: "createDebate",
+        outputs: [
+            {
+                internalType: "uint256",
+                name: "",
+                type: "uint256",
+            },
+        ],
+        stateMutability: "nonpayable",
+        type: "function",
+    },
+    {
+        inputs: [
+            {
+                components: [
+                    {
+                        internalType: "uint256",
+                        name: "debateId",
+                        type: "uint256",
+                    },
+                    {
+                        internalType: "address",
+                        name: "winner",
+                        type: "address",
+                    },
+                    {
+                        internalType: "uint256",
+                        name: "timestamp",
+                        type: "uint256",
+                    },
+                    {
+                        internalType: "bytes",
+                        name: "signature",
+                        type: "bytes",
+                    },
+                ],
+                internalType: "struct IDebatePool.WinnerResult",
+                name: "result",
+                type: "tuple",
+            },
+        ],
+        name: "declareWinner",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function",
+    },
+    {
+        inputs: [],
+        name: "getActiveDebates",
+        outputs: [
+            {
+                internalType: "uint256[]",
+                name: "",
+                type: "uint256[]",
+            },
+        ],
+        stateMutability: "view",
+        type: "function",
+    },
+    {
+        inputs: [
+            {
+                internalType: "uint256",
+                name: "debateId",
+                type: "uint256",
+            },
+        ],
+        name: "getDebate",
+        outputs: [
+            {
+                components: [
+                    {
+                        internalType: "uint256",
+                        name: "id",
+                        type: "uint256",
+                    },
+                    {
+                        internalType: "string",
+                        name: "topic",
+                        type: "string",
+                    },
+                    {
+                        internalType: "uint256",
+                        name: "entryFee",
+                        type: "uint256",
+                    },
+                    {
+                        internalType: "uint256",
+                        name: "maxParticipants",
+                        type: "uint256",
+                    },
+                    {
+                        internalType: "uint256",
+                        name: "startTime",
+                        type: "uint256",
+                    },
+                    {
+                        internalType: "uint256",
+                        name: "endTime",
+                        type: "uint256",
+                    },
+                    {
+                        internalType: "address[]",
+                        name: "participants",
+                        type: "address[]",
+                    },
+                    {
+                        internalType: "address",
+                        name: "winner",
+                        type: "address",
+                    },
+                    {
+                        internalType: "bool",
+                        name: "isActive",
+                        type: "bool",
+                    },
+                    {
+                        internalType: "bool",
+                        name: "isCompleted",
+                        type: "bool",
+                    },
+                ],
+                internalType: "struct IDebatePool.Debate",
+                name: "",
+                type: "tuple",
+            },
+        ],
+        stateMutability: "view",
+        type: "function",
+    },
+    {
+        inputs: [
+            {
+                internalType: "uint256",
+                name: "debateId",
+                type: "uint256",
+            },
+        ],
+        name: "joinDebate",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function",
+    },
+    {
+        inputs: [],
+        name: "withdrawFunds",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function",
+    },
+];
+class IDebatePool__factory {
+    static createInterface() {
+        return new ethers_1.Interface(_abi);
+    }
+    static connect(address, runner) {
+        return new ethers_1.Contract(address, _abi, runner);
+    }
+}
+exports.IDebatePool__factory = IDebatePool__factory;
+IDebatePool__factory.abi = _abi;
