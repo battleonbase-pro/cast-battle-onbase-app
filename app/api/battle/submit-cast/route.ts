@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BattleManagerDB } from '@/lib/services/battle-manager-db';
+import { DebatePaymentFlowService } from '@/lib/services/debate-payment-flow-service';
 
 // Force Node.js runtime for battle management
 export const runtime = 'nodejs';
+
+// Debate ID mapping - in production, this should come from database
+const DEBATE_ID_MAPPING = {
+  // Map battle IDs to on-chain debate IDs
+  // For now, we'll use debate ID 2 which has 1 USDC entry fee
+  default: 2
+};
 
 export async function GET(_request: NextRequest) {
   try {
@@ -50,7 +58,7 @@ export async function POST(request: NextRequest) {
   
   try {
     const body = await request.json();
-    const { userAddress: address, content, side } = body;
+    const { userAddress: address, content, side, transactionId } = body;
     userAddress = address;
     
     if (!userAddress || !content || !side) {
@@ -83,15 +91,46 @@ export async function POST(request: NextRequest) {
     
     const battleManager = await BattleManagerDB.getInstance();
     
-    // Check if user is a participant in the current battle
+    // Get current battle
     const currentBattle = await battleManager.getCurrentBattleSafe();
     if (!currentBattle) {
       return NextResponse.json({ 
         error: 'No active battle available' 
       }, { status: 404 });
     }
+
+    // Get debate ID for this battle
+    const debateId = currentBattle.debateId || DEBATE_ID_MAPPING.default;
     
-    // Check if user has already joined the battle, if not, join them automatically
+    // Initialize payment flow service
+    const paymentFlowService = new DebatePaymentFlowService(debateId);
+    
+    // If transaction ID is provided, verify the payment first
+    if (transactionId) {
+      console.log(`🔍 Verifying payment for transaction: ${transactionId}`);
+      const paymentResult = await paymentFlowService.checkExistingPayment(transactionId, userAddress);
+      
+      if (!paymentResult.success) {
+        return NextResponse.json({ 
+          error: paymentResult.error || 'Payment verification failed',
+          requiresPayment: true
+        }, { status: 402 });
+      }
+      console.log(`✅ Payment verified successfully for transaction: ${transactionId}`);
+    } else {
+      // No transaction ID provided, check if user has already paid on-chain
+      console.log(`💰 No transaction ID provided, checking if user has already paid on-chain...`);
+      const canParticipate = await paymentFlowService.canParticipate(userAddress);
+      if (!canParticipate.canParticipate) {
+        return NextResponse.json({ 
+          error: canParticipate.reason || 'Payment required to submit cast',
+          requiresPayment: true
+        }, { status: 402 }); // 402 Payment Required
+      }
+      console.log(`✅ User has already paid on-chain for this debate`);
+    }
+    
+    // Check if user is already a participant in the current battle
     const isParticipant = currentBattle.participants.some((p: { user: { address: string } }) => p.user.address === userAddress);
     if (!isParticipant) {
       console.log(`🔄 User ${userAddress} not yet joined battle, joining automatically...`);
@@ -105,11 +144,25 @@ export async function POST(request: NextRequest) {
       console.log(`✅ User ${userAddress} automatically joined battle`);
     }
     
+    // Check if user has already submitted a cast for this battle
+    const db = await import('@/lib/services/database').then(m => m.default);
+    const existingCasts = await db.getCastsForBattle(currentBattle.id);
+    const userHasSubmitted = existingCasts.some((cast: any) => 
+      cast.user?.address?.toLowerCase() === userAddress.toLowerCase()
+    );
+    
+    if (userHasSubmitted) {
+      console.log(`❌ User ${userAddress} has already submitted a cast for this battle`);
+      return NextResponse.json({ 
+        error: 'You have already submitted an argument for this debate. Only one submission per debate is allowed.',
+        alreadySubmitted: true
+      }, { status: 409 }); // 409 Conflict
+    }
+    
     // Create the cast
     const cast = await battleManager.createCast(userAddress, content.trim(), side);
     
     // Award participation points (10 points for submitting a cast)
-    const db = await import('@/lib/services/database').then(m => m.default);
     const userPoints = await db.awardParticipationPoints(userAddress, 10);
     
     // Log user submitting cast

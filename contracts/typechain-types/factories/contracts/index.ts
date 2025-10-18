@@ -3,3 +3,6 @@
 /* eslint-disable */
 export * as interfaces from "./interfaces";
 export { DebatePool__factory } from "./DebatePool__factory";
+export { DebatePoolV2__factory } from "./DebatePoolV2__factory";
+export { EmergencyUSDCWithdrawer__factory } from "./EmergencyUSDCWithdrawer__factory";
+export { MockERC20__factory } from "./MockERC20__factory";

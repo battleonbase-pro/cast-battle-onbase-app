@@ -11,8 +11,8 @@ interface IDebatePool {
         string topic;
         uint256 entryFee;
         uint256 maxParticipants;
-        uint256 startTime;
-        uint256 endTime;
+        uint256 startTime;    // UTC timestamp (seconds since epoch)
+        uint256 endTime;      // UTC timestamp (seconds since epoch)
         address[] participants;
         address winner;
         bool isActive;

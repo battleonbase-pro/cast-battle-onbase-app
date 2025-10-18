@@ -364,6 +364,12 @@ export class DatabaseService {
       where: { battleId },
       include: {
         user: true,
+        likes: true, // Include likes for like count
+        _count: {
+          select: {
+            likes: true // Get like count
+          }
+        }
       },
       orderBy: {
         createdAt: 'desc',

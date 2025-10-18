@@ -12,6 +12,10 @@
  * - Fallback to interval-based checking if needed
  */
 
+// Load environment variables first
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { BattleManagerDB } from './lib/services/battle-manager-db';
 import { addTimerConnection, removeTimerConnectionById, broadcastTimerUpdate, broadcastBattleTransition } from './lib/services/timer-broadcaster';
@@ -237,7 +241,7 @@ class BattleCompletionWorker {
       clearInterval(this.countdownTimer);
     }
     
-    // Set up countdown timer to broadcast updates every second
+    // Set up countdown timer to broadcast updates every 5 seconds
     this.countdownTimer = setInterval(async () => {
       try {
         const timingInfo = await this.getBattleTimingInfo();
@@ -249,7 +253,7 @@ class BattleCompletionWorker {
       } catch (error) {
         console.error('Error in countdown timer:', error);
       }
-    }, 1000); // Every second
+    }, 5000); // Every 5 seconds
     
     console.log('✅ Continuous countdown timer started');
   }

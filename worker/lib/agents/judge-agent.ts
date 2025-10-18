@@ -434,15 +434,17 @@ Calculate weighted scores and select the winner. Provide detailed scoring breakd
         qualityScore: this.calculateQualityScore(cast.content),
         relevanceScore: this.calculateRelevanceScore(cast.content, battleData),
         engagementScore: this.calculateEngagementScore(cast.content),
+        likeScore: this.calculateLikeScore(cast._count?.likes || 0), // Add like score
         totalScore: 0 // Will be calculated below
       }));
 
-      // Step 2: Calculate weighted total scores
+      // Step 2: Calculate weighted total scores (updated weights to include likes)
       castsWithScores.forEach(cast => {
         cast.totalScore = (
-          cast.qualityScore * 0.4 +
-          cast.relevanceScore * 0.3 +
-          cast.engagementScore * 0.2 +
+          cast.qualityScore * 0.35 +      // Reduced from 0.4
+          cast.relevanceScore * 0.25 +    // Reduced from 0.3
+          cast.engagementScore * 0.15 +   // Reduced from 0.2
+          cast.likeScore * 0.15 +         // NEW: Like count weight
           this.calculateOriginalityScore(cast.content, casts) * 0.1
         );
       });
@@ -497,7 +499,9 @@ Calculate weighted scores and select the winner. Provide detailed scoring breakd
         winningSide,
         top3Count: top3.length,
         winnerId: winner.id,
-        winnerScore: winner.totalScore.toFixed(2)
+        winnerScore: winner.totalScore.toFixed(2),
+        winnerLikeCount: winner._count?.likes || 0,
+        winnerLikeScore: winner.likeScore.toFixed(2)
       });
 
       return {
@@ -511,6 +515,8 @@ Calculate weighted scores and select the winner. Provide detailed scoring breakd
           top3Candidates: top3.map(c => ({
             id: c.id,
             score: c.totalScore.toFixed(2),
+            likeCount: c._count?.likes || 0,
+            likeScore: c.likeScore.toFixed(2),
             content: c.content.substring(0, 50) + '...'
           }))
         }
@@ -616,6 +622,17 @@ Calculate weighted scores and select the winner. Provide detailed scoring breakd
     if (hasAction) score += 1;
 
     return Math.min(Math.max(score, 1), 10);
+  }
+
+  // Calculate like score based on like count
+  calculateLikeScore(likeCount) {
+    // Normalize like count to 0-10 scale
+    // Using logarithmic scaling to prevent extremely popular casts from dominating
+    if (likeCount === 0) return 5; // Neutral score for no likes
+    
+    // Logarithmic scaling: log(likeCount + 1) * 2, capped at 10
+    const logScore = Math.log(likeCount + 1) * 2;
+    return Math.min(logScore, 10);
   }
 
   // Non-LLM Originality Score Calculation

@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import BaseAccountAuth from '../components/BaseAccountAuth';
+import { BasePayButton } from '../components/BasePayButton';
+import LikeButton from '../components/LikeButton';
 import { baseAccountAuthService, BaseAccountUser } from '../lib/services/base-account-auth-service';
 import {
   Chart as ChartJS,
@@ -15,6 +17,12 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import styles from "./page.module.css";
+
+// Utility function for consistent time formatting
+const formatTimeForDisplay = (utcTimestamp: string): string => {
+  // Convert UTC timestamp to local time for user display
+  return new Date(utcTimestamp).toLocaleDateString();
+};
 
 // Register Chart.js components
 ChartJS.register(
@@ -149,6 +157,11 @@ export default function Home() {
   // Card interaction state
   const [hoveredCard, setHoveredCard] = useState<'SUPPORT' | 'OPPOSE' | null>(null);
   
+  // Payment state
+  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'completed' | 'failed'>('idle');
+  const [paymentTransactionId, setPaymentTransactionId] = useState<string | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  
   // Card interaction handlers
   const handleCardHover = (side: 'SUPPORT' | 'OPPOSE' | null) => {
     setHoveredCard(side);
@@ -165,13 +178,21 @@ export default function Home() {
   const handleBackToSelection = () => {
     setShowForm(false);
     setSelectedSide(null);
-    setCastContent('');
+    setCastContent(''); // Clear content when going back
+    setPaymentStatus('idle');
+    setPaymentTransactionId(null);
+    setPaymentError(null);
   };
   
   // SSE and polling state
   const [isMobile, setIsMobile] = useState(false);
   const [sseConnection, setSseConnection] = useState<EventSource | null>(null);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+
+  // Debug: Log when hasSubmittedCast changes
+  useEffect(() => {
+    console.log('🔄 hasSubmittedCast state changed:', hasSubmittedCast);
+  }, [hasSubmittedCast]);
 
   // Base Account authentication initialization
   useEffect(() => {
@@ -190,7 +211,7 @@ export default function Home() {
     initializeAuth();
   }, []);
 
-  // Countdown timer effect
+  // Countdown timer effect - updates every second locally, syncs with server every 5 seconds
   useEffect(() => {
     if (!battleEndTime) return;
 
@@ -203,7 +224,7 @@ export default function Home() {
     // Update immediately
     updateCountdown();
 
-    // Set up interval to update every second
+    // Set up interval to update every second for smooth countdown
     const interval = setInterval(updateCountdown, 1000);
 
     return () => clearInterval(interval);
@@ -222,6 +243,24 @@ export default function Home() {
             // Set battle end time for countdown timer
             const endTime = new Date(data.battle.endTime).getTime();
             setBattleEndTime(endTime);
+            
+            // Reset payment and submission states for new battle
+            setHasSubmittedCast(false);
+            setPaymentStatus('idle');
+            setPaymentError(null);
+            setPaymentTransactionId(null);
+            setCastContent('');
+            setError(null);
+            
+            // Check if user has already submitted a cast for this battle
+            if (baseAccountUser && data.battle.casts) {
+              const userHasSubmitted = data.battle.casts.some((cast: any) => 
+                cast.user?.address?.toLowerCase() === baseAccountUser.address.toLowerCase()
+              );
+              if (userHasSubmitted) {
+                setHasSubmittedCast(true);
+              }
+            }
           }
         }
       } catch (error) {
@@ -347,65 +386,227 @@ export default function Home() {
     }
   }, []);
 
-  // Submit cast
+  // Submit cast with Base Pay SDK integration
   const submitCast = async () => {
     if (!baseAccountUser || !castContent.trim()) return;
-    
+
+    let castSubmitted = false; // Flag to track if cast was submitted successfully
+
     try {
       setSubmittingCast(true);
-      const response = await fetch('/api/battle/submit-cast', {
+      
+      // First, check if payment is required by trying to submit without payment
+      let response = await fetch('/api/battle/submit-cast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userAddress: baseAccountUser.address,
           content: castContent.trim(),
-          side: castSide
+          side: castSide,
+          transactionId: null // No payment initially
         })
       });
       
-      const data = await response.json();
+      let data = await response.json();
       
-      if (data.success) {
-        setHasSubmittedCast(true);
-        setCastContent('');
+      // If payment is required, process payment first using Base Pay SDK
+      if (data.requiresPayment && response.status === 402) {
+        console.log('💰 Payment required, processing Base Pay...');
+        setPaymentStatus('processing');
+        setPaymentError(null);
         
-        // Update points and show animation
-        if (data.points !== undefined) {
-          setUserPoints(data.points);
-          setPointsAnimation(true);
-          setTimeout(() => setPointsAnimation(false), 2000);
-        }
-        
-        // Refresh casts immediately
-        await fetchCasts();
-        
-        // Update sentiment data
-        const support = casts.filter(cast => cast.side === 'SUPPORT').length + 1; // +1 for new cast
-        const oppose = casts.filter(cast => cast.side === 'OPPOSE').length + (castSide === 'OPPOSE' ? 1 : 0);
-        const total = support + oppose;
-        
-        if (total > 0) {
-          const newSentiment = {
-            support,
-            oppose,
-            supportPercent: Math.round((support / total) * 100),
-            opposePercent: Math.round((oppose / total) * 100)
-          };
+        try {
+          // Import Base Pay SDK dynamically to avoid SSR issues
+          const { pay, getPaymentStatus } = await import('@base-org/account');
           
-          setSentimentData(newSentiment);
-          setSentimentHistory(prev => [...prev.slice(-19), {
-            timestamp: Date.now(),
-            ...newSentiment
-          }]);
+          // Get contract address from environment
+          const contractAddress = process.env.NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS;
+          if (!contractAddress) {
+            throw new Error('Contract address not configured');
+          }
+          
+          // Determine if we're on testnet
+          const isTestnet = process.env.NEXT_PUBLIC_NETWORK === 'testnet' || 
+                           process.env.NODE_ENV === 'development';
+          
+          console.log('🔧 Base Pay Configuration:');
+          console.log(`   Amount: 1.00 USDC`);
+          console.log(`   To: ${contractAddress}`);
+          console.log(`   Testnet: ${isTestnet}`);
+          
+          // Trigger Base Pay - this will show the wallet popup
+          const payment = await pay({
+            amount: '1.00', // 1 USDC
+            to: contractAddress as `0x${string}`,
+            testnet: isTestnet
+          });
+          
+          console.log('✅ Base Pay initiated:', payment.id);
+          
+          // Poll for payment status until completed
+          let paymentCompleted = false;
+          let attempts = 0;
+          const maxAttempts = 30; // 30 attempts = 30 seconds max
+          
+          while (!paymentCompleted && attempts < maxAttempts) {
+            attempts++;
+            console.log(`🔍 Checking payment status (attempt ${attempts}/${maxAttempts})...`);
+            
+            const { status } = await getPaymentStatus({
+              id: payment.id,
+              testnet: isTestnet // Must match the testnet setting from pay()
+            });
+            
+            console.log(`📊 Payment status: ${status}`);
+            
+            if (status === 'completed') {
+              paymentCompleted = true;
+              console.log('🎉 Base Pay payment settled:', payment.id);
+              setPaymentTransactionId(payment.id);
+              setPaymentStatus('completed');
+              
+              // Automatically submit the cast with the payment transaction ID
+              console.log('📝 Auto-submitting argument after successful payment...');
+              response = await fetch('/api/battle/submit-cast', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  userAddress: baseAccountUser.address,
+                  content: castContent.trim(),
+                  side: castSide,
+                  transactionId: payment.id
+                })
+              });
+              
+              data = await response.json();
+              
+              // If cast submission successful, mark as submitted
+              if (data.success) {
+                console.log('✅ Argument submitted successfully after payment');
+                setHasSubmittedCast(true);
+                setCastContent('');
+                castSubmitted = true; // Mark that cast was submitted
+                
+                // Force UI update after state changes
+                setTimeout(() => {
+                  console.log('🔄 Forcing UI update after successful submission');
+                  setSubmittingCast(false);
+                }, 200);
+                
+                // Update points and show animation
+                if (data.points !== undefined) {
+                  setUserPoints(data.points);
+                  setPointsAnimation(true);
+                  setTimeout(() => setPointsAnimation(false), 2000);
+                }
+                
+                // Refresh casts immediately
+                await fetchCasts();
+                
+                // Update sentiment data
+                const support = casts.filter(cast => cast.side === 'SUPPORT').length + 1; // +1 for new cast
+                const oppose = casts.filter(cast => cast.side === 'OPPOSE').length + (castSide === 'OPPOSE' ? 1 : 0);
+                const total = support + oppose;
+                
+                if (total > 0) {
+                  const newSentiment = {
+                    support,
+                    oppose,
+                    supportPercent: Math.round((support / total) * 100),
+                    opposePercent: Math.round((oppose / total) * 100)
+                  };
+                  
+                  setSentimentData(newSentiment);
+                  setSentimentHistory(prev => [...prev.slice(-19), {
+                    timestamp: Date.now(),
+                    ...newSentiment
+                  }]);
+                }
+              } else {
+                // Handle cast submission error
+                console.error('❌ Failed to submit argument after payment:', data.error);
+                setError(data.error || 'Failed to submit argument after payment');
+              }
+            } else if (status === 'failed' || status === 'cancelled') {
+              setPaymentError(`Payment ${status}`);
+              setPaymentStatus('failed');
+              console.error(`❌ Base Pay ${status}:`, payment.id);
+              return; // Stop here if payment failed
+            } else {
+              // Status is 'pending' or other - wait and try again
+              console.log(`⏳ Payment still ${status}, waiting 1 second...`);
+              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+            }
+          }
+          
+          if (!paymentCompleted) {
+            setPaymentError('Payment timeout - please try again');
+            setPaymentStatus('failed');
+            console.error('❌ Base Pay timeout after 30 seconds');
+            return;
+          }
+        } catch (paymentError) {
+          const errorMessage = paymentError instanceof Error ? paymentError.message : 'Base Pay failed';
+          setPaymentError(errorMessage);
+          setPaymentStatus('failed');
+          console.error('❌ Base Pay error:', errorMessage);
+          return; // Stop here if payment failed
         }
-      } else {
-        setError(data.error);
+      }
+      
+      // Process the final response (only if not already processed in payment block)
+      if (!paymentStatus || paymentStatus !== 'completed') {
+        if (data.success) {
+          setHasSubmittedCast(true);
+          setCastContent('');
+          
+          // Update points and show animation
+          if (data.points !== undefined) {
+            setUserPoints(data.points);
+            setPointsAnimation(true);
+            setTimeout(() => setPointsAnimation(false), 2000);
+          }
+          
+          // Refresh casts immediately
+          await fetchCasts();
+          
+          // Update sentiment data
+          const support = casts.filter(cast => cast.side === 'SUPPORT').length + 1; // +1 for new cast
+          const oppose = casts.filter(cast => cast.side === 'OPPOSE').length + (castSide === 'OPPOSE' ? 1 : 0);
+          const total = support + oppose;
+          
+          if (total > 0) {
+            const newSentiment = {
+              support,
+              oppose,
+              supportPercent: Math.round((support / total) * 100),
+              opposePercent: Math.round((oppose / total) * 100)
+            };
+            
+            setSentimentData(newSentiment);
+            setSentimentHistory(prev => [...prev.slice(-19), {
+              timestamp: Date.now(),
+              ...newSentiment
+            }]);
+          }
+        } else {
+          // Check if user has already submitted
+          if (data.alreadySubmitted) {
+            setHasSubmittedCast(true);
+            setError('You have already submitted an argument for this debate.');
+          } else {
+            setError(data.error);
+          }
+        }
       }
     } catch (error) {
       console.error('Failed to submit cast:', error);
       setError('Failed to submit cast. Please try again.');
     } finally {
-      setSubmittingCast(false);
+      // Only stop loading if cast wasn't already submitted successfully
+      if (!castSubmitted) {
+        setSubmittingCast(false);
+      }
     }
   };
 
@@ -458,6 +659,11 @@ export default function Home() {
             if (baseAccountUser?.address) {
               await fetchUserPoints(baseAccountUser.address);
             }
+            // Sync battle timing on mobile every 30 seconds
+            if (currentBattle?.endTime) {
+              const serverEndTime = new Date(currentBattle.endTime).getTime();
+              setBattleEndTime(serverEndTime);
+            }
           } catch (error) {
             console.error('Polling error:', error);
           }
@@ -495,6 +701,11 @@ export default function Home() {
                 break;
               case 'TIMER_UPDATE':
                 if (data.data.timeRemaining !== undefined) {
+                  // Sync with server time every 5 seconds to prevent drift
+                  if (data.data.endTime) {
+                    const serverEndTime = new Date(data.data.endTime).getTime();
+                    setBattleEndTime(serverEndTime);
+                  }
                   setTimeRemaining(data.data.timeRemaining);
                 }
                 break;
@@ -620,6 +831,7 @@ export default function Home() {
       await baseAccountAuthService.signOut();
       setIsAuthenticated(false);
       setBaseAccountUser(null);
+      setActiveTab('debate'); // Reset to debate tab on logout
       console.log('✅ Signed out successfully');
     } catch (error: any) {
       console.error('❌ Sign out error:', error);
@@ -640,6 +852,7 @@ export default function Home() {
                 console.log('🔐 User object:', user);
                 setBaseAccountUser(user);
                 setIsAuthenticated(true);
+                setActiveTab('debate'); // Reset to debate tab on login
                 console.log('✅ Base Account authentication successful');
                 
                 // Fetch user points immediately after authentication
@@ -648,6 +861,7 @@ export default function Home() {
               } else {
                 setBaseAccountUser(null);
                 setIsAuthenticated(false);
+                setActiveTab('debate'); // Reset to debate tab on sign out
                 console.log('✅ Base Account sign out successful');
               }
             }}
@@ -736,7 +950,14 @@ export default function Home() {
             <div className={styles.battleHeader}>
               <div className={styles.topicMeta}>
                 <span className={styles.topicCategory}>{currentBattle.category}</span>
-                <span className={styles.topicSource}>Source: {currentBattle.source}</span>
+                <a 
+                  href={currentBattle.sourceUrl || currentBattle.source} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className={styles.topicSource}
+                >
+                  {currentBattle.source}
+                </a>
                 {timeRemaining !== null && (
                   <span className={styles.timer}>
                     ⏰ {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
@@ -866,30 +1087,61 @@ export default function Home() {
                         ← Back
                       </button>
                       <h3 className={styles.formTitle}>
-                        {selectedSide === 'SUPPORT' ? '✅ Supporting' : '❌ Opposing'} the argument
+                        Submit Your Argument
                       </h3>
                     </div>
                     
                     {baseAccountUser ? (
                       <div className={styles.submitForm}>
-                        <textarea
-                          className={styles.argumentInput}
-                          placeholder="Your argument... (140 chars max)"
-                          value={castContent}
-                          onChange={(e) => setCastContent(e.target.value)}
-                          rows={3}
-                          maxLength={140}
-                        />
-                        <div className={styles.charCounter}>
-                          {castContent.length}/140 characters
-                        </div>
-                        <button
-                          onClick={submitCast}
-                          disabled={submittingCast || castContent.trim().length < 10 || castContent.trim().length > 140}
-                          className={styles.submitBtn}
-                        >
-                          {submittingCast ? 'Submitting...' : 'Submit Argument'}
-                        </button>
+                        {hasSubmittedCast ? (
+                          <div className={styles.alreadySubmitted}>
+                            <div className={styles.submittedIcon}>✅</div>
+                            <h3 className={styles.submittedTitle}>Argument Submitted</h3>
+                            <p className={styles.submittedMessage}>
+                              Thank you for participating in this debate! Your argument has been submitted successfully.
+                            </p>
+                          </div>
+                        ) : (
+                          <>
+                            {/* Argument Submission Form */}
+                            <textarea
+                              className={styles.argumentInput}
+                              placeholder="Your argument... (140 chars max)"
+                              value={castContent}
+                              onChange={(e) => setCastContent(e.target.value)}
+                              rows={3}
+                              maxLength={140}
+                            />
+                            <div className={styles.charCounter}>
+                              {castContent.length}/140 characters
+                            </div>
+                            
+                            {/* Single Payment Button with Dynamic States */}
+                            <BasePayButton
+                              onClick={submitCast}
+                              disabled={submittingCast || castContent.trim().length < 10 || castContent.trim().length > 140}
+                              loading={submittingCast}
+                              colorScheme="light"
+                            >
+                              {submittingCast 
+                                ? (paymentStatus === 'processing' ? 'Processing Payment...' : 'Submitting...')
+                                : 'Pay & Submit'
+                              }
+                            </BasePayButton>
+                            
+                            {/* Single Status Display - Only for errors */}
+                            {paymentStatus === 'failed' && (
+                              <div className={styles.statusDisplay}>
+                                <div className={styles.statusError}>
+                                  <span className={styles.errorIcon}>❌</span>
+                                  <p className={styles.errorText}>
+                                    {paymentError || 'Payment failed. Please try again.'}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     ) : (
                       <div className={styles.signInPrompt}>
@@ -916,6 +1168,15 @@ export default function Home() {
                           </span>
                         </div>
                         <div className={styles.argumentContent}>{cast.content}</div>
+                        <div className={styles.argumentActions}>
+                          <LikeButton
+                            castId={cast.id}
+                            userAddress={baseAccountUser?.address}
+                            onLikeChange={(likeCount, userLiked) => {
+                              console.log(`Cast ${cast.id} like count: ${likeCount}, user liked: ${userLiked}`);
+                            }}
+                          />
+                        </div>
                       </div>
                     ))
                   ) : (
@@ -933,7 +1194,8 @@ export default function Home() {
                       <div key={battle.id} className={styles.historyCard}>
                         <h3 className={styles.historyTitle}>{battle.title}</h3>
                         <span className={styles.historyDate}>
-                          {new Date(battle.createdAt).toLocaleDateString()}
+                          {/* Convert UTC timestamp to local time for display */}
+                          {formatTimeForDisplay(battle.createdAt)}
                         </span>
                         <div className={styles.historyStats}>
                           <span>{battle.participants} participants</span>

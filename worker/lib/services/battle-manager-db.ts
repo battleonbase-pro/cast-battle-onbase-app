@@ -262,7 +262,7 @@ export class BattleManagerDB {
 
       console.log(`New battle created: ${battle.id}`);
       console.log(`Battle topic: ${battle.title}`);
-      console.log(`Battle ends at: ${battle.endTime}`);
+      console.log(`Battle ends at: ${battle.endTime.toISOString()}`);
       if (debateId) {
         console.log(`🔗 Linked to on-chain debate ID: ${debateId}`);
       }

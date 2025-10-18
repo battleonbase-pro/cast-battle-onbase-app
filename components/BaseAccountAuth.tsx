@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { SignInWithBaseButton } from '@base-org/account-ui/react';
+import { SignInWithBaseButton } from './SignInWithBaseButton';
 import { baseAccountAuthService, BaseAccountUser } from '../lib/services/base-account-auth-service';
 import styles from './BaseAccountAuth.module.css';
 

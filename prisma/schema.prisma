@@ -18,6 +18,7 @@ model User {
   wins           BattleWin[]
   casts          Cast[]
   shareRewards   ShareReward[]
+  castLikes      CastLike[]
 
   @@map("users")
 }
@@ -31,6 +32,7 @@ model Battle {
   source           String
   sourceUrl        String?
   status           BattleStatus          @default(ACTIVE)
+  // Battle timing (all DateTime fields store UTC timestamps)
   startTime        DateTime
   endTime          DateTime
   durationHours    Float
@@ -67,20 +69,34 @@ model BattleParticipation {
 }
 
 model Cast {
-  id             String   @id @default(cuid())
+  id             String     @id @default(cuid())
   userId         String
   battleId       String
   content        String
   side           CastSide
   qualityScore   Int?
   relevanceScore Int?
-  isAppropriate  Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  battle         Battle   @relation(fields: [battleId], references: [id], onDelete: Cascade)
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isAppropriate  Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  battle         Battle     @relation(fields: [battleId], references: [id], onDelete: Cascade)
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes          CastLike[]
 
   @@map("casts")
+}
+
+model CastLike {
+  id       String   @id @default(cuid())
+  userId   String
+  castId   String
+  battleId String   // Denormalized for easier querying
+  createdAt DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cast     Cast     @relation(fields: [castId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, castId]) // One like per user per cast
+  @@map("cast_likes")
 }
 
 model BattleWin {

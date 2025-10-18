@@ -1,47 +1,47 @@
 import { ethers } from 'ethers';
 
-// Configuration for Base Sepolia
-const DEBATE_POOL_CONTRACT_ADDRESS = process.env.DEBATE_POOL_CONTRACT_ADDRESS || '0xD204b546020765994e8B9da58F76D9E85764a059';
-const ORACLE_PRIVATE_KEY = process.env.ORACLE_PRIVATE_KEY || '';
-const RPC_URL = process.env.BASE_SEPOLIA_RPC || 'https://sepolia.base.org';
-
 export class OnChainDebateService {
   private provider: ethers.JsonRpcProvider;
   private wallet: ethers.Wallet;
   private contract: any;
 
   constructor() {
+    // Get environment variables inside constructor to ensure they're loaded
+    const DEBATE_POOL_CONTRACT_ADDRESS = process.env.DEBATE_POOL_CONTRACT_ADDRESS || '0xD204b546020765994e8B9da58F76D9E85764a059';
+    const ORACLE_PRIVATE_KEY = process.env.ORACLE_PRIVATE_KEY || '';
+    const RPC_URL = process.env.BASE_SEPOLIA_RPC || 'https://sepolia.base.org';
+
     if (!ORACLE_PRIVATE_KEY || !DEBATE_POOL_CONTRACT_ADDRESS) {
       throw new Error('Oracle private key or contract address not configured');
     }
 
-           try {
-             // Standard approach for ethers.js v6 with networks that don't support ENS
-             // Use minimal network configuration to avoid any ENS resolution attempts
-             this.provider = new ethers.JsonRpcProvider(RPC_URL, {
-               chainId: 84532,
-               name: "base-sepolia"
-             });
-             
-             this.wallet = new ethers.Wallet(ORACLE_PRIVATE_KEY, this.provider);
-             
-             // Create contract directly with ABI instead of using factory to avoid ENS resolution
-             const contractABI = [
-               "function createDebate(string memory topic, uint256 entryFee, uint256 maxParticipants, uint256 durationSeconds) external returns (uint256)",
-               "function getDebate(uint256 debateId) external view returns (tuple(uint256 id, string topic, uint256 entryFee, uint256 maxParticipants, uint256 startTime, uint256 endTime, address[] participants, address winner, bool isActive, bool isCompleted))",
-               "function getActiveDebates() external view returns (uint256[])",
-               "event DebateCreated(uint256 indexed debateId, string topic, uint256 entryFee, uint256 maxParticipants, uint256 startTime, uint256 endTime)"
-             ];
-             
-             this.contract = new ethers.Contract(DEBATE_POOL_CONTRACT_ADDRESS, contractABI, this.wallet);
+    try {
+      // Standard approach for ethers.js v6 with networks that don't support ENS
+      // Use minimal network configuration to avoid any ENS resolution attempts
+      this.provider = new ethers.JsonRpcProvider(RPC_URL, {
+        chainId: 84532,
+        name: "base-sepolia"
+      });
+      
+      this.wallet = new ethers.Wallet(ORACLE_PRIVATE_KEY, this.provider);
+      
+      // Create contract directly with ABI instead of using factory to avoid ENS resolution
+      const contractABI = [
+        "function createDebate(string memory topic, uint256 entryFee, uint256 maxParticipants, uint256 durationSeconds) external returns (uint256)",
+        "function getDebate(uint256 debateId) external view returns (tuple(uint256 id, string topic, uint256 entryFee, uint256 maxParticipants, uint256 startTime, uint256 endTime, address[] participants, address winner, bool isActive, bool isCompleted))",
+        "function getActiveDebates() external view returns (uint256[])",
+        "event DebateCreated(uint256 indexed debateId, string topic, uint256 entryFee, uint256 maxParticipants, uint256 startTime, uint256 endTime)"
+      ];
+      
+      this.contract = new ethers.Contract(DEBATE_POOL_CONTRACT_ADDRESS, contractABI, this.wallet);
 
-             console.log(`🔗 OnChainDebateService initialized for contract: ${DEBATE_POOL_CONTRACT_ADDRESS}`);
-             console.log(`🔗 Oracle address: ${this.wallet.address}`);
-             console.log(`🔗 ENS disabled for Base Sepolia (not supported)`);
-           } catch (error) {
-             console.error(`⚠️ OnChainDebateService initialization failed:`, error);
-             throw error;
-           }
+      console.log(`🔗 OnChainDebateService initialized for contract: ${DEBATE_POOL_CONTRACT_ADDRESS}`);
+      console.log(`🔗 Oracle address: ${this.wallet.address}`);
+      console.log(`🔗 ENS disabled for Base Sepolia (not supported)`);
+    } catch (error) {
+      console.error(`⚠️ OnChainDebateService initialization failed:`, error);
+      throw error;
+    }
   }
 
   /**

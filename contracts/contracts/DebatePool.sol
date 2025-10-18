@@ -88,8 +88,8 @@ contract DebatePool is IDebatePool, ReentrancyGuard, Ownable, EIP712 {
         require(duration > 0, "DebatePool: Duration must be greater than 0");
 
         uint256 debateId = nextDebateId++;
-        uint256 startTime = block.timestamp;
-        uint256 endTime = startTime + duration;
+        uint256 startTime = block.timestamp;  // UTC timestamp (seconds since epoch)
+        uint256 endTime = startTime + duration; // UTC timestamp (seconds since epoch)
 
         debates[debateId] = Debate({
             id: debateId,

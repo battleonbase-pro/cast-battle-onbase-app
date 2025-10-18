@@ -2,3 +2,4 @@
 /* tslint:disable */
 /* eslint-disable */
 export { IDebatePool__factory } from "./IDebatePool__factory";
+export { IDebatePoolV2__factory } from "./IDebatePoolV2__factory";

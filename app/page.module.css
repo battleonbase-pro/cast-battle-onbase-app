@@ -748,14 +748,91 @@
   pointer-events: none;
 }
 
-/* Form container */
-.formContainer {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+/* Payment Section Styles */
+
+/* Already Submitted State */
+.alreadySubmitted {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 32px 24px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
   border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  margin-top: 20px;
+  border: 1px solid #0ea5e9;
+}
+
+.submittedIcon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+}
+
+.submittedTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #0c4a6e;
+  margin: 0 0 12px 0;
+}
+
+.submittedMessage {
+  font-size: 1rem;
+  color: #0369a1;
+  margin: 0 0 20px 0;
+  line-height: 1.5;
+}
+
+/* Single Status Display */
+.statusDisplay {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 8px;
+  text-align: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.statusSpinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e2e8f0;
+  border-top: 2px solid #0000ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 8px auto;
+}
+
+.statusText {
+  font-size: 0.9rem;
+  color: #374151;
+  margin: 0;
+  font-weight: 500;
+}
+
+.statusError {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.statusError .errorIcon {
+  font-size: 1.2rem;
+}
+
+.statusError .errorText {
+  font-size: 0.9rem;
+  color: #dc2626;
+  margin: 0;
+  font-weight: 500;
+}
+
+.retryButton:hover {
+  background: #b91c1c;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .formHeader {
@@ -1124,6 +1201,16 @@
   font-size: 0.875rem;
   color: #1a1a1a;
   line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.argumentActions {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  padding-top: 12px;
+  margin-top: 8px;
+  border-top: 1px solid #f0f2f5;
 }
 
 /* History Tab */

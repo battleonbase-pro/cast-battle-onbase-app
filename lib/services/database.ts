@@ -364,6 +364,12 @@ export class DatabaseService {
       where: { battleId },
       include: {
         user: true,
+        likes: true, // Include likes for like count
+        _count: {
+          select: {
+            likes: true // Get like count
+          }
+        }
       },
       orderBy: {
         createdAt: 'desc',
@@ -441,6 +447,115 @@ export class DatabaseService {
     } catch (error) {
       console.error('Error getting user points:', error);
       return 0;
+    }
+  }
+
+  // Cast Like Management
+  async likeCast(userAddress: string, castId: string): Promise<{ success: boolean; action: 'liked' | 'unliked'; likeCount: number; error?: string }> {
+    try {
+      // Find or create user
+      let user = await prisma.user.findUnique({
+        where: { address: userAddress }
+      });
+
+      if (!user) {
+        user = await prisma.user.create({
+          data: { address: userAddress }
+        });
+      }
+
+      // Get the cast to verify it exists and get battleId
+      const cast = await prisma.cast.findUnique({
+        where: { id: castId }
+      });
+
+      if (!cast) {
+        return { success: false, action: 'liked', likeCount: 0, error: 'Cast not found' };
+      }
+
+      // Check if user has already liked this cast
+      const existingLike = await prisma.castLike.findUnique({
+        where: {
+          userId_castId: {
+            userId: user.id,
+            castId: castId
+          }
+        }
+      });
+
+      if (existingLike) {
+        // Unlike: Remove the like
+        await prisma.castLike.delete({
+          where: {
+            userId_castId: {
+              userId: user.id,
+              castId: castId
+            }
+          }
+        });
+
+        // Get updated like count
+        const likeCount = await prisma.castLike.count({
+          where: { castId: castId }
+        });
+
+        console.log(`👎 User ${userAddress} unliked cast ${castId}`);
+        return { success: true, action: 'unliked', likeCount };
+      } else {
+        // Like: Create the like
+        await prisma.castLike.create({
+          data: {
+            userId: user.id,
+            castId: castId,
+            battleId: cast.battleId
+          }
+        });
+
+        // Get updated like count
+        const likeCount = await prisma.castLike.count({
+          where: { castId: castId }
+        });
+
+        console.log(`👍 User ${userAddress} liked cast ${castId}`);
+        return { success: true, action: 'liked', likeCount };
+      }
+    } catch (error) {
+      console.error('Error liking/unliking cast:', error);
+      return { success: false, action: 'liked', likeCount: 0, error: 'Failed to like/unlike cast' };
+    }
+  }
+
+  async getCastLikeStatus(castId: string, userAddress?: string): Promise<{ likeCount: number; userLiked: boolean }> {
+    try {
+      // Get like count
+      const likeCount = await prisma.castLike.count({
+        where: { castId: castId }
+      });
+
+      let userLiked = false;
+      if (userAddress) {
+        // Check if user has liked this cast
+        const user = await prisma.user.findUnique({
+          where: { address: userAddress }
+        });
+
+        if (user) {
+          const existingLike = await prisma.castLike.findUnique({
+            where: {
+              userId_castId: {
+                userId: user.id,
+                castId: castId
+              }
+            }
+          });
+          userLiked = !!existingLike;
+        }
+      }
+
+      return { likeCount, userLiked };
+    } catch (error) {
+      console.error('Error fetching like status:', error);
+      return { likeCount: 0, userLiked: false };
     }
   }
 

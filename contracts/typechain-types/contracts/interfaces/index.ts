@@ -2,3 +2,4 @@
 /* tslint:disable */
 /* eslint-disable */
 export type { IDebatePool } from "./IDebatePool";
+export type { IDebatePoolV2 } from "./IDebatePoolV2";
