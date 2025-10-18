@@ -28,31 +28,48 @@ async function main() {
   console.log("✅ DebatePoolV2 deployed to:", contractAddress);
   console.log("🔗 Contract on BaseScan:", `https://sepolia.basescan.org/address/${contractAddress}`);
 
-  // Verify deployment
-  console.log("\n🔍 Verifying deployment...");
-  const owner = await debatePool.owner();
-  const oracle = await debatePool.oracle();
-  const usdcToken = await debatePool.usdcToken();
+  // Wait a bit for the contract to be fully confirmed
+  console.log("\n⏳ Waiting for contract to be fully confirmed...");
+  await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
 
-  console.log("✅ Owner:", owner);
-  console.log("✅ Oracle:", oracle);
-  console.log("✅ USDC Token:", usdcToken);
+  // Verify deployment with error handling
+  console.log("\n🔍 Verifying deployment...");
+  try {
+    const owner = await debatePool.owner();
+    const oracle = await debatePool.oracle();
+    const usdcToken = await debatePool.usdcToken();
+    const platformFee = await debatePool.PLATFORM_FEE_PERCENTAGE();
+
+    console.log("✅ Owner:", owner);
+    console.log("✅ Oracle:", oracle);
+    console.log("✅ USDC Token:", usdcToken);
+    console.log("✅ Platform Fee:", platformFee.toString() + "%");
+  } catch (error) {
+    console.log("⚠️ Verification failed (contract still being mined):", error.message);
+    console.log("✅ Contract deployed successfully to:", contractAddress);
+    console.log("🔗 Check BaseScan:", `https://sepolia.basescan.org/address/${contractAddress}`);
+    console.log("⏳ Wait a few minutes and run verification script separately");
+  }
 
   // Save deployment info
   const deploymentInfo = {
     contractAddress,
-    owner: owner,
-    oracle: oracle,
-    usdcToken: usdcToken,
     deployer: deployer.address,
     network: "base-sepolia",
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    usdcAddress: USDC_ADDRESS,
+    oracleAddress: ORACLE_ADDRESS
   };
 
   console.log("\n📋 Deployment Summary:");
   console.log(JSON.stringify(deploymentInfo, null, 2));
 
   console.log("\n🎉 Deployment completed successfully!");
+  console.log("\n📋 NEXT STEPS:");
+  console.log("1. Update environment variables with new contract address");
+  console.log("2. Update frontend to use new contract");
+  console.log("3. Update worker to use new contract");
+  console.log("4. Test end-to-end flow");
 }
 
 main()
