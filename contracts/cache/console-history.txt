@@ -1,0 +1,1 @@
+cd contracts && npx hardhat run scripts/check-base-gas-prices.ts --network baseSepolia
