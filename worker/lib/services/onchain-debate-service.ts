@@ -7,7 +7,7 @@ export class OnChainDebateService {
 
   constructor() {
     // Get environment variables inside constructor to ensure they're loaded
-    const DEBATE_POOL_CONTRACT_ADDRESS = process.env.DEBATE_POOL_CONTRACT_ADDRESS || '0xD204b546020765994e8B9da58F76D9E85764a059';
+    const DEBATE_POOL_CONTRACT_ADDRESS = process.env.DEBATE_POOL_CONTRACT_ADDRESS || '0x3980d9dBd39447AE1cA8F2Dc453F4E00Eb452c46';
     const ORACLE_PRIVATE_KEY = process.env.ORACLE_PRIVATE_KEY || '';
     const RPC_URL = process.env.BASE_SEPOLIA_RPC || 'https://sepolia.base.org';
 
@@ -29,8 +29,14 @@ export class OnChainDebateService {
       const contractABI = [
         "function createDebate(string memory topic, uint256 entryFee, uint256 maxParticipants, uint256 durationSeconds) external returns (uint256)",
         "function getDebate(uint256 debateId) external view returns (tuple(uint256 id, string topic, uint256 entryFee, uint256 maxParticipants, uint256 startTime, uint256 endTime, address[] participants, address winner, bool isActive, bool isCompleted))",
-        "function getActiveDebates() external view returns (uint256[])",
-        "event DebateCreated(uint256 indexed debateId, string topic, uint256 entryFee, uint256 maxParticipants, uint256 startTime, uint256 endTime)"
+        "function getUserDebates(address user) external view returns (uint256[])",
+        "function getUserPoints(address user) external view returns (uint256)",
+        "function isParticipant(uint256 debateId, address user) external view returns (bool)",
+        "function declareWinner(tuple(uint256 debateId, address winner, uint256 timestamp, bytes signature) result) external",
+        "event DebateCreated(uint256 indexed debateId, string topic, uint256 entryFee, uint256 maxParticipants, uint256 startTime, uint256 endTime)",
+        "event ParticipantJoined(uint256 indexed debateId, address participant)",
+        "event WinnerDeclared(uint256 indexed debateId, address winner, uint256 prizeAmount)",
+        "event PointsAwarded(address indexed user, uint256 points, string reason)"
       ];
       
       this.contract = new ethers.Contract(DEBATE_POOL_CONTRACT_ADDRESS, contractABI, this.wallet);
@@ -154,20 +160,6 @@ export class OnChainDebateService {
       };
     } catch (error) {
       console.error(`❌ Failed to get debate ${debateId}:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get all active debates
-   * @returns Array of active debate IDs
-   */
-  async getActiveDebates(): Promise<number[]> {
-    try {
-      const activeDebates = await this.contract.getActiveDebates();
-      return activeDebates.map(id => Number(id));
-    } catch (error) {
-      console.error(`❌ Failed to get active debates:`, error);
       throw error;
     }
   }

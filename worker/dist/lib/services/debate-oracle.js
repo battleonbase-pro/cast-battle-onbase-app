@@ -79,7 +79,8 @@ class DebateOracle {
             }
             const winnerParticipant = battle.participants[0];
             if (!winnerParticipant) {
-                throw new Error(`No participants found`);
+                console.log(`⚠️ No participants found for battle ${battleId}, skipping on-chain processing`);
+                return;
             }
             const winnerUser = await prisma.user.findUnique({
                 where: { id: winnerParticipant.userId }

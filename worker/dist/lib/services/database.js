@@ -293,6 +293,12 @@ class DatabaseService {
             where: { battleId },
             include: {
                 user: true,
+                likes: true,
+                _count: {
+                    select: {
+                        likes: true
+                    }
+                }
             },
             orderBy: {
                 createdAt: 'desc',

@@ -39,7 +39,7 @@ const debate_oracle_1 = require("./debate-oracle");
 class BattleManagerDB {
     constructor() {
         this.config = {
-            battleDurationHours: parseFloat(process.env.BATTLE_DURATION_HOURS || '4'),
+            battleDurationHours: parseFloat(process.env.BATTLE_DURATION_HOURS || '0.0083'),
             maxParticipants: parseInt(process.env.BATTLE_MAX_PARTICIPANTS || '1000')
         };
         this.db = database_1.DatabaseService.getInstance();
@@ -220,7 +220,7 @@ class BattleManagerDB {
             });
             console.log(`New battle created: ${battle.id}`);
             console.log(`Battle topic: ${battle.title}`);
-            console.log(`Battle ends at: ${battle.endTime}`);
+            console.log(`Battle ends at: ${battle.endTime.toISOString()}`);
             if (debateId) {
                 console.log(`🔗 Linked to on-chain debate ID: ${debateId}`);
             }

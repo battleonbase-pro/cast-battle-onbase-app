@@ -1,5 +1,10 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
 const http_1 = require("http");
 const battle_manager_db_1 = require("./lib/services/battle-manager-db");
 const timer_broadcaster_1 = require("./lib/services/timer-broadcaster");
@@ -170,7 +175,7 @@ class BattleCompletionWorker {
             catch (error) {
                 console.error('Error in countdown timer:', error);
             }
-        }, 1000);
+        }, 5000);
         console.log('✅ Continuous countdown timer started');
     }
     getStatus() {

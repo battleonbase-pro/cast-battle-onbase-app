@@ -361,12 +361,14 @@ Calculate weighted scores and select the winner. Provide detailed scoring breakd
                 qualityScore: this.calculateQualityScore(cast.content),
                 relevanceScore: this.calculateRelevanceScore(cast.content, battleData),
                 engagementScore: this.calculateEngagementScore(cast.content),
+                likeScore: this.calculateLikeScore(cast._count?.likes || 0),
                 totalScore: 0
             }));
             castsWithScores.forEach(cast => {
-                cast.totalScore = (cast.qualityScore * 0.4 +
-                    cast.relevanceScore * 0.3 +
-                    cast.engagementScore * 0.2 +
+                cast.totalScore = (cast.qualityScore * 0.35 +
+                    cast.relevanceScore * 0.25 +
+                    cast.engagementScore * 0.15 +
+                    cast.likeScore * 0.15 +
                     this.calculateOriginalityScore(cast.content, casts) * 0.1);
             });
             const supportCasts = castsWithScores.filter(cast => cast.side === 'SUPPORT');
@@ -407,7 +409,9 @@ Calculate weighted scores and select the winner. Provide detailed scoring breakd
                 winningSide,
                 top3Count: top3.length,
                 winnerId: winner.id,
-                winnerScore: winner.totalScore.toFixed(2)
+                winnerScore: winner.totalScore.toFixed(2),
+                winnerLikeCount: winner._count?.likes || 0,
+                winnerLikeScore: winner.likeScore.toFixed(2)
             });
             return {
                 ...winner,
@@ -420,6 +424,8 @@ Calculate weighted scores and select the winner. Provide detailed scoring breakd
                     top3Candidates: top3.map(c => ({
                         id: c.id,
                         score: c.totalScore.toFixed(2),
+                        likeCount: c._count?.likes || 0,
+                        likeScore: c.likeScore.toFixed(2),
                         content: c.content.substring(0, 50) + '...'
                     }))
                 }
@@ -493,6 +499,12 @@ Calculate weighted scores and select the winner. Provide detailed scoring breakd
         if (hasAction)
             score += 1;
         return Math.min(Math.max(score, 1), 10);
+    }
+    calculateLikeScore(likeCount) {
+        if (likeCount === 0)
+            return 5;
+        const logScore = Math.log(likeCount + 1) * 2;
+        return Math.min(logScore, 10);
     }
     calculateOriginalityScore(content, allCasts) {
         let score = 5;
