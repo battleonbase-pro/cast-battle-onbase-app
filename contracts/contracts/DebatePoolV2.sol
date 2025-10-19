@@ -54,6 +54,11 @@ contract DebatePoolV2 is ReentrancyGuard, Ownable, EIP712 {
         "WinnerResult(uint256 debateId,address winner,uint256 timestamp)"
     );
     
+    // EIP-712 type hash for points awards
+    bytes32 private constant POINTS_AWARD_TYPEHASH = keccak256(
+        "PointsAward(address user,uint256 points,string reason,uint256 timestamp)"
+    );
+    
     // EIP-712 type hash for airdrop claims
     bytes32 private constant AIRDROP_CLAIM_TYPEHASH = keccak256(
         "AirdropClaim(uint256 userPointsAmount,uint256 totalPoints,bytes32 messageHash)"
@@ -86,6 +91,14 @@ contract DebatePoolV2 is ReentrancyGuard, Ownable, EIP712 {
     struct WinnerResult {
         uint256 debateId;
         address winner;
+        uint256 timestamp;
+        bytes signature;
+    }
+
+    struct PointsAward {
+        address user;
+        uint256 points;
+        string reason;
         uint256 timestamp;
         bytes signature;
     }
@@ -326,36 +339,48 @@ contract DebatePoolV2 is ReentrancyGuard, Ownable, EIP712 {
     }
 
     /**
-     * @dev Award points to user (oracle only)
-     * @param user User address
-     * @param points Points to award
-     * @param reason Reason for awarding points
+     * @dev Award points to user with EIP-712 signature verification
+     * @param award Points award with signature
      */
-    function awardPoints(
-        address user,
-        uint256 points,
-        string memory reason
-    ) external onlyOracle {
-        userPoints[user] += points;
-        emit PointsAwarded(user, points, reason);
+    function awardPoints(PointsAward memory award) external nonReentrant {
+        require(award.points > 0, "DebatePoolV2: Points must be greater than 0");
+        require(bytes(award.reason).length > 0, "DebatePoolV2: Reason cannot be empty");
+        
+        // Verify signature
+        require(_verifyPointsAward(award), "DebatePoolV2: Invalid signature");
+        
+        userPoints[award.user] += award.points;
+        emit PointsAwarded(award.user, award.points, award.reason);
     }
 
     /**
-     * @dev Award like points
-     * @param user User address
+     * @dev Award like points with EIP-712 signature verification
+     * @param award Points award with signature
      */
-    function awardLikePoints(address user) external onlyOracle {
-        userPoints[user] += LIKE_POINTS;
-        emit PointsAwarded(user, LIKE_POINTS, "like");
+    function awardLikePoints(PointsAward memory award) external nonReentrant {
+        require(award.points == LIKE_POINTS, "DebatePoolV2: Invalid like points amount");
+        require(keccak256(bytes(award.reason)) == keccak256(bytes("like")), "DebatePoolV2: Invalid reason");
+        
+        // Verify signature
+        require(_verifyPointsAward(award), "DebatePoolV2: Invalid signature");
+        
+        userPoints[award.user] += LIKE_POINTS;
+        emit PointsAwarded(award.user, LIKE_POINTS, "like");
     }
 
     /**
-     * @dev Award share points
-     * @param user User address
+     * @dev Award share points with EIP-712 signature verification
+     * @param award Points award with signature
      */
-    function awardSharePoints(address user) external onlyOracle {
-        userPoints[user] += SHARE_POINTS;
-        emit PointsAwarded(user, SHARE_POINTS, "share");
+    function awardSharePoints(PointsAward memory award) external nonReentrant {
+        require(award.points == SHARE_POINTS, "DebatePoolV2: Invalid share points amount");
+        require(keccak256(bytes(award.reason)) == keccak256(bytes("share")), "DebatePoolV2: Invalid reason");
+        
+        // Verify signature
+        require(_verifyPointsAward(award), "DebatePoolV2: Invalid signature");
+        
+        userPoints[award.user] += SHARE_POINTS;
+        emit PointsAwarded(award.user, SHARE_POINTS, "share");
     }
 
     /**
@@ -481,6 +506,22 @@ contract DebatePoolV2 is ReentrancyGuard, Ownable, EIP712 {
         
         bytes32 hash = _hashTypedDataV4(structHash);
         address signer = ECDSA.recover(hash, result.signature);
+        return signer == oracle;
+    }
+
+    function _verifyPointsAward(PointsAward memory award) internal view returns (bool) {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                POINTS_AWARD_TYPEHASH,
+                award.user,
+                award.points,
+                keccak256(bytes(award.reason)),
+                award.timestamp
+            )
+        );
+        
+        bytes32 hash = _hashTypedDataV4(structHash);
+        address signer = ECDSA.recover(hash, award.signature);
         return signer == oracle;
     }
 

@@ -369,12 +369,12 @@ describe("DebatePoolV2", function () {
             ).to.be.revertedWith("DebatePoolV2: Winner already declared");
         });
 
-        it("Should allow processing expired debates by owner or oracle", async function () {
+        it("Should allow processing expired debates", async function () {
             // Fast forward time to after timeout period
             await ethers.provider.send("evm_increaseTime", [DURATION + 24 * 3600 + 1]);
             await ethers.provider.send("evm_mine", []);
 
-            const tx = await debatePool.connect(oracle).processExpiredDebate(1);
+            const tx = await debatePool.processExpiredDebate(1);
 
             await expect(tx)
                 .to.emit(debatePool, "RefundProcessed")
@@ -432,7 +432,38 @@ describe("DebatePoolV2", function () {
 
     describe("Points System", function () {
         it("Should allow oracle to award points", async function () {
-            const tx = await debatePool.connect(oracle).awardPoints(user1.address, 50, "test");
+            // Create signature for points award using proper EIP-712
+            const domain = {
+                name: "DebatePoolV2",
+                version: "1",
+                chainId: await ethers.provider.getNetwork().then(n => n.chainId),
+                verifyingContract: await debatePool.getAddress()
+            };
+
+            const types = {
+                PointsAward: [
+                    { name: "user", type: "address" },
+                    { name: "points", type: "uint256" },
+                    { name: "reason", type: "string" },
+                    { name: "timestamp", type: "uint256" }
+                ]
+            };
+
+            const pointsAward = {
+                user: user1.address,
+                points: 50,
+                reason: "test",
+                timestamp: Math.floor(Date.now() / 1000)
+            };
+
+            const signature = await oracle.signTypedData(domain, types, pointsAward);
+
+            const pointsAwardWithSig = {
+                ...pointsAward,
+                signature
+            };
+
+            const tx = await debatePool.awardPoints(pointsAwardWithSig);
 
             await expect(tx)
                 .to.emit(debatePool, "PointsAwarded")
@@ -442,7 +473,38 @@ describe("DebatePoolV2", function () {
         });
 
         it("Should allow oracle to award like points", async function () {
-            const tx = await debatePool.connect(oracle).awardLikePoints(user1.address);
+            // Create signature for like points award using proper EIP-712
+            const domain = {
+                name: "DebatePoolV2",
+                version: "1",
+                chainId: await ethers.provider.getNetwork().then(n => n.chainId),
+                verifyingContract: await debatePool.getAddress()
+            };
+
+            const types = {
+                PointsAward: [
+                    { name: "user", type: "address" },
+                    { name: "points", type: "uint256" },
+                    { name: "reason", type: "string" },
+                    { name: "timestamp", type: "uint256" }
+                ]
+            };
+
+            const pointsAward = {
+                user: user1.address,
+                points: 10,
+                reason: "like",
+                timestamp: Math.floor(Date.now() / 1000)
+            };
+
+            const signature = await oracle.signTypedData(domain, types, pointsAward);
+
+            const pointsAwardWithSig = {
+                ...pointsAward,
+                signature
+            };
+
+            const tx = await debatePool.awardLikePoints(pointsAwardWithSig);
 
             await expect(tx)
                 .to.emit(debatePool, "PointsAwarded")
@@ -452,7 +514,38 @@ describe("DebatePoolV2", function () {
         });
 
         it("Should allow oracle to award share points", async function () {
-            const tx = await debatePool.connect(oracle).awardSharePoints(user1.address);
+            // Create signature for share points award using proper EIP-712
+            const domain = {
+                name: "DebatePoolV2",
+                version: "1",
+                chainId: await ethers.provider.getNetwork().then(n => n.chainId),
+                verifyingContract: await debatePool.getAddress()
+            };
+
+            const types = {
+                PointsAward: [
+                    { name: "user", type: "address" },
+                    { name: "points", type: "uint256" },
+                    { name: "reason", type: "string" },
+                    { name: "timestamp", type: "uint256" }
+                ]
+            };
+
+            const pointsAward = {
+                user: user1.address,
+                points: 10,
+                reason: "share",
+                timestamp: Math.floor(Date.now() / 1000)
+            };
+
+            const signature = await oracle.signTypedData(domain, types, pointsAward);
+
+            const pointsAwardWithSig = {
+                ...pointsAward,
+                signature
+            };
+
+            const tx = await debatePool.awardSharePoints(pointsAwardWithSig);
 
             await expect(tx)
                 .to.emit(debatePool, "PointsAwarded")
@@ -462,9 +555,17 @@ describe("DebatePoolV2", function () {
         });
 
         it("Should only allow oracle to award points", async function () {
+            const invalidPointsAward = {
+                user: user1.address,
+                points: 50,
+                reason: "test",
+                timestamp: Math.floor(Date.now() / 1000),
+                signature: "0x" // Invalid signature
+            };
+
             await expect(
-                debatePool.connect(user1).awardPoints(user1.address, 50, "test")
-            ).to.be.revertedWith("DebatePoolV2: Only oracle can call this function");
+                debatePool.awardPoints(invalidPointsAward)
+            ).to.be.revertedWithCustomError(debatePool, "ECDSAInvalidSignatureLength");
         });
     });
 
@@ -502,8 +603,38 @@ describe("DebatePoolV2", function () {
                 ethers.parseUnits("1000", 18)
             );
 
-            // Award points to user
-            await debatePool.connect(oracle).awardPoints(user1.address, 100, "test");
+            // Award points to user using EIP-712
+            const pointsDomain = {
+                name: "DebatePoolV2",
+                version: "1",
+                chainId: await ethers.provider.getNetwork().then(n => n.chainId),
+                verifyingContract: await debatePool.getAddress()
+            };
+
+            const pointsTypes = {
+                PointsAward: [
+                    { name: "user", type: "address" },
+                    { name: "points", type: "uint256" },
+                    { name: "reason", type: "string" },
+                    { name: "timestamp", type: "uint256" }
+                ]
+            };
+
+            const pointsAward = {
+                user: user1.address,
+                points: 100,
+                reason: "test",
+                timestamp: Math.floor(Date.now() / 1000)
+            };
+
+            const pointsSignature = await oracle.signTypedData(pointsDomain, pointsTypes, pointsAward);
+
+            const pointsAwardWithSig = {
+                ...pointsAward,
+                signature: pointsSignature
+            };
+
+            await debatePool.awardPoints(pointsAwardWithSig);
 
             // Create signature for airdrop claim using proper EIP-712
             const domain = {

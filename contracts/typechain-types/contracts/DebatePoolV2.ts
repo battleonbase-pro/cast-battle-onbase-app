@@ -24,6 +24,28 @@ import type {
 } from "../common";
 
 export declare namespace DebatePoolV2 {
+  export type PointsAwardStruct = {
+    user: AddressLike;
+    points: BigNumberish;
+    reason: string;
+    timestamp: BigNumberish;
+    signature: BytesLike;
+  };
+
+  export type PointsAwardStructOutput = [
+    user: string,
+    points: bigint,
+    reason: string,
+    timestamp: bigint,
+    signature: string
+  ] & {
+    user: string;
+    points: bigint;
+    reason: string;
+    timestamp: bigint;
+    signature: string;
+  };
+
   export type WinnerResultStruct = {
     debateId: BigNumberish;
     winner: AddressLike;
@@ -192,15 +214,15 @@ export interface DebatePoolV2Interface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "awardLikePoints",
-    values: [AddressLike]
+    values: [DebatePoolV2.PointsAwardStruct]
   ): string;
   encodeFunctionData(
     functionFragment: "awardPoints",
-    values: [AddressLike, BigNumberish, string]
+    values: [DebatePoolV2.PointsAwardStruct]
   ): string;
   encodeFunctionData(
     functionFragment: "awardSharePoints",
-    values: [AddressLike]
+    values: [DebatePoolV2.PointsAwardStruct]
   ): string;
   encodeFunctionData(
     functionFragment: "claimAirdrop",
@@ -683,19 +705,19 @@ export interface DebatePoolV2 extends BaseContract {
   airdropToken: TypedContractMethod<[], [string], "view">;
 
   awardLikePoints: TypedContractMethod<
-    [user: AddressLike],
+    [award: DebatePoolV2.PointsAwardStruct],
     [void],
     "nonpayable"
   >;
 
   awardPoints: TypedContractMethod<
-    [user: AddressLike, points: BigNumberish, reason: string],
+    [award: DebatePoolV2.PointsAwardStruct],
     [void],
     "nonpayable"
   >;
 
   awardSharePoints: TypedContractMethod<
-    [user: AddressLike],
+    [award: DebatePoolV2.PointsAwardStruct],
     [void],
     "nonpayable"
   >;
@@ -894,17 +916,25 @@ export interface DebatePoolV2 extends BaseContract {
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
     nameOrSignature: "awardLikePoints"
-  ): TypedContractMethod<[user: AddressLike], [void], "nonpayable">;
+  ): TypedContractMethod<
+    [award: DebatePoolV2.PointsAwardStruct],
+    [void],
+    "nonpayable"
+  >;
   getFunction(
     nameOrSignature: "awardPoints"
   ): TypedContractMethod<
-    [user: AddressLike, points: BigNumberish, reason: string],
+    [award: DebatePoolV2.PointsAwardStruct],
     [void],
     "nonpayable"
   >;
   getFunction(
     nameOrSignature: "awardSharePoints"
-  ): TypedContractMethod<[user: AddressLike], [void], "nonpayable">;
+  ): TypedContractMethod<
+    [award: DebatePoolV2.PointsAwardStruct],
+    [void],
+    "nonpayable"
+  >;
   getFunction(
     nameOrSignature: "claimAirdrop"
   ): TypedContractMethod<
