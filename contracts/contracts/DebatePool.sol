@@ -6,36 +6,116 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
-import "./interfaces/IDebatePool.sol";
 
 /**
  * @title DebatePool
- * @dev Main contract for managing debate pools with USDC entry fees
- * @notice This contract handles debate creation, participant management, and automated payouts
+ * @dev Enhanced debate pool contract with fund safety mechanisms and points system
+ * @notice Features automatic refunds, emergency controls, and airdrop-ready points system
  */
-contract DebatePool is IDebatePool, ReentrancyGuard, Ownable, EIP712 {
+contract DebatePool is ReentrancyGuard, Ownable, EIP712 {
     using ECDSA for bytes32;
 
     // Constants
     uint256 public constant PLATFORM_FEE_PERCENTAGE = 20; // 20% platform fee
     uint256 public constant BASIS_POINTS = 10000;
+    uint256 public constant REFUND_PERIOD = 7 days;      // 7 days to claim refund
+    uint256 public constant TIMEOUT_PERIOD = 24 hours;   // 24 hours after debate ends
     
+    // Points system constants
+    uint256 public constant DEBATE_PARTICIPATION_POINTS = 100;  // 1 USDC debate
+    uint256 public constant DEBATE_WINNER_POINTS = 1000;       // Winner bonus
+    uint256 public constant LIKE_POINTS = 10;                  // Free like
+    uint256 public constant SHARE_POINTS = 10;                 // Any share
+
     // State variables
     IERC20 public immutable usdcToken;
     address public immutable oracle; // AI judge oracle address
     
     uint256 public nextDebateId = 1;
+    bool public emergencyPaused = false;
+    
+    // Debate management
     mapping(uint256 => Debate) public debates;
     mapping(address => uint256[]) public userDebates;
+    mapping(uint256 => uint256) public refundDeadlines;
     
+    // Points system (for future airdrops)
+    mapping(address => uint256) public userPoints;
+    
+    // Airdrop system (future-ready)
+    IERC20 public airdropToken;
+    bool public airdropEnabled = false;
+    uint256 public airdropSnapshotBlock;
+    uint256 public totalAirdropAmount;
+    mapping(address => uint256) public airdropClaimed;
+
     // EIP-712 type hash for winner results
     bytes32 private constant WINNER_RESULT_TYPEHASH = keccak256(
         "WinnerResult(uint256 debateId,address winner,uint256 timestamp)"
     );
+    
+    // EIP-712 type hash for points awards
+    bytes32 private constant POINTS_AWARD_TYPEHASH = keccak256(
+        "PointsAward(address user,uint256 points,string reason,uint256 timestamp)"
+    );
+    
+    // EIP-712 type hash for airdrop claims
+    bytes32 private constant AIRDROP_CLAIM_TYPEHASH = keccak256(
+        "AirdropClaim(uint256 userPointsAmount,uint256 totalPoints,bytes32 messageHash)"
+    );
+
+    // Events
+    event DebateCreated(uint256 indexed debateId, string topic, uint256 entryFee);
+    event ParticipantJoined(uint256 indexed debateId, address participant);
+    event WinnerDeclared(uint256 indexed debateId, address winner, uint256 prize);
+    event RefundProcessed(uint256 indexed debateId, address participant, uint256 amount);
+    event EmergencyPauseToggled(bool paused);
+    event PointsAwarded(address indexed user, uint256 points, string reason);
+    event AirdropSetup(address indexed token, uint256 totalAmount, uint256 snapshotBlock);
+    event AirdropClaimed(address indexed user, uint256 amount, uint256 points);
+
+    // Structs
+    struct Debate {
+        uint256 id;
+        string topic;
+        uint256 entryFee;
+        uint256 maxParticipants;
+        uint256 startTime;    // UTC timestamp (seconds since epoch)
+        uint256 endTime;      // UTC timestamp (seconds since epoch)
+        address[] participants;
+        address winner;
+        bool isActive;
+        bool isCompleted;
+    }
+
+    struct WinnerResult {
+        uint256 debateId;
+        address winner;
+        uint256 timestamp;
+        bytes signature;
+    }
+
+    struct PointsAward {
+        address user;
+        uint256 points;
+        string reason;
+        uint256 timestamp;
+        bytes signature;
+    }
 
     // Modifiers
     modifier onlyOracle() {
         require(msg.sender == oracle, "DebatePool: Only oracle can call this function");
+        _;
+    }
+
+    modifier onlyOwnerOrOracle() {
+        require(msg.sender == owner() || msg.sender == oracle, "DebatePool: Only owner or oracle can call this function");
+        _;
+    }
+
+    modifier whenNotPaused() {
+        require(!emergencyPaused, "DebatePool: Contract is paused");
         _;
     }
 
@@ -81,7 +161,7 @@ contract DebatePool is IDebatePool, ReentrancyGuard, Ownable, EIP712 {
         uint256 entryFee,
         uint256 maxParticipants,
         uint256 duration
-    ) external onlyOwner returns (uint256) {
+    ) external onlyOracle whenNotPaused returns (uint256) {
         require(bytes(topic).length > 0, "DebatePool: Topic cannot be empty");
         require(entryFee > 0, "DebatePool: Entry fee must be greater than 0");
         require(maxParticipants > 1, "DebatePool: Must allow at least 2 participants");
@@ -104,6 +184,9 @@ contract DebatePool is IDebatePool, ReentrancyGuard, Ownable, EIP712 {
             isCompleted: false
         });
 
+        // Set refund deadline (7 days after debate ends)
+        refundDeadlines[debateId] = endTime + REFUND_PERIOD;
+
         emit DebateCreated(debateId, topic, entryFee);
         return debateId;
     }
@@ -116,6 +199,7 @@ contract DebatePool is IDebatePool, ReentrancyGuard, Ownable, EIP712 {
         external 
         validDebate(debateId) 
         debateActive(debateId) 
+        whenNotPaused
         nonReentrant 
     {
         Debate storage debate = debates[debateId];
@@ -131,6 +215,10 @@ contract DebatePool is IDebatePool, ReentrancyGuard, Ownable, EIP712 {
 
         debate.participants.push(msg.sender);
         userDebates[msg.sender].push(debateId);
+
+        // Award participation points
+        userPoints[msg.sender] += DEBATE_PARTICIPATION_POINTS;
+        emit PointsAwarded(msg.sender, DEBATE_PARTICIPATION_POINTS, "debate_participation");
 
         emit ParticipantJoined(debateId, msg.sender);
     }
@@ -161,24 +249,203 @@ contract DebatePool is IDebatePool, ReentrancyGuard, Ownable, EIP712 {
 
         // Update debate state
         debate.winner = result.winner;
-        debate.isActive = false;
         debate.isCompleted = true;
+        debate.isActive = false;
 
-        // Transfer rewards
-        if (winnerPrize > 0) {
-            require(
-                usdcToken.transfer(result.winner, winnerPrize),
-                "DebatePool: Winner transfer failed"
-            );
-        }
+        // Transfer winner prize
+        require(
+            usdcToken.transfer(result.winner, winnerPrize),
+            "DebatePool: Winner transfer failed"
+        );
+
+        // Award winner bonus points
+        userPoints[result.winner] += DEBATE_WINNER_POINTS;
+        emit PointsAwarded(result.winner, DEBATE_WINNER_POINTS, "debate_winner");
 
         emit WinnerDeclared(result.debateId, result.winner, winnerPrize);
     }
 
     /**
-     * @dev Withdraw platform fees (owner only)
+     * @dev Request refund for expired debate
+     * @param debateId ID of the debate to refund
      */
-    function withdrawFunds() external onlyOwner {
+    function requestRefund(uint256 debateId) external validDebate(debateId) nonReentrant {
+        Debate storage debate = debates[debateId];
+        
+        require(block.timestamp > debate.endTime, "DebatePool: Debate not expired");
+        require(!debate.isCompleted, "DebatePool: Winner already declared");
+        require(_isParticipant(debateId, msg.sender), "DebatePool: Not a participant");
+        require(block.timestamp <= refundDeadlines[debateId], "DebatePool: Refund period expired");
+        
+        // Refund user
+        require(
+            usdcToken.transfer(msg.sender, debate.entryFee),
+            "DebatePool: Refund transfer failed"
+        );
+        
+        // Remove from participants
+        _removeParticipant(debateId, msg.sender);
+        
+        emit RefundProcessed(debateId, msg.sender, debate.entryFee);
+    }
+
+    /**
+     * @dev Process expired debates and refund all participants
+     * @param debateId ID of the expired debate
+     */
+    function processExpiredDebate(uint256 debateId) external onlyOwnerOrOracle validDebate(debateId) nonReentrant {
+        Debate storage debate = debates[debateId];
+        
+        require(block.timestamp > debate.endTime + TIMEOUT_PERIOD, "DebatePool: Not expired yet");
+        require(!debate.isCompleted, "DebatePool: Already completed");
+        
+        // Refund all participants
+        for (uint i = 0; i < debate.participants.length; i++) {
+            address participant = debate.participants[i];
+            usdcToken.transfer(participant, debate.entryFee);
+            emit RefundProcessed(debateId, participant, debate.entryFee);
+        }
+        
+        // Mark as completed
+        debate.isCompleted = true;
+        debate.isActive = false;
+    }
+
+    /**
+     * @dev Emergency refund by owner
+     * @param debateId ID of the debate to refund
+     */
+    function emergencyRefund(uint256 debateId) external onlyOwner validDebate(debateId) nonReentrant {
+        Debate storage debate = debates[debateId];
+        
+        // Refund all participants
+        for (uint i = 0; i < debate.participants.length; i++) {
+            address participant = debate.participants[i];
+            usdcToken.transfer(participant, debate.entryFee);
+            emit RefundProcessed(debateId, participant, debate.entryFee);
+        }
+        
+        // Mark as completed
+        debate.isCompleted = true;
+        debate.isActive = false;
+    }
+
+    /**
+     * @dev Toggle emergency pause
+     */
+    function toggleEmergencyPause() external onlyOwner {
+        emergencyPaused = !emergencyPaused;
+        emit EmergencyPauseToggled(emergencyPaused);
+    }
+
+    /**
+     * @dev Award points to user with EIP-712 signature verification
+     * @param award Points award with signature
+     */
+    function awardPoints(PointsAward memory award) external nonReentrant {
+        require(award.points > 0, "DebatePool: Points must be greater than 0");
+        require(bytes(award.reason).length > 0, "DebatePool: Reason cannot be empty");
+        
+        // Verify signature
+        require(_verifyPointsAward(award), "DebatePool: Invalid signature");
+        
+        userPoints[award.user] += award.points;
+        emit PointsAwarded(award.user, award.points, award.reason);
+    }
+
+    /**
+     * @dev Award like points with EIP-712 signature verification
+     * @param award Points award with signature
+     */
+    function awardLikePoints(PointsAward memory award) external nonReentrant {
+        require(award.points == LIKE_POINTS, "DebatePool: Invalid like points amount");
+        require(keccak256(bytes(award.reason)) == keccak256(bytes("like")), "DebatePool: Invalid reason");
+        
+        // Verify signature
+        require(_verifyPointsAward(award), "DebatePool: Invalid signature");
+        
+        userPoints[award.user] += LIKE_POINTS;
+        emit PointsAwarded(award.user, LIKE_POINTS, "like");
+    }
+
+    /**
+     * @dev Award share points with EIP-712 signature verification
+     * @param award Points award with signature
+     */
+    function awardSharePoints(PointsAward memory award) external nonReentrant {
+        require(award.points == SHARE_POINTS, "DebatePool: Invalid share points amount");
+        require(keccak256(bytes(award.reason)) == keccak256(bytes("share")), "DebatePool: Invalid reason");
+        
+        // Verify signature
+        require(_verifyPointsAward(award), "DebatePool: Invalid signature");
+        
+        userPoints[award.user] += SHARE_POINTS;
+        emit PointsAwarded(award.user, SHARE_POINTS, "share");
+    }
+
+    /**
+     * @dev Setup airdrop (future-ready)
+     * @param _airdropToken Token to airdrop
+     * @param _totalAmount Total tokens to distribute
+     */
+    function setupAirdrop(
+        address _airdropToken,
+        uint256 _totalAmount
+    ) external onlyOwner {
+        require(_airdropToken != address(0), "DebatePool: Invalid token");
+        require(_totalAmount > 0, "DebatePool: Invalid amount");
+        
+        airdropToken = IERC20(_airdropToken);
+        totalAirdropAmount = _totalAmount;
+        airdropSnapshotBlock = block.number;
+        airdropEnabled = true;
+        
+        emit AirdropSetup(_airdropToken, _totalAmount, block.number);
+    }
+
+    /**
+     * @dev Claim airdrop based on points
+     * @param userPointsAmount User's total points
+     * @param totalPoints Total points in system
+     * @param messageHash Hash of the points data
+     * @param signature Oracle signature
+     */
+    function claimAirdrop(
+        uint256 userPointsAmount,
+        uint256 totalPoints,
+        bytes32 messageHash,
+        bytes memory signature
+    ) external nonReentrant {
+        require(airdropEnabled, "DebatePool: Airdrop not active");
+        require(userPointsAmount > 0, "DebatePool: No points to claim");
+        
+        // Verify the points data is valid (signed by oracle using EIP-712)
+        bytes32 structHash = keccak256(
+            abi.encode(
+                AIRDROP_CLAIM_TYPEHASH,
+                userPointsAmount,
+                totalPoints,
+                messageHash
+            )
+        );
+        bytes32 hash = _hashTypedDataV4(structHash);
+        address signer = ECDSA.recover(hash, signature);
+        require(signer == oracle, "DebatePool: Invalid signature");
+        
+        // Calculate user's share
+        uint256 userShare = (userPointsAmount * totalAirdropAmount) / totalPoints;
+        require(userShare > 0, "DebatePool: No tokens to claim");
+        
+        // Transfer tokens to user
+        airdropToken.transfer(msg.sender, userShare);
+        
+        emit AirdropClaimed(msg.sender, userShare, userPointsAmount);
+    }
+
+    /**
+     * @dev Withdraw platform fees
+     */
+    function withdrawPlatformFees() external onlyOwner {
         uint256 balance = usdcToken.balanceOf(address(this));
         require(balance > 0, "DebatePool: No funds to withdraw");
         
@@ -186,73 +453,47 @@ contract DebatePool is IDebatePool, ReentrancyGuard, Ownable, EIP712 {
             usdcToken.transfer(owner(), balance),
             "DebatePool: Withdrawal failed"
         );
-
-        emit FundsWithdrawn(owner(), balance);
     }
 
-    /**
-     * @dev Get debate details
-     * @param debateId ID of the debate
-     * @return Debate struct
-     */
+    // View functions
     function getDebate(uint256 debateId) external view validDebate(debateId) returns (Debate memory) {
         return debates[debateId];
     }
 
-    /**
-     * @dev Get all active debate IDs
-     * @return Array of active debate IDs
-     */
-    function getActiveDebates() external view returns (uint256[] memory) {
-        uint256[] memory activeDebates = new uint256[](nextDebateId - 1);
-        uint256 count = 0;
-
-        for (uint256 i = 1; i < nextDebateId; i++) {
-            if (debates[i].isActive) {
-                activeDebates[count] = i;
-                count++;
-            }
-        }
-
-        // Resize array to actual count
-        uint256[] memory result = new uint256[](count);
-        for (uint256 i = 0; i < count; i++) {
-            result[i] = activeDebates[i];
-        }
-
-        return result;
-    }
-
-    /**
-     * @dev Get user's debate history
-     * @param user User address
-     * @return Array of debate IDs user participated in
-     */
     function getUserDebates(address user) external view returns (uint256[] memory) {
         return userDebates[user];
     }
 
-    /**
-     * @dev Check if address is participant in debate
-     * @param debateId ID of the debate
-     * @param participant Address to check
-     * @return True if participant
-     */
-    function _isParticipant(uint256 debateId, address participant) internal view returns (bool) {
-        address[] memory participants = debates[debateId].participants;
-        for (uint256 i = 0; i < participants.length; i++) {
-            if (participants[i] == participant) {
+    function getUserPoints(address user) external view returns (uint256) {
+        return userPoints[user];
+    }
+
+    function isParticipant(uint256 debateId, address user) external view returns (bool) {
+        return _isParticipant(debateId, user);
+    }
+
+    // Internal functions
+    function _isParticipant(uint256 debateId, address user) internal view returns (bool) {
+        Debate storage debate = debates[debateId];
+        for (uint i = 0; i < debate.participants.length; i++) {
+            if (debate.participants[i] == user) {
                 return true;
             }
         }
         return false;
     }
 
-    /**
-     * @dev Verify EIP-712 signature for winner result
-     * @param result Winner result to verify
-     * @return True if signature is valid
-     */
+    function _removeParticipant(uint256 debateId, address user) internal {
+        Debate storage debate = debates[debateId];
+        for (uint i = 0; i < debate.participants.length; i++) {
+            if (debate.participants[i] == user) {
+                debate.participants[i] = debate.participants[debate.participants.length - 1];
+                debate.participants.pop();
+                break;
+            }
+        }
+    }
+
     function _verifyWinnerResult(WinnerResult memory result) internal view returns (bool) {
         bytes32 structHash = keccak256(
             abi.encode(
@@ -262,18 +503,34 @@ contract DebatePool is IDebatePool, ReentrancyGuard, Ownable, EIP712 {
                 result.timestamp
             )
         );
-
-        bytes32 hash = _hashTypedDataV4(structHash);
-        address signer = hash.recover(result.signature);
         
+        bytes32 hash = _hashTypedDataV4(structHash);
+        address signer = ECDSA.recover(hash, result.signature);
         return signer == oracle;
     }
 
-    /**
-     * @dev Get contract balance
-     * @return USDC balance in contract
-     */
-    function getContractBalance() external view returns (uint256) {
-        return usdcToken.balanceOf(address(this));
+    function _verifyPointsAward(PointsAward memory award) internal view returns (bool) {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                POINTS_AWARD_TYPEHASH,
+                award.user,
+                award.points,
+                keccak256(bytes(award.reason)),
+                award.timestamp
+            )
+        );
+        
+        bytes32 hash = _hashTypedDataV4(structHash);
+        address signer = ECDSA.recover(hash, award.signature);
+        return signer == oracle;
+    }
+
+    function verifyPointsSignature(
+        bytes32 messageHash,
+        bytes memory signature
+    ) internal view returns (bool) {
+        bytes32 hash = _hashTypedDataV4(messageHash);
+        address signer = ECDSA.recover(hash, signature);
+        return signer == oracle;
     }
 }

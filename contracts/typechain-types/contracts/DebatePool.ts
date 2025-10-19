@@ -23,7 +23,29 @@ import type {
   TypedContractMethod,
 } from "../common";
 
-export declare namespace IDebatePool {
+export declare namespace DebatePool {
+  export type PointsAwardStruct = {
+    user: AddressLike;
+    points: BigNumberish;
+    reason: string;
+    timestamp: BigNumberish;
+    signature: BytesLike;
+  };
+
+  export type PointsAwardStructOutput = [
+    user: string,
+    points: bigint,
+    reason: string,
+    timestamp: bigint,
+    signature: string
+  ] & {
+    user: string;
+    points: bigint;
+    reason: string;
+    timestamp: bigint;
+    signature: string;
+  };
+
   export type WinnerResultStruct = {
     debateId: BigNumberish;
     winner: AddressLike;
@@ -85,33 +107,60 @@ export interface DebatePoolInterface extends Interface {
   getFunction(
     nameOrSignature:
       | "BASIS_POINTS"
+      | "DEBATE_PARTICIPATION_POINTS"
+      | "DEBATE_WINNER_POINTS"
+      | "LIKE_POINTS"
       | "PLATFORM_FEE_PERCENTAGE"
+      | "REFUND_PERIOD"
+      | "SHARE_POINTS"
+      | "TIMEOUT_PERIOD"
+      | "airdropClaimed"
+      | "airdropEnabled"
+      | "airdropSnapshotBlock"
+      | "airdropToken"
+      | "awardLikePoints"
+      | "awardPoints"
+      | "awardSharePoints"
+      | "claimAirdrop"
       | "createDebate"
       | "debates"
       | "declareWinner"
       | "eip712Domain"
-      | "getActiveDebates"
-      | "getContractBalance"
+      | "emergencyPaused"
+      | "emergencyRefund"
       | "getDebate"
       | "getUserDebates"
+      | "getUserPoints"
+      | "isParticipant"
       | "joinDebate"
       | "nextDebateId"
       | "oracle"
       | "owner"
+      | "processExpiredDebate"
+      | "refundDeadlines"
       | "renounceOwnership"
+      | "requestRefund"
+      | "setupAirdrop"
+      | "toggleEmergencyPause"
+      | "totalAirdropAmount"
       | "transferOwnership"
       | "usdcToken"
       | "userDebates"
-      | "withdrawFunds"
+      | "userPoints"
+      | "withdrawPlatformFees"
   ): FunctionFragment;
 
   getEvent(
     nameOrSignatureOrTopic:
+      | "AirdropClaimed"
+      | "AirdropSetup"
       | "DebateCreated"
       | "EIP712DomainChanged"
-      | "FundsWithdrawn"
+      | "EmergencyPauseToggled"
       | "OwnershipTransferred"
       | "ParticipantJoined"
+      | "PointsAwarded"
+      | "RefundProcessed"
       | "WinnerDeclared"
   ): EventFragment;
 
@@ -120,8 +169,64 @@ export interface DebatePoolInterface extends Interface {
     values?: undefined
   ): string;
   encodeFunctionData(
+    functionFragment: "DEBATE_PARTICIPATION_POINTS",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "DEBATE_WINNER_POINTS",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "LIKE_POINTS",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
     functionFragment: "PLATFORM_FEE_PERCENTAGE",
     values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "REFUND_PERIOD",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "SHARE_POINTS",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "TIMEOUT_PERIOD",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "airdropClaimed",
+    values: [AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "airdropEnabled",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "airdropSnapshotBlock",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "airdropToken",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "awardLikePoints",
+    values: [DebatePool.PointsAwardStruct]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "awardPoints",
+    values: [DebatePool.PointsAwardStruct]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "awardSharePoints",
+    values: [DebatePool.PointsAwardStruct]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "claimAirdrop",
+    values: [BigNumberish, BigNumberish, BytesLike, BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "createDebate",
@@ -133,19 +238,19 @@ export interface DebatePoolInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "declareWinner",
-    values: [IDebatePool.WinnerResultStruct]
+    values: [DebatePool.WinnerResultStruct]
   ): string;
   encodeFunctionData(
     functionFragment: "eip712Domain",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: "getActiveDebates",
+    functionFragment: "emergencyPaused",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: "getContractBalance",
-    values?: undefined
+    functionFragment: "emergencyRefund",
+    values: [BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "getDebate",
@@ -154,6 +259,14 @@ export interface DebatePoolInterface extends Interface {
   encodeFunctionData(
     functionFragment: "getUserDebates",
     values: [AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getUserPoints",
+    values: [AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "isParticipant",
+    values: [BigNumberish, AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "joinDebate",
@@ -166,7 +279,31 @@ export interface DebatePoolInterface extends Interface {
   encodeFunctionData(functionFragment: "oracle", values?: undefined): string;
   encodeFunctionData(functionFragment: "owner", values?: undefined): string;
   encodeFunctionData(
+    functionFragment: "processExpiredDebate",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "refundDeadlines",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
     functionFragment: "renounceOwnership",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "requestRefund",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "setupAirdrop",
+    values: [AddressLike, BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "toggleEmergencyPause",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "totalAirdropAmount",
     values?: undefined
   ): string;
   encodeFunctionData(
@@ -179,7 +316,11 @@ export interface DebatePoolInterface extends Interface {
     values: [AddressLike, BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: "withdrawFunds",
+    functionFragment: "userPoints",
+    values: [AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "withdrawPlatformFees",
     values?: undefined
   ): string;
 
@@ -188,7 +329,63 @@ export interface DebatePoolInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
+    functionFragment: "DEBATE_PARTICIPATION_POINTS",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "DEBATE_WINNER_POINTS",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "LIKE_POINTS",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "PLATFORM_FEE_PERCENTAGE",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "REFUND_PERIOD",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "SHARE_POINTS",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "TIMEOUT_PERIOD",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "airdropClaimed",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "airdropEnabled",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "airdropSnapshotBlock",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "airdropToken",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "awardLikePoints",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "awardPoints",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "awardSharePoints",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "claimAirdrop",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -205,16 +402,24 @@ export interface DebatePoolInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "getActiveDebates",
+    functionFragment: "emergencyPaused",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "getContractBalance",
+    functionFragment: "emergencyRefund",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "getDebate", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "getUserDebates",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "getUserPoints",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "isParticipant",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "joinDebate", data: BytesLike): Result;
@@ -225,7 +430,31 @@ export interface DebatePoolInterface extends Interface {
   decodeFunctionResult(functionFragment: "oracle", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
   decodeFunctionResult(
+    functionFragment: "processExpiredDebate",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "refundDeadlines",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "renounceOwnership",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "requestRefund",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "setupAirdrop",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "toggleEmergencyPause",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "totalAirdropAmount",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -237,10 +466,51 @@ export interface DebatePoolInterface extends Interface {
     functionFragment: "userDebates",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "userPoints", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "withdrawFunds",
+    functionFragment: "withdrawPlatformFees",
     data: BytesLike
   ): Result;
+}
+
+export namespace AirdropClaimedEvent {
+  export type InputTuple = [
+    user: AddressLike,
+    amount: BigNumberish,
+    points: BigNumberish
+  ];
+  export type OutputTuple = [user: string, amount: bigint, points: bigint];
+  export interface OutputObject {
+    user: string;
+    amount: bigint;
+    points: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace AirdropSetupEvent {
+  export type InputTuple = [
+    token: AddressLike,
+    totalAmount: BigNumberish,
+    snapshotBlock: BigNumberish
+  ];
+  export type OutputTuple = [
+    token: string,
+    totalAmount: bigint,
+    snapshotBlock: bigint
+  ];
+  export interface OutputObject {
+    token: string;
+    totalAmount: bigint;
+    snapshotBlock: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
 }
 
 export namespace DebateCreatedEvent {
@@ -271,12 +541,11 @@ export namespace EIP712DomainChangedEvent {
   export type LogDescription = TypedLogDescription<Event>;
 }
 
-export namespace FundsWithdrawnEvent {
-  export type InputTuple = [to: AddressLike, amount: BigNumberish];
-  export type OutputTuple = [to: string, amount: bigint];
+export namespace EmergencyPauseToggledEvent {
+  export type InputTuple = [paused: boolean];
+  export type OutputTuple = [paused: boolean];
   export interface OutputObject {
-    to: string;
-    amount: bigint;
+    paused: boolean;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -303,6 +572,46 @@ export namespace ParticipantJoinedEvent {
   export interface OutputObject {
     debateId: bigint;
     participant: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace PointsAwardedEvent {
+  export type InputTuple = [
+    user: AddressLike,
+    points: BigNumberish,
+    reason: string
+  ];
+  export type OutputTuple = [user: string, points: bigint, reason: string];
+  export interface OutputObject {
+    user: string;
+    points: bigint;
+    reason: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace RefundProcessedEvent {
+  export type InputTuple = [
+    debateId: BigNumberish,
+    participant: AddressLike,
+    amount: BigNumberish
+  ];
+  export type OutputTuple = [
+    debateId: bigint,
+    participant: string,
+    amount: bigint
+  ];
+  export interface OutputObject {
+    debateId: bigint;
+    participant: string;
+    amount: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -373,7 +682,56 @@ export interface DebatePool extends BaseContract {
 
   BASIS_POINTS: TypedContractMethod<[], [bigint], "view">;
 
+  DEBATE_PARTICIPATION_POINTS: TypedContractMethod<[], [bigint], "view">;
+
+  DEBATE_WINNER_POINTS: TypedContractMethod<[], [bigint], "view">;
+
+  LIKE_POINTS: TypedContractMethod<[], [bigint], "view">;
+
   PLATFORM_FEE_PERCENTAGE: TypedContractMethod<[], [bigint], "view">;
+
+  REFUND_PERIOD: TypedContractMethod<[], [bigint], "view">;
+
+  SHARE_POINTS: TypedContractMethod<[], [bigint], "view">;
+
+  TIMEOUT_PERIOD: TypedContractMethod<[], [bigint], "view">;
+
+  airdropClaimed: TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
+
+  airdropEnabled: TypedContractMethod<[], [boolean], "view">;
+
+  airdropSnapshotBlock: TypedContractMethod<[], [bigint], "view">;
+
+  airdropToken: TypedContractMethod<[], [string], "view">;
+
+  awardLikePoints: TypedContractMethod<
+    [award: DebatePool.PointsAwardStruct],
+    [void],
+    "nonpayable"
+  >;
+
+  awardPoints: TypedContractMethod<
+    [award: DebatePool.PointsAwardStruct],
+    [void],
+    "nonpayable"
+  >;
+
+  awardSharePoints: TypedContractMethod<
+    [award: DebatePool.PointsAwardStruct],
+    [void],
+    "nonpayable"
+  >;
+
+  claimAirdrop: TypedContractMethod<
+    [
+      userPointsAmount: BigNumberish,
+      totalPoints: BigNumberish,
+      messageHash: BytesLike,
+      signature: BytesLike
+    ],
+    [void],
+    "nonpayable"
+  >;
 
   createDebate: TypedContractMethod<
     [
@@ -415,7 +773,7 @@ export interface DebatePool extends BaseContract {
   >;
 
   declareWinner: TypedContractMethod<
-    [result: IDebatePool.WinnerResultStruct],
+    [result: DebatePool.WinnerResultStruct],
     [void],
     "nonpayable"
   >;
@@ -436,17 +794,29 @@ export interface DebatePool extends BaseContract {
     "view"
   >;
 
-  getActiveDebates: TypedContractMethod<[], [bigint[]], "view">;
+  emergencyPaused: TypedContractMethod<[], [boolean], "view">;
 
-  getContractBalance: TypedContractMethod<[], [bigint], "view">;
+  emergencyRefund: TypedContractMethod<
+    [debateId: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
 
   getDebate: TypedContractMethod<
     [debateId: BigNumberish],
-    [IDebatePool.DebateStructOutput],
+    [DebatePool.DebateStructOutput],
     "view"
   >;
 
   getUserDebates: TypedContractMethod<[user: AddressLike], [bigint[]], "view">;
+
+  getUserPoints: TypedContractMethod<[user: AddressLike], [bigint], "view">;
+
+  isParticipant: TypedContractMethod<
+    [debateId: BigNumberish, user: AddressLike],
+    [boolean],
+    "view"
+  >;
 
   joinDebate: TypedContractMethod<
     [debateId: BigNumberish],
@@ -460,7 +830,31 @@ export interface DebatePool extends BaseContract {
 
   owner: TypedContractMethod<[], [string], "view">;
 
+  processExpiredDebate: TypedContractMethod<
+    [debateId: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
+  refundDeadlines: TypedContractMethod<[arg0: BigNumberish], [bigint], "view">;
+
   renounceOwnership: TypedContractMethod<[], [void], "nonpayable">;
+
+  requestRefund: TypedContractMethod<
+    [debateId: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
+  setupAirdrop: TypedContractMethod<
+    [_airdropToken: AddressLike, _totalAmount: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
+  toggleEmergencyPause: TypedContractMethod<[], [void], "nonpayable">;
+
+  totalAirdropAmount: TypedContractMethod<[], [bigint], "view">;
 
   transferOwnership: TypedContractMethod<
     [newOwner: AddressLike],
@@ -476,7 +870,9 @@ export interface DebatePool extends BaseContract {
     "view"
   >;
 
-  withdrawFunds: TypedContractMethod<[], [void], "nonpayable">;
+  userPoints: TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
+
+  withdrawPlatformFees: TypedContractMethod<[], [void], "nonpayable">;
 
   getFunction<T extends ContractMethod = ContractMethod>(
     key: string | FunctionFragment
@@ -486,8 +882,71 @@ export interface DebatePool extends BaseContract {
     nameOrSignature: "BASIS_POINTS"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
+    nameOrSignature: "DEBATE_PARTICIPATION_POINTS"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "DEBATE_WINNER_POINTS"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "LIKE_POINTS"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
     nameOrSignature: "PLATFORM_FEE_PERCENTAGE"
   ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "REFUND_PERIOD"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "SHARE_POINTS"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "TIMEOUT_PERIOD"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "airdropClaimed"
+  ): TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "airdropEnabled"
+  ): TypedContractMethod<[], [boolean], "view">;
+  getFunction(
+    nameOrSignature: "airdropSnapshotBlock"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "airdropToken"
+  ): TypedContractMethod<[], [string], "view">;
+  getFunction(
+    nameOrSignature: "awardLikePoints"
+  ): TypedContractMethod<
+    [award: DebatePool.PointsAwardStruct],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "awardPoints"
+  ): TypedContractMethod<
+    [award: DebatePool.PointsAwardStruct],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "awardSharePoints"
+  ): TypedContractMethod<
+    [award: DebatePool.PointsAwardStruct],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "claimAirdrop"
+  ): TypedContractMethod<
+    [
+      userPointsAmount: BigNumberish,
+      totalPoints: BigNumberish,
+      messageHash: BytesLike,
+      signature: BytesLike
+    ],
+    [void],
+    "nonpayable"
+  >;
   getFunction(
     nameOrSignature: "createDebate"
   ): TypedContractMethod<
@@ -532,7 +991,7 @@ export interface DebatePool extends BaseContract {
   getFunction(
     nameOrSignature: "declareWinner"
   ): TypedContractMethod<
-    [result: IDebatePool.WinnerResultStruct],
+    [result: DebatePool.WinnerResultStruct],
     [void],
     "nonpayable"
   >;
@@ -554,21 +1013,31 @@ export interface DebatePool extends BaseContract {
     "view"
   >;
   getFunction(
-    nameOrSignature: "getActiveDebates"
-  ): TypedContractMethod<[], [bigint[]], "view">;
+    nameOrSignature: "emergencyPaused"
+  ): TypedContractMethod<[], [boolean], "view">;
   getFunction(
-    nameOrSignature: "getContractBalance"
-  ): TypedContractMethod<[], [bigint], "view">;
+    nameOrSignature: "emergencyRefund"
+  ): TypedContractMethod<[debateId: BigNumberish], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "getDebate"
   ): TypedContractMethod<
     [debateId: BigNumberish],
-    [IDebatePool.DebateStructOutput],
+    [DebatePool.DebateStructOutput],
     "view"
   >;
   getFunction(
     nameOrSignature: "getUserDebates"
   ): TypedContractMethod<[user: AddressLike], [bigint[]], "view">;
+  getFunction(
+    nameOrSignature: "getUserPoints"
+  ): TypedContractMethod<[user: AddressLike], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "isParticipant"
+  ): TypedContractMethod<
+    [debateId: BigNumberish, user: AddressLike],
+    [boolean],
+    "view"
+  >;
   getFunction(
     nameOrSignature: "joinDebate"
   ): TypedContractMethod<[debateId: BigNumberish], [void], "nonpayable">;
@@ -582,8 +1051,30 @@ export interface DebatePool extends BaseContract {
     nameOrSignature: "owner"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
+    nameOrSignature: "processExpiredDebate"
+  ): TypedContractMethod<[debateId: BigNumberish], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "refundDeadlines"
+  ): TypedContractMethod<[arg0: BigNumberish], [bigint], "view">;
+  getFunction(
     nameOrSignature: "renounceOwnership"
   ): TypedContractMethod<[], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "requestRefund"
+  ): TypedContractMethod<[debateId: BigNumberish], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "setupAirdrop"
+  ): TypedContractMethod<
+    [_airdropToken: AddressLike, _totalAmount: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "toggleEmergencyPause"
+  ): TypedContractMethod<[], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "totalAirdropAmount"
+  ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
     nameOrSignature: "transferOwnership"
   ): TypedContractMethod<[newOwner: AddressLike], [void], "nonpayable">;
@@ -598,9 +1089,26 @@ export interface DebatePool extends BaseContract {
     "view"
   >;
   getFunction(
-    nameOrSignature: "withdrawFunds"
+    nameOrSignature: "userPoints"
+  ): TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "withdrawPlatformFees"
   ): TypedContractMethod<[], [void], "nonpayable">;
 
+  getEvent(
+    key: "AirdropClaimed"
+  ): TypedContractEvent<
+    AirdropClaimedEvent.InputTuple,
+    AirdropClaimedEvent.OutputTuple,
+    AirdropClaimedEvent.OutputObject
+  >;
+  getEvent(
+    key: "AirdropSetup"
+  ): TypedContractEvent<
+    AirdropSetupEvent.InputTuple,
+    AirdropSetupEvent.OutputTuple,
+    AirdropSetupEvent.OutputObject
+  >;
   getEvent(
     key: "DebateCreated"
   ): TypedContractEvent<
@@ -616,11 +1124,11 @@ export interface DebatePool extends BaseContract {
     EIP712DomainChangedEvent.OutputObject
   >;
   getEvent(
-    key: "FundsWithdrawn"
+    key: "EmergencyPauseToggled"
   ): TypedContractEvent<
-    FundsWithdrawnEvent.InputTuple,
-    FundsWithdrawnEvent.OutputTuple,
-    FundsWithdrawnEvent.OutputObject
+    EmergencyPauseToggledEvent.InputTuple,
+    EmergencyPauseToggledEvent.OutputTuple,
+    EmergencyPauseToggledEvent.OutputObject
   >;
   getEvent(
     key: "OwnershipTransferred"
@@ -637,6 +1145,20 @@ export interface DebatePool extends BaseContract {
     ParticipantJoinedEvent.OutputObject
   >;
   getEvent(
+    key: "PointsAwarded"
+  ): TypedContractEvent<
+    PointsAwardedEvent.InputTuple,
+    PointsAwardedEvent.OutputTuple,
+    PointsAwardedEvent.OutputObject
+  >;
+  getEvent(
+    key: "RefundProcessed"
+  ): TypedContractEvent<
+    RefundProcessedEvent.InputTuple,
+    RefundProcessedEvent.OutputTuple,
+    RefundProcessedEvent.OutputObject
+  >;
+  getEvent(
     key: "WinnerDeclared"
   ): TypedContractEvent<
     WinnerDeclaredEvent.InputTuple,
@@ -645,6 +1167,28 @@ export interface DebatePool extends BaseContract {
   >;
 
   filters: {
+    "AirdropClaimed(address,uint256,uint256)": TypedContractEvent<
+      AirdropClaimedEvent.InputTuple,
+      AirdropClaimedEvent.OutputTuple,
+      AirdropClaimedEvent.OutputObject
+    >;
+    AirdropClaimed: TypedContractEvent<
+      AirdropClaimedEvent.InputTuple,
+      AirdropClaimedEvent.OutputTuple,
+      AirdropClaimedEvent.OutputObject
+    >;
+
+    "AirdropSetup(address,uint256,uint256)": TypedContractEvent<
+      AirdropSetupEvent.InputTuple,
+      AirdropSetupEvent.OutputTuple,
+      AirdropSetupEvent.OutputObject
+    >;
+    AirdropSetup: TypedContractEvent<
+      AirdropSetupEvent.InputTuple,
+      AirdropSetupEvent.OutputTuple,
+      AirdropSetupEvent.OutputObject
+    >;
+
     "DebateCreated(uint256,string,uint256)": TypedContractEvent<
       DebateCreatedEvent.InputTuple,
       DebateCreatedEvent.OutputTuple,
@@ -667,15 +1211,15 @@ export interface DebatePool extends BaseContract {
       EIP712DomainChangedEvent.OutputObject
     >;
 
-    "FundsWithdrawn(address,uint256)": TypedContractEvent<
-      FundsWithdrawnEvent.InputTuple,
-      FundsWithdrawnEvent.OutputTuple,
-      FundsWithdrawnEvent.OutputObject
+    "EmergencyPauseToggled(bool)": TypedContractEvent<
+      EmergencyPauseToggledEvent.InputTuple,
+      EmergencyPauseToggledEvent.OutputTuple,
+      EmergencyPauseToggledEvent.OutputObject
     >;
-    FundsWithdrawn: TypedContractEvent<
-      FundsWithdrawnEvent.InputTuple,
-      FundsWithdrawnEvent.OutputTuple,
-      FundsWithdrawnEvent.OutputObject
+    EmergencyPauseToggled: TypedContractEvent<
+      EmergencyPauseToggledEvent.InputTuple,
+      EmergencyPauseToggledEvent.OutputTuple,
+      EmergencyPauseToggledEvent.OutputObject
     >;
 
     "OwnershipTransferred(address,address)": TypedContractEvent<
@@ -698,6 +1242,28 @@ export interface DebatePool extends BaseContract {
       ParticipantJoinedEvent.InputTuple,
       ParticipantJoinedEvent.OutputTuple,
       ParticipantJoinedEvent.OutputObject
+    >;
+
+    "PointsAwarded(address,uint256,string)": TypedContractEvent<
+      PointsAwardedEvent.InputTuple,
+      PointsAwardedEvent.OutputTuple,
+      PointsAwardedEvent.OutputObject
+    >;
+    PointsAwarded: TypedContractEvent<
+      PointsAwardedEvent.InputTuple,
+      PointsAwardedEvent.OutputTuple,
+      PointsAwardedEvent.OutputObject
+    >;
+
+    "RefundProcessed(uint256,address,uint256)": TypedContractEvent<
+      RefundProcessedEvent.InputTuple,
+      RefundProcessedEvent.OutputTuple,
+      RefundProcessedEvent.OutputObject
+    >;
+    RefundProcessed: TypedContractEvent<
+      RefundProcessedEvent.InputTuple,
+      RefundProcessedEvent.OutputTuple,
+      RefundProcessedEvent.OutputObject
     >;
 
     "WinnerDeclared(uint256,address,uint256)": TypedContractEvent<
