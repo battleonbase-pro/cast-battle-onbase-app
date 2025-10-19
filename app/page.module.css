@@ -3,19 +3,21 @@
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   margin: 0;
   padding: 0;
-  min-height: 100vh;
+  min-height: 100vh; /* Fallback for older browsers */
+  min-height: 100dvh; /* Use dynamic viewport height */
 }
 
 /* Prevent scroll on auth page */
 .container.authPage {
-  height: 100vh;
-  min-height: 100vh;
-  overflow: hidden;
+  min-height: 100vh; /* Fallback */
+  min-height: 100dvh;
+  overflow-y: auto;
 }
 
 /* Authentication Landing Page */
 .authSection {
-  height: 100vh;
+  min-height: 100vh; /* Fallback */
+  min-height: 100dvh;
   width: 100%;
   display: flex;
   align-items: center;
@@ -23,7 +25,7 @@
   background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
   padding: 20px;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .authContent {
@@ -32,8 +34,9 @@
   text-align: center;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  min-height: 100vh;
+  justify-content: center;
+  min-height: 100vh; /* Fallback */
+  min-height: 100dvh;
   padding: 40px 0;
   box-sizing: border-box;
   position: relative;
@@ -103,7 +106,8 @@
 
 /* Main App Section */
 .appSection {
-  min-height: 100vh;
+  min-height: 100vh; /* Fallback */
+  min-height: 100dvh;
   background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
   overflow-x: hidden;
   overflow-y: auto;
@@ -137,7 +141,8 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
-  min-height: calc(100vh - 80px);
+  min-height: calc(100vh - 80px); /* Fallback */
+  min-height: calc(100dvh - 80px);
   box-sizing: border-box;
 }
 
@@ -1707,7 +1712,8 @@
   
   .appMain {
     padding: 12px;
-    min-height: calc(100vh - 50px);
+    min-height: calc(100vh - 50px); /* Fallback */
+    min-height: calc(100dvh - 50px);
     padding-bottom: 24px;
   }
   
@@ -2770,7 +2776,8 @@
   
   .appMain {
     padding: 16px;
-    min-height: calc(100vh - 60px);
+    min-height: calc(100vh - 60px); /* Fallback */
+    min-height: calc(100dvh - 60px);
     padding-bottom: 20px;
   }
 }
