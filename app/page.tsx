@@ -958,6 +958,9 @@ export default function Home() {
                 >
                   {currentBattle.source}
                 </a>
+                <span className={styles.participantsCount}>
+                  👥 {currentBattle.participants?.length || 0} participants
+                </span>
                 {timeRemaining !== null && (
                   <span className={styles.timer}>
                     ⏰ {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}

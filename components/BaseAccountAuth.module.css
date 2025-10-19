@@ -2,10 +2,10 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
+  min-height: 100vh;
   padding: 20px;
   background: transparent;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .authContent {
@@ -338,8 +338,44 @@
   }
 }
 
-/* Responsive design for battle preview */
+/* Tablet responsive design */
+@media (max-width: 768px) {
+  .authContainer {
+    padding: 20px;
+    align-items: flex-start;
+    padding-top: 30px;
+    padding-bottom: 30px;
+  }
+  
+  .authContent {
+    padding: 32px;
+    gap: 28px;
+  }
+}
+
+/* Mobile responsive design */
 @media (max-width: 480px) {
+  .authContainer {
+    padding: 16px;
+    align-items: flex-start;
+    padding-top: 40px;
+    padding-bottom: 40px;
+  }
+  
+  .authContent {
+    padding: 24px;
+    gap: 24px;
+    margin: auto 0;
+  }
+  
+  .authTitle {
+    font-size: 20px;
+  }
+  
+  .authDescription {
+    font-size: 14px;
+  }
+  
   .battlePreview {
     padding: 16px;
     margin: 16px 0;

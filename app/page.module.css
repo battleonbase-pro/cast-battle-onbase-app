@@ -441,6 +441,12 @@
   font-family: 'SF Mono', 'Monaco', monospace;
 }
 
+.participantsCount {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
 .statusMessage {
   font-family: inherit;
   font-weight: 500;
@@ -1697,6 +1703,16 @@
   .topicCategory {
     font-size: 0.75rem;
     padding: 2px 4px;
+  }
+  
+  .timer {
+    font-size: 0.75rem;
+    margin-top: 4px;
+  }
+  
+  .participantsCount {
+    font-size: 0.75rem;
+    margin-top: 2px;
   }
   
   .topicSource {
