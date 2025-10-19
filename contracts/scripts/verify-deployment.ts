@@ -1,7 +1,7 @@
 import { ethers } from "hardhat";
 
 async function main() {
-  const CONTRACT_ADDRESS = "0x9Ae6F9B048C2146C422C2B7Fe4f49fF76d8F618c";
+  const CONTRACT_ADDRESS = "0x3980d9dBd39447AE1cA8F2Dc453F4E00Eb452c46";
   
   try {
     console.log("🔍 VERIFYING DEBATEPOOLV2 DEPLOYMENT");
@@ -46,7 +46,7 @@ async function main() {
     }
     
     console.log("\n🎉 DEPLOYMENT SUCCESSFUL!");
-    console.log("   Contract Address: 0x9Ae6F9B048C2146C422C2B7Fe4f49fF76d8F618c");
+    console.log("   Contract Address: 0x3980d9dBd39447AE1cA8F2Dc453F4E00Eb452c46");
     console.log("   Network: Base Sepolia");
     console.log("   Gas Cost: ~$0.0006 (practically free!)");
     

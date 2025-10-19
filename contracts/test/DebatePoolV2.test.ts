@@ -69,7 +69,7 @@ describe("DebatePoolV2", function () {
 
     describe("Debate Creation", function () {
         it("Should create a debate successfully", async function () {
-            const tx = await debatePool.createDebate(
+            const tx = await debatePool.connect(oracle).createDebate(
                 "Test Debate Topic",
                 ENTRY_FEE,
                 MAX_PARTICIPANTS,
@@ -88,7 +88,7 @@ describe("DebatePoolV2", function () {
             expect(debate.isCompleted).to.be.false;
         });
 
-        it("Should only allow owner to create debates", async function () {
+        it("Should only allow oracle to create debates", async function () {
             await expect(
                 debatePool.connect(user1).createDebate(
                     "Test Debate Topic",
@@ -96,31 +96,31 @@ describe("DebatePoolV2", function () {
                     MAX_PARTICIPANTS,
                     DURATION
                 )
-            ).to.be.revertedWithCustomError(debatePool, "OwnableUnauthorizedAccount");
+            ).to.be.revertedWith("DebatePoolV2: Only oracle can call this function");
         });
 
         it("Should reject empty topic", async function () {
             await expect(
-                debatePool.createDebate("", ENTRY_FEE, MAX_PARTICIPANTS, DURATION)
+                debatePool.connect(oracle).createDebate("", ENTRY_FEE, MAX_PARTICIPANTS, DURATION)
             ).to.be.revertedWith("DebatePoolV2: Topic cannot be empty");
         });
 
         it("Should reject zero entry fee", async function () {
             await expect(
-                debatePool.createDebate("Test", 0, MAX_PARTICIPANTS, DURATION)
+                debatePool.connect(oracle).createDebate("Test", 0, MAX_PARTICIPANTS, DURATION)
             ).to.be.revertedWith("DebatePoolV2: Entry fee must be greater than 0");
         });
 
         it("Should reject max participants less than 2", async function () {
             await expect(
-                debatePool.createDebate("Test", ENTRY_FEE, 1, DURATION)
+                debatePool.connect(oracle).createDebate("Test", ENTRY_FEE, 1, DURATION)
             ).to.be.revertedWith("DebatePoolV2: Must allow at least 2 participants");
         });
     });
 
     describe("Joining Debates", function () {
         beforeEach(async function () {
-            await debatePool.createDebate(
+            await debatePool.connect(oracle).createDebate(
                 "Test Debate Topic",
                 ENTRY_FEE,
                 MAX_PARTICIPANTS,
@@ -159,7 +159,7 @@ describe("DebatePoolV2", function () {
 
         it("Should prevent joining full debates", async function () {
             // Create debate with max 2 participants
-            await debatePool.createDebate("Small Debate", ENTRY_FEE, 2, DURATION);
+            await debatePool.connect(oracle).createDebate("Small Debate", ENTRY_FEE, 2, DURATION);
 
             // Join with 2 users
             await debatePool.connect(user1).joinDebate(2);
@@ -182,7 +182,7 @@ describe("DebatePoolV2", function () {
 
     describe("Winner Declaration", function () {
         beforeEach(async function () {
-            await debatePool.createDebate(
+            await debatePool.connect(oracle).createDebate(
                 "Test Debate Topic",
                 ENTRY_FEE,
                 MAX_PARTICIPANTS,
@@ -300,7 +300,7 @@ describe("DebatePoolV2", function () {
 
     describe("Refund System", function () {
         beforeEach(async function () {
-            await debatePool.createDebate(
+            await debatePool.connect(oracle).createDebate(
                 "Test Debate Topic",
                 ENTRY_FEE,
                 MAX_PARTICIPANTS,
@@ -369,12 +369,12 @@ describe("DebatePoolV2", function () {
             ).to.be.revertedWith("DebatePoolV2: Winner already declared");
         });
 
-        it("Should allow processing expired debates", async function () {
+        it("Should allow processing expired debates by owner or oracle", async function () {
             // Fast forward time to after timeout period
             await ethers.provider.send("evm_increaseTime", [DURATION + 24 * 3600 + 1]);
             await ethers.provider.send("evm_mine", []);
 
-            const tx = await debatePool.processExpiredDebate(1);
+            const tx = await debatePool.connect(oracle).processExpiredDebate(1);
 
             await expect(tx)
                 .to.emit(debatePool, "RefundProcessed")
@@ -425,7 +425,7 @@ describe("DebatePoolV2", function () {
             await debatePool.toggleEmergencyPause();
 
             await expect(
-                debatePool.createDebate("Test", ENTRY_FEE, MAX_PARTICIPANTS, DURATION)
+                debatePool.connect(oracle).createDebate("Test", ENTRY_FEE, MAX_PARTICIPANTS, DURATION)
             ).to.be.revertedWith("DebatePoolV2: Contract is paused");
         });
     });

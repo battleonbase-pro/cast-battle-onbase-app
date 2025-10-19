@@ -96,6 +96,11 @@ contract DebatePoolV2 is ReentrancyGuard, Ownable, EIP712 {
         _;
     }
 
+    modifier onlyOwnerOrOracle() {
+        require(msg.sender == owner() || msg.sender == oracle, "DebatePoolV2: Only owner or oracle can call this function");
+        _;
+    }
+
     modifier whenNotPaused() {
         require(!emergencyPaused, "DebatePoolV2: Contract is paused");
         _;
@@ -143,7 +148,7 @@ contract DebatePoolV2 is ReentrancyGuard, Ownable, EIP712 {
         uint256 entryFee,
         uint256 maxParticipants,
         uint256 duration
-    ) external onlyOwner whenNotPaused returns (uint256) {
+    ) external onlyOracle whenNotPaused returns (uint256) {
         require(bytes(topic).length > 0, "DebatePoolV2: Topic cannot be empty");
         require(entryFee > 0, "DebatePoolV2: Entry fee must be greater than 0");
         require(maxParticipants > 1, "DebatePoolV2: Must allow at least 2 participants");
@@ -275,7 +280,7 @@ contract DebatePoolV2 is ReentrancyGuard, Ownable, EIP712 {
      * @dev Process expired debates and refund all participants
      * @param debateId ID of the expired debate
      */
-    function processExpiredDebate(uint256 debateId) external validDebate(debateId) nonReentrant {
+    function processExpiredDebate(uint256 debateId) external onlyOwnerOrOracle validDebate(debateId) nonReentrant {
         Debate storage debate = debates[debateId];
         
         require(block.timestamp > debate.endTime + TIMEOUT_PERIOD, "DebatePoolV2: Not expired yet");
