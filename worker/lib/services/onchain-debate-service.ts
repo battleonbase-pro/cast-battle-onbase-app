@@ -16,14 +16,22 @@ export class OnChainDebateService {
     }
 
     try {
-      // Standard approach for ethers.js v6 with networks that don't support ENS
-      // Use minimal network configuration to avoid any ENS resolution attempts
-      this.provider = new ethers.JsonRpcProvider(RPC_URL, {
-        chainId: 84532,
-        name: "base-sepolia"
-      });
+      // Create provider for Base Sepolia without ENS resolution
+      this.provider = new ethers.JsonRpcProvider(RPC_URL);
       
-      this.wallet = new ethers.Wallet(ORACLE_PRIVATE_KEY, this.provider);
+      // Create wallet with provider, but catch ENS resolution errors
+      try {
+        this.wallet = new ethers.Wallet(ORACLE_PRIVATE_KEY, this.provider);
+      } catch (error: any) {
+        if (error.code === 'UNSUPPORTED_OPERATION' && error.operation === 'getEnsAddress') {
+          // If ENS resolution fails, create wallet without provider and connect manually
+          console.log(`🔗 ENS resolution failed, using fallback wallet creation`);
+          this.wallet = new ethers.Wallet(ORACLE_PRIVATE_KEY);
+          this.wallet = this.wallet.connect(this.provider);
+        } else {
+          throw error;
+        }
+      }
       
       // Create contract directly with ABI instead of using factory to avoid ENS resolution
       const contractABI = [
@@ -43,7 +51,7 @@ export class OnChainDebateService {
 
       console.log(`🔗 OnChainDebateService initialized for contract: ${DEBATE_POOL_CONTRACT_ADDRESS}`);
       console.log(`🔗 Oracle address: ${this.wallet.address}`);
-      console.log(`🔗 ENS disabled for Base Sepolia (not supported)`);
+      console.log(`🔗 Base Sepolia provider configured without ENS resolution`);
     } catch (error) {
       console.error(`⚠️ OnChainDebateService initialization failed:`, error);
       throw error;

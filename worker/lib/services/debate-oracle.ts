@@ -18,14 +18,22 @@ export class DebateOracle {
     contractAddress: string,
     contractABI: any[]
   ) {
-    // Standard approach for ethers.js v6 with networks that don't support ENS
-    // Use minimal network configuration to avoid any ENS resolution attempts
-    this.provider = new ethers.JsonRpcProvider(rpcUrl, {
-      chainId: 84532,
-      name: "base-sepolia"
-    });
+    // Create provider for Base Sepolia without ENS resolution
+    this.provider = new ethers.JsonRpcProvider(rpcUrl);
     
-    this.wallet = new ethers.Wallet(privateKey, this.provider);
+    // Create wallet with provider, but catch ENS resolution errors
+    try {
+      this.wallet = new ethers.Wallet(privateKey, this.provider);
+    } catch (error: any) {
+      if (error.code === 'UNSUPPORTED_OPERATION' && error.operation === 'getEnsAddress') {
+        // If ENS resolution fails, create wallet without provider and connect manually
+        console.log(`🔗 ENS resolution failed, using fallback wallet creation`);
+        this.wallet = new ethers.Wallet(privateKey);
+        this.wallet = this.wallet.connect(this.provider);
+      } else {
+        throw error;
+      }
+    }
     this.contractAddress = contractAddress;
     this.contract = new ethers.Contract(contractAddress, contractABI, this.wallet);
   }

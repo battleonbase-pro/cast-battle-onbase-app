@@ -17,10 +17,9 @@ class CurrentsNewsService {
   private baseUrl: string = 'https://api.currentsapi.services/v1';
 
   constructor() {
-    this.apiKey = process.env.CURRENTS_API_KEY || '';
-    if (!this.apiKey) {
-      console.warn('[Currents News Service] CURRENTS_API_KEY not found in environment variables');
-    }
+    // API key should be handled server-side only - this will be moved to API routes
+    this.apiKey = '';
+    console.warn('[Currents News Service] API key should be handled server-side only');
   }
 
   async getComprehensiveNews(): Promise<Article[]> {

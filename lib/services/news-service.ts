@@ -29,8 +29,8 @@ class NewsService {
   private db: typeof DatabaseService;
 
   constructor() {
-    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-    this.agentOrchestrator = new AgentOrchestrator(apiKey);
+    // API key should be handled server-side only - this will be moved to API routes
+    this.agentOrchestrator = new AgentOrchestrator();
     this.db = DatabaseService;
   }
 

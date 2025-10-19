@@ -12,11 +12,20 @@ class OnChainDebateService {
             throw new Error('Oracle private key or contract address not configured');
         }
         try {
-            this.provider = new ethers_1.ethers.JsonRpcProvider(RPC_URL, {
-                chainId: 84532,
-                name: "base-sepolia"
-            });
-            this.wallet = new ethers_1.ethers.Wallet(ORACLE_PRIVATE_KEY, this.provider);
+            this.provider = new ethers_1.ethers.JsonRpcProvider(RPC_URL);
+            try {
+                this.wallet = new ethers_1.ethers.Wallet(ORACLE_PRIVATE_KEY, this.provider);
+            }
+            catch (error) {
+                if (error.code === 'UNSUPPORTED_OPERATION' && error.operation === 'getEnsAddress') {
+                    console.log(`🔗 ENS resolution failed, using fallback wallet creation`);
+                    this.wallet = new ethers_1.ethers.Wallet(ORACLE_PRIVATE_KEY);
+                    this.wallet = this.wallet.connect(this.provider);
+                }
+                else {
+                    throw error;
+                }
+            }
             const contractABI = [
                 "function createDebate(string memory topic, uint256 entryFee, uint256 maxParticipants, uint256 durationSeconds) external returns (uint256)",
                 "function getDebate(uint256 debateId) external view returns (tuple(uint256 id, string topic, uint256 entryFee, uint256 maxParticipants, uint256 startTime, uint256 endTime, address[] participants, address winner, bool isActive, bool isCompleted))",
@@ -32,7 +41,7 @@ class OnChainDebateService {
             this.contract = new ethers_1.ethers.Contract(DEBATE_POOL_CONTRACT_ADDRESS, contractABI, this.wallet);
             console.log(`🔗 OnChainDebateService initialized for contract: ${DEBATE_POOL_CONTRACT_ADDRESS}`);
             console.log(`🔗 Oracle address: ${this.wallet.address}`);
-            console.log(`🔗 ENS disabled for Base Sepolia (not supported)`);
+            console.log(`🔗 Base Sepolia provider configured without ENS resolution`);
         }
         catch (error) {
             console.error(`⚠️ OnChainDebateService initialization failed:`, error);

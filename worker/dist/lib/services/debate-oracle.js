@@ -7,11 +7,20 @@ const client_1 = require("@prisma/client");
 const prisma = new client_1.PrismaClient();
 class DebateOracle {
     constructor(rpcUrl, privateKey, contractAddress, contractABI) {
-        this.provider = new ethers_1.ethers.JsonRpcProvider(rpcUrl, {
-            chainId: 84532,
-            name: "base-sepolia"
-        });
-        this.wallet = new ethers_1.ethers.Wallet(privateKey, this.provider);
+        this.provider = new ethers_1.ethers.JsonRpcProvider(rpcUrl);
+        try {
+            this.wallet = new ethers_1.ethers.Wallet(privateKey, this.provider);
+        }
+        catch (error) {
+            if (error.code === 'UNSUPPORTED_OPERATION' && error.operation === 'getEnsAddress') {
+                console.log(`🔗 ENS resolution failed, using fallback wallet creation`);
+                this.wallet = new ethers_1.ethers.Wallet(privateKey);
+                this.wallet = this.wallet.connect(this.provider);
+            }
+            else {
+                throw error;
+            }
+        }
         this.contractAddress = contractAddress;
         this.contract = new ethers_1.ethers.Contract(contractAddress, contractABI, this.wallet);
     }

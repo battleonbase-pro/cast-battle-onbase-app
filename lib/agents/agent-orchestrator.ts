@@ -5,7 +5,8 @@ import ModeratorAgent from './moderator-agent';
 
 class AgentOrchestrator {
   constructor(apiKey) {
-    this.apiKey = apiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    // API key should be handled server-side only - this will be moved to API routes
+    this.apiKey = apiKey || '';
     
     // Initialize agents (only for topic generation)
     this.newsCurator = new NewsCuratorAgent(this.apiKey);

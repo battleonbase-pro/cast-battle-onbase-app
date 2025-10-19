@@ -39,10 +39,9 @@ class SerperNewsService {
   private baseUrl: string = 'https://google.serper.dev';
 
   constructor() {
-    this.apiKey = process.env.SERPER_API_KEY || '';
-    if (!this.apiKey) {
-      console.warn('[Serper News Service] SERPER_API_KEY not found in environment variables');
-    }
+    // API key should be handled server-side only - this will be moved to API routes
+    this.apiKey = '';
+    console.warn('[Serper News Service] API key should be handled server-side only');
   }
 
   async searchNews(query: string, category?: string): Promise<Article[]> {
