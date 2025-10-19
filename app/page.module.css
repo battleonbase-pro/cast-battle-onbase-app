@@ -271,6 +271,51 @@
   stroke: currentColor;
 }
 
+.helpBtn {
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #2563eb;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin-right: 8px;
+}
+
+.helpBtn:hover {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+  transform: translateY(-1px);
+}
+
+.helpBtn:active {
+  transform: scale(0.95);
+}
+
+.helpBtn:focus {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.helpIcon {
+  font-weight: 600;
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 
 .userCompact button {
   margin-left: 8px;
@@ -368,9 +413,6 @@
   }
 }
 
-.signInButton {
-  /* Base button styling */
-}
 
 /* Additional mobile optimization for button content */
 @media (max-width: 480px) {
@@ -2403,6 +2445,153 @@
     /* Improve touch target */
     -webkit-tap-highlight-color: rgba(0, 0, 255, 0.1);
     touch-action: manipulation;
+  }
+  
+  .helpBtn {
+    min-width: 48px;
+    min-height: 48px;
+    padding: 12px;
+    -webkit-tap-highlight-color: rgba(37, 99, 235, 0.1);
+    touch-action: manipulation;
+  }
+}
+
+/* Help Modal Styles */
+.helpModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.helpModalContent {
+  background: white;
+  border-radius: 16px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.helpModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 24px 0 24px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 24px;
+}
+
+.helpModalTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+.helpModalClose {
+  background: #f3f4f6;
+  border: none;
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 20px;
+  color: #6b7280;
+  transition: all 0.2s ease;
+}
+
+.helpModalClose:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.helpModalBody {
+  padding: 0 24px 24px 24px;
+}
+
+.helpSection {
+  margin-bottom: 32px;
+}
+
+.helpSection:last-child {
+  margin-bottom: 0;
+}
+
+.helpSectionTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.helpList {
+  margin: 0;
+  padding-left: 20px;
+  color: #4b5563;
+  line-height: 1.6;
+}
+
+.helpList li {
+  margin-bottom: 8px;
+}
+
+.helpList li:last-child {
+  margin-bottom: 0;
+}
+
+.helpList strong {
+  color: #1f2937;
+  font-weight: 600;
+}
+
+/* Mobile Help Modal */
+@media (max-width: 768px) {
+  .helpModal {
+    padding: 16px;
+  }
+  
+  .helpModalContent {
+    max-height: 90vh;
+  }
+  
+  .helpModalHeader {
+    padding: 20px 20px 0 20px;
+    margin-bottom: 20px;
+  }
+  
+  .helpModalTitle {
+    font-size: 1.25rem;
+  }
+  
+  .helpModalBody {
+    padding: 0 20px 20px 20px;
+  }
+  
+  .helpSection {
+    margin-bottom: 24px;
+  }
+  
+  .helpSectionTitle {
+    font-size: 1rem;
+  }
+  
+  .helpList {
+    font-size: 0.875rem;
   }
 }
 

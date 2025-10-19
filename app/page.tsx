@@ -109,6 +109,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<'debate' | 'arguments' | 'history' | 'leaderboard'>('debate');
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [battleEndTime, setBattleEndTime] = useState<number | null>(null);
+  const [showHelp, setShowHelp] = useState<boolean>(false);
   
   // Battle data
   const [casts, setCasts] = useState<Cast[]>([]);
@@ -900,6 +901,13 @@ export default function Home() {
                   </span>
                 </div>
                 <button 
+                  onClick={() => setShowHelp(true)}
+                  className={styles.helpBtn}
+                  title="Help & Guide"
+                >
+                  <span className={styles.helpIcon}>?</span>
+                </button>
+                <button 
                   onClick={handleSignOut}
                   className={styles.signOutBtn}
                   title="Sign Out"
@@ -924,6 +932,78 @@ export default function Home() {
               </div>
             </div>
           </header>
+
+          {/* Help Modal */}
+          {showHelp && (
+            <div className={styles.helpModal}>
+              <div className={styles.helpModalContent}>
+                <div className={styles.helpModalHeader}>
+                  <h2 className={styles.helpModalTitle}>NewCast Debate Guide</h2>
+                  <button 
+                    onClick={() => setShowHelp(false)}
+                    className={styles.helpModalClose}
+                    aria-label="Close help"
+                  >
+                    ×
+                  </button>
+                </div>
+                
+                <div className={styles.helpModalBody}>
+                  <div className={styles.helpSection}>
+                    <h3 className={styles.helpSectionTitle}>🎯 How to Participate</h3>
+                    <ul className={styles.helpList}>
+                      <li><strong>Choose Your Side:</strong> Select either "Support" or "Oppose" for the current debate topic</li>
+                      <li><strong>Submit Your Argument:</strong> Write your reasoning and submit it</li>
+                      <li><strong>Pay Entry Fee:</strong> Pay 1 USDC using Base Pay to participate</li>
+                      <li><strong>Earn Points:</strong> Get 10 points for participation, 100 points for winning</li>
+                    </ul>
+                  </div>
+
+                  <div className={styles.helpSection}>
+                    <h3 className={styles.helpSectionTitle}>💰 Prize Pool</h3>
+                    <ul className={styles.helpList}>
+                      <li><strong>Entry Fee:</strong> 1 USDC per argument submission</li>
+                      <li><strong>Winner Takes:</strong> 80% of the total prize pool</li>
+                      <li><strong>Platform Fee:</strong> 20% goes to platform maintenance</li>
+                      <li><strong>Automatic Payout:</strong> Winners receive USDC directly to their wallet</li>
+                    </ul>
+                  </div>
+
+                  <div className={styles.helpSection}>
+                    <h3 className={styles.helpSectionTitle}>🔗 Base Sepolia Network</h3>
+                    <ul className={styles.helpList}>
+                      <li><strong>Network:</strong> Deployed on Base Sepolia testnet</li>
+                      <li><strong>Contract:</strong> Smart contract handles all payments and payouts</li>
+                      <li><strong>Oracle:</strong> AI-powered oracle determines debate winners</li>
+                      <li><strong>Security:</strong> EIP-712 signatures ensure secure transactions</li>
+                    </ul>
+                  </div>
+
+                  <div className={styles.helpSection}>
+                    <h3 className={styles.helpSectionTitle}>⚡ Features</h3>
+                    <ul className={styles.helpList}>
+                      <li><strong>Real-time Updates:</strong> Live sentiment tracking and participant count</li>
+                      <li><strong>Mobile Optimized:</strong> Responsive design for all devices</li>
+                      <li><strong>Like System:</strong> Like/unlike arguments to influence winner selection</li>
+                      <li><strong>Leaderboard:</strong> Track your points and ranking</li>
+                    </ul>
+                  </div>
+
+                  <div className={styles.helpSection}>
+                    <h3 className={styles.helpSectionTitle}>🚀 Getting Started</h3>
+                    <ol className={styles.helpList}>
+                      <li>Connect your Base Account wallet</li>
+                      <li>Ensure you have USDC on Base Sepolia</li>
+                      <li>Read the current debate topic and description</li>
+                      <li>Choose Support or Oppose based on your view</li>
+                      <li>Submit your argument and pay the entry fee</li>
+                      <li>Wait for the debate to end and winner announcement</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Thank You Message - Prominently displayed below header */}
           {hasSubmittedCast && (
