@@ -31,7 +31,7 @@ export class BaseAccountAuthService {
     try {
       if (typeof window !== 'undefined') {
         this.sdk = createBaseAccountSDK({
-          appName: 'Cast Battle'
+          appName: 'NewCast Debate'
         });
         this.provider = (this.sdk as any).getProvider();
         this.isInitialized = true;
