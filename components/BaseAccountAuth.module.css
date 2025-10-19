@@ -218,9 +218,11 @@
 
 .previewStats {
   display: flex;
+  flex-direction: column;
   justify-content: space-between;
   align-items: center;
   width: 100%;
+  gap: 8px;
 }
 
 .stat {
@@ -393,7 +395,9 @@
   }
   
   .previewStats {
-    justify-content: space-between;
-    gap: 0;
+    flex-direction: column;
+    justify-content: center;
+    gap: 12px;
+    align-items: center;
   }
 }
