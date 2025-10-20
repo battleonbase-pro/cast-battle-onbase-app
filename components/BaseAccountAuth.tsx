@@ -28,6 +28,7 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
   const [isMiniApp, setIsMiniApp] = useState<boolean>(false);
   const [prefetchedNonce, setPrefetchedNonce] = useState<string | null>(null);
   const [isSigningIn, setIsSigningIn] = useState<boolean>(false);
+  const [isInterfaceReady, setIsInterfaceReady] = useState<boolean>(false);
   const { isConnected, address } = useAccount();
 
   // Fetch battle preview for marketing
@@ -84,13 +85,6 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
       try {
         const inMiniApp = await sdk.isInMiniApp(100);
         setIsMiniApp(inMiniApp);
-        
-        // If we're in a Farcaster Mini App, call ready() to hide splash screen
-        if (inMiniApp) {
-          console.log('🎯 Farcaster Mini App detected - calling ready() to hide splash screen');
-          await sdk.ready();
-          console.log('✅ Farcaster Mini App ready() called successfully');
-        }
       } catch {
         setIsMiniApp(false);
       }
@@ -103,6 +97,23 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
       } catch {}
     })();
   }, []);
+
+  // Call ready() when interface is loaded
+  useEffect(() => {
+    const callReady = async () => {
+      if (isMiniApp && isInterfaceReady) {
+        try {
+          console.log('🎯 Interface ready - calling sdk.actions.ready() to hide splash screen');
+          await sdk.actions.ready();
+          console.log('✅ Farcaster Mini App ready() called successfully');
+        } catch (error) {
+          console.error('❌ Failed to call sdk.actions.ready():', error);
+        }
+      }
+    };
+
+    callReady();
+  }, [isMiniApp, isInterfaceReady]);
 
   // Auto-authenticate connected users in Base app
   useEffect(() => {
@@ -131,6 +142,16 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
 
     autoAuthenticate();
   }, [isMiniApp, isConnected, address, prefetchedNonce, isSigningIn, onAuthSuccess]);
+
+  // Set interface ready after component mounts
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsInterfaceReady(true);
+      console.log('🎯 Interface marked as ready');
+    }, 100); // Small delay to ensure everything is rendered
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);

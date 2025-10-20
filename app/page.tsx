@@ -605,9 +605,16 @@ export default function Home() {
       try {
         const inMiniApp = await sdk.isInMiniApp(100);
         if (inMiniApp) {
-          console.log('🎯 Farcaster Mini App detected in main app - calling ready()');
-          await sdk.ready();
-          console.log('✅ Farcaster Mini App ready() called from main app');
+          // Wait a bit for interface to load, then call ready()
+          setTimeout(async () => {
+            try {
+              console.log('🎯 Main app interface ready - calling sdk.actions.ready()');
+              await sdk.actions.ready();
+              console.log('✅ Farcaster Mini App ready() called from main app');
+            } catch (error) {
+              console.error('❌ Failed to call sdk.actions.ready() from main app:', error);
+            }
+          }, 200); // Small delay to ensure interface is loaded
         }
       } catch (error) {
         console.log('ℹ️ Not in Farcaster Mini App or ready() failed:', error);
