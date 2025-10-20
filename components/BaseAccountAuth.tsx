@@ -277,7 +277,7 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
               </button>
             ) : (
               <div className={styles.authDescription}>
-                {isSigningIn ? 'Signing in…' : `You're connected${address ? `: ${address.slice(0, 6)}…${address.slice(-4)}` : ''}}
+                {isSigningIn ? 'Signing in…' : `You're connected${address ? `: ${address.slice(0, 6)}…${address.slice(-4)}` : ''}`}
               </div>
             )
           ) : (
