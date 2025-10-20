@@ -252,6 +252,7 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
       setError(msg);
       onAuthError(msg);
     }
+    }
     finally {
       setIsSigningIn(false);
     }
