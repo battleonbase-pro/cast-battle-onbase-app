@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { sdk } from '@farcaster/miniapp-sdk';
-import { useAccount, useConnect } from 'wagmi';
+import { useAccount } from 'wagmi';
 import { SignInWithBaseButton } from './SignInWithBaseButton';
 import { baseAccountAuthService, BaseAccountUser } from '../lib/services/base-account-auth-service';
 import styles from './BaseAccountAuth.module.css';
@@ -27,8 +27,8 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
   const [error, setError] = useState<string | null>(null);
   const [isMiniApp, setIsMiniApp] = useState<boolean>(false);
   const [prefetchedNonce, setPrefetchedNonce] = useState<string | null>(null);
+  const [isSigningIn, setIsSigningIn] = useState<boolean>(false);
   const { isConnected, address } = useAccount();
-  const { connect, connectors, isPending } = useConnect();
 
   // Fetch battle preview for marketing
   const fetchBattlePreview = async () => {
@@ -145,6 +145,7 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
   const handleSignInWithBase = async () => {
     setError(null); // Clear any previous errors
     try {
+      setIsSigningIn(true);
       // Pass prefetched nonce to strictly follow docs and avoid popups
       const result = await baseAccountAuthService.signInWithBase(prefetchedNonce || undefined);
       if (result.success && result.user) {
@@ -163,10 +164,14 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
       setError(errorMessage);
       onAuthError(errorMessage);
     }
+    finally {
+      setIsSigningIn(false);
+    }
   };
 
   const handleMiniAppConnect = async () => {
     setError(null);
+    setIsSigningIn(true);
     try {
       const result = await baseAccountAuthService.signInWithBase(prefetchedNonce || undefined);
       if (result.success && result.user) {
@@ -181,6 +186,9 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
       const msg = e instanceof Error ? e.message : 'Authentication failed';
       setError(msg);
       onAuthError(msg);
+    }
+    finally {
+      setIsSigningIn(false);
     }
   };
 
@@ -254,9 +262,9 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
                 type="button"
                 className={styles.signInButton}
                 onClick={handleMiniAppConnect}
-                disabled={isPending}
+                disabled={isSigningIn}
               >
-                {isPending ? 'Connecting…' : 'Connect Wallet'}
+                {isSigningIn ? 'Connecting…' : 'Connect Wallet'}
               </button>
             ) : (
               <div className={styles.authDescription}>
@@ -264,10 +272,17 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
               </div>
             )
           ) : (
-            <SignInWithBaseButton
-              colorScheme="light"
-              onClick={handleSignInWithBase}
-            />
+            <div>
+              <SignInWithBaseButton
+                colorScheme="light"
+                onClick={handleSignInWithBase}
+              />
+              {isSigningIn && (
+                <div className={styles.authDescription} style={{ marginTop: 8 }}>
+                  Signing in…
+                </div>
+              )}
+            </div>
           )}
           
           {/* Error Display */}
