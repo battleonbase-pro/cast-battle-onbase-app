@@ -277,7 +277,7 @@ export default function Home() {
   // Fetch casts
   const fetchCasts = useCallback(async () => {
     try {
-      const response = await fetch('/api/battle/submit-cast');
+      const response = await fetch('/api/battle/current');
       const data = await response.json();
       
       if (data.success) {

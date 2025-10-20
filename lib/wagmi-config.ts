@@ -67,4 +67,6 @@ export const config = createConfig({
     [mainnet.id]: http(),
   },
   connectors,
+  ssr: true,
+  autoConnect: true,
 })

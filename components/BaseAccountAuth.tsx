@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
+import { sdk } from '@farcaster/miniapp-sdk';
+import { useAccount, useConnect } from 'wagmi';
 import { SignInWithBaseButton } from './SignInWithBaseButton';
 import { baseAccountAuthService, BaseAccountUser } from '../lib/services/base-account-auth-service';
 import styles from './BaseAccountAuth.module.css';
@@ -23,6 +25,9 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
   const [battlePreview, setBattlePreview] = useState<BattlePreview | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
+  const [isMiniApp, setIsMiniApp] = useState<boolean>(false);
+  const { isConnected, address } = useAccount();
+  const { connect, connectors, isPending } = useConnect();
 
   // Fetch battle preview for marketing
   const fetchBattlePreview = async () => {
@@ -74,6 +79,14 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
   // Fetch battle preview on component mount
   useEffect(() => {
     fetchBattlePreview();
+    (async () => {
+      try {
+        const inMiniApp = await sdk.isInMiniApp(100);
+        setIsMiniApp(inMiniApp);
+      } catch {
+        setIsMiniApp(false);
+      }
+    })();
   }, []);
 
   const formatTime = (seconds: number) => {
@@ -207,10 +220,27 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
 
         {/* Authentication Section */}
         <div className={styles.authSection}>
-          <SignInWithBaseButton
-            colorScheme="light"
-            onClick={handleSignInWithBase}
-          />
+          {isMiniApp ? (
+            !isConnected ? (
+              <button
+                type="button"
+                className={styles.signInButton}
+                onClick={() => connect({ connector: connectors[0] })}
+                disabled={isPending}
+              >
+                {isPending ? 'Connecting…' : 'Connect Wallet'}
+              </button>
+            ) : (
+              <div className={styles.authDescription}>
+                You're connected{address ? `: ${address.slice(0, 6)}…${address.slice(-4)}` : ''}
+              </div>
+            )
+          ) : (
+            <SignInWithBaseButton
+              colorScheme="light"
+              onClick={handleSignInWithBase}
+            />
+          )}
           
           {/* Error Display */}
           {error && (
