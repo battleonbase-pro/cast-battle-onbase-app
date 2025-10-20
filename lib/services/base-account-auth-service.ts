@@ -67,7 +67,7 @@ export class BaseAccountAuthService {
   /**
    * Sign in with Base Account using SIWE (Sign in with Ethereum)
    */
-  async signInWithBase(): Promise<AuthResult> {
+  async signInWithBase(nonceOverride?: string): Promise<AuthResult> {
     if (!this.isAvailable()) {
       return {
         success: false,
@@ -78,13 +78,17 @@ export class BaseAccountAuthService {
     try {
       console.log('🔐 Starting Base Account authentication...');
       
-      // 1. Generate a fresh nonce from server
-      const nonceResponse = await fetch('/api/auth/nonce');
-      if (!nonceResponse.ok) {
-        throw new Error('Failed to generate nonce');
+      // 1. Get a fresh nonce (use override if provided)
+      let nonce = nonceOverride;
+      if (!nonce) {
+        const nonceResponse = await fetch('/api/auth/nonce');
+        if (!nonceResponse.ok) {
+          throw new Error('Failed to generate nonce');
+        }
+        const data = await nonceResponse.json();
+        nonce = data.nonce;
       }
-      const { nonce } = await nonceResponse.json();
-      console.log('🔑 Generated nonce:', nonce);
+      console.log('🔑 Using nonce:', nonce);
 
       // 2. Switch to Base Chain
       try {
@@ -111,7 +115,7 @@ export class BaseAccountAuthService {
             version: '1',
             capabilities: {
               signInWithEthereum: { 
-                nonce, 
+                nonce: nonce!, 
                 chainId: '0x2105' // Base Mainnet
               }
             }
@@ -151,7 +155,7 @@ export class BaseAccountAuthService {
           message = `${domain} wants you to sign in with your Ethereum account:
 ${address}
 
-${this.buildSIWEMessage(nonce, currentTime)}
+${this.buildSIWEMessage(nonce!, currentTime)}
 
 URI: ${uri}
 Version: 1

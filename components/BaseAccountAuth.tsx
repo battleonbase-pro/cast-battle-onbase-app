@@ -26,6 +26,7 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [isMiniApp, setIsMiniApp] = useState<boolean>(false);
+  const [prefetchedNonce, setPrefetchedNonce] = useState<string | null>(null);
   const { isConnected, address } = useAccount();
   const { connect, connectors, isPending } = useConnect();
 
@@ -86,6 +87,13 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
       } catch {
         setIsMiniApp(false);
       }
+      try {
+        const nonceResponse = await fetch('/api/auth/nonce');
+        if (nonceResponse.ok) {
+          const { nonce } = await nonceResponse.json();
+          setPrefetchedNonce(nonce);
+        }
+      } catch {}
     })();
   }, []);
 
@@ -153,6 +161,25 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
       const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
       setError(errorMessage);
       onAuthError(errorMessage);
+    }
+  };
+
+  const handleMiniAppConnect = async () => {
+    setError(null);
+    try {
+      const result = await baseAccountAuthService.signInWithBase(prefetchedNonce || undefined);
+      if (result.success && result.user) {
+        await checkJoinStatus();
+        onAuthSuccess(result.user);
+      } else {
+        const msg = result.error || 'Authentication failed';
+        setError(msg);
+        onAuthError(msg);
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Authentication failed';
+      setError(msg);
+      onAuthError(msg);
     }
   };
 
@@ -225,7 +252,7 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
               <button
                 type="button"
                 className={styles.signInButton}
-                onClick={() => connect({ connector: connectors[0] })}
+                onClick={handleMiniAppConnect}
                 disabled={isPending}
               >
                 {isPending ? 'Connecting…' : 'Connect Wallet'}
