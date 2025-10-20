@@ -61,7 +61,7 @@ export function UnifiedPaymentButton({
           params: [address]
         });
 
-        const chainCapabilities = caps[publicClient.chain?.id?.toString() || '8453'] || {};
+        const chainCapabilities = caps[publicClient.chain?.id?.toString() || '84532'] || {};
         const paymasterSupported = chainCapabilities['paymasterService']?.supported || false;
         
         setHasPaymasterService(paymasterSupported);

@@ -1,5 +1,5 @@
 import { http, createConfig } from 'wagmi'
-import { base, mainnet } from 'wagmi/chains'
+import { base, baseSepolia, mainnet } from 'wagmi/chains'
 import { injected, metaMask, walletConnect, baseAccount } from 'wagmi/connectors'
 import { farcasterMiniApp as miniAppConnector } from '@farcaster/miniapp-wagmi-connector'
 import { sdk } from '@farcaster/miniapp-sdk'
@@ -92,8 +92,9 @@ if (hasValidWalletConnectId) {
 }
 
 export const config = createConfig({
-  chains: [base, mainnet],
+  chains: [baseSepolia, base, mainnet],
   transports: {
+    [baseSepolia.id]: http(),
     [base.id]: http(),
     [mainnet.id]: http(),
   },
