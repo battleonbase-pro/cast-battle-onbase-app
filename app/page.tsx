@@ -599,29 +599,22 @@ export default function Home() {
     }
   };
 
-  // Farcaster Mini App ready() call
+  // Simple Farcaster Mini App ready() call
   useEffect(() => {
-    const initializeFarcaster = async () => {
+    const callReady = async () => {
       try {
         const inMiniApp = await sdk.isInMiniApp(100);
         if (inMiniApp) {
-          // Wait a bit for interface to load, then call ready()
-          setTimeout(async () => {
-            try {
-              console.log('🎯 Main app interface ready - calling sdk.actions.ready()');
-              await sdk.actions.ready();
-              console.log('✅ Farcaster Mini App ready() called from main app');
-            } catch (error) {
-              console.error('❌ Failed to call sdk.actions.ready() from main app:', error);
-            }
-          }, 200); // Small delay to ensure interface is loaded
+          console.log('🎯 Calling sdk.actions.ready() from main app');
+          await sdk.actions.ready();
+          console.log('✅ Farcaster Mini App ready() called from main app');
         }
       } catch (error) {
         console.log('ℹ️ Not in Farcaster Mini App or ready() failed:', error);
       }
     };
-    
-    initializeFarcaster();
+
+    callReady();
   }, []);
 
   // Load initial data

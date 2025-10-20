@@ -28,7 +28,6 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
   const [isMiniApp, setIsMiniApp] = useState<boolean>(false);
   const [prefetchedNonce, setPrefetchedNonce] = useState<string | null>(null);
   const [isSigningIn, setIsSigningIn] = useState<boolean>(false);
-  const [isInterfaceReady, setIsInterfaceReady] = useState<boolean>(false);
   const { isConnected, address } = useAccount();
 
   // Fetch battle preview for marketing
@@ -98,74 +97,23 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
     })();
   }, []);
 
-  // Call ready() when interface is loaded
+  // Simple Farcaster Mini App ready() call
   useEffect(() => {
     const callReady = async () => {
-      if (isMiniApp && isInterfaceReady) {
-        try {
-          console.log('🎯 Interface ready - calling sdk.actions.ready() to hide splash screen');
+      try {
+        const inMiniApp = await sdk.isInMiniApp(100);
+        if (inMiniApp) {
+          console.log('🎯 Calling sdk.actions.ready() to hide splash screen');
           await sdk.actions.ready();
           console.log('✅ Farcaster Mini App ready() called successfully');
-        } catch (error) {
-          console.error('❌ Failed to call sdk.actions.ready():', error);
         }
+      } catch (error) {
+        console.log('ℹ️ Not in Farcaster Mini App or ready() failed:', error);
       }
     };
 
     callReady();
-  }, [isMiniApp, isInterfaceReady]);
-
-  // Auto-authenticate connected users in Base app
-  useEffect(() => {
-    const autoAuthenticate = async () => {
-      if (isMiniApp && isConnected && address && !isSigningIn) {
-        console.log('🔄 Auto-authenticating connected user in Base app:', address);
-        try {
-          setIsSigningIn(true);
-          const result = await baseAccountAuthService.signInWithBase(prefetchedNonce || undefined);
-          if (result.success && result.user) {
-            await checkJoinStatus();
-            console.log('✅ Auto-authentication successful, calling onAuthSuccess');
-            onAuthSuccess(result.user);
-          } else {
-            console.log('⚠️ Auto-authentication failed:', result.error);
-            // Don't show error for auto-auth failures, just log it
-          }
-        } catch (error) {
-          console.log('⚠️ Auto-authentication error:', error);
-          // Don't show error for auto-auth failures, just log it
-        } finally {
-          setIsSigningIn(false);
-        }
-      }
-    };
-
-    autoAuthenticate();
-  }, [isMiniApp, isConnected, address, prefetchedNonce, isSigningIn, onAuthSuccess]);
-
-  // Set interface ready after component mounts and data loads
-  useEffect(() => {
-    const checkInterfaceReady = () => {
-      // Check if critical data is loaded
-      const hasData = battlePreview !== null && prefetchedNonce !== null;
-      
-      if (hasData) {
-        setIsInterfaceReady(true);
-        console.log('🎯 Interface marked as ready - data loaded');
-      }
-    };
-
-    // Check immediately
-    checkInterfaceReady();
-    
-    // Also set a fallback timer
-    const timer = setTimeout(() => {
-      setIsInterfaceReady(true);
-      console.log('🎯 Interface marked as ready - fallback timer');
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [battlePreview, prefetchedNonce]);
+  }, []);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
