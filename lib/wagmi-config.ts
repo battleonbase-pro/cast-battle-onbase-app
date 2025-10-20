@@ -2,6 +2,7 @@ import { http, createConfig } from 'wagmi'
 import { base, mainnet } from 'wagmi/chains'
 import { injected, metaMask, walletConnect, baseAccount } from 'wagmi/connectors'
 import { farcasterMiniApp as miniAppConnector } from '@farcaster/miniapp-wagmi-connector'
+import { sdk } from '@farcaster/miniapp-sdk'
 
 // Custom Phantom connector for better detection
 const phantomConnector = injected({
@@ -26,26 +27,56 @@ if (process.env.NODE_ENV === 'development') {
   console.log('Has valid WalletConnect ID:', hasValidWalletConnectId);
 }
 
-// Build connectors array conditionally
-const connectors = [
-  // Farcaster connector (for Farcaster environment)
-  miniAppConnector(),
-  // Base Account connector (official Base ecosystem integration)
-  baseAccount({
-    appName: 'NewsCast Debate',
-  }),
-  // MetaMask connector
-  metaMask({
-    dappMetadata: {
-      name: 'NewsCast Debate',
-      url: 'https://news-debate-onbase-app.vercel.app',
-    },
-  }),
-  // Phantom connector (for better detection)
-  phantomConnector,
-];
+// Function to detect if we're in a Farcaster Mini App
+function isFarcasterMiniApp(): boolean {
+  try {
+    if (typeof window === 'undefined') return false;
+    // Synchronous check - we'll handle async detection in components
+    return typeof (window as any).farcaster !== 'undefined' || 
+           navigator.userAgent.toLowerCase().includes('farcaster') ||
+           navigator.userAgent.toLowerCase().includes('warpcast');
+  } catch {
+    return false;
+  }
+}
 
-// Only add WalletConnect if we have a valid project ID
+// Build connectors array based on environment detection
+const inFarcasterMiniApp = isFarcasterMiniApp();
+let connectors;
+
+if (inFarcasterMiniApp) {
+  // In Farcaster Mini App - prioritize Farcaster connector
+  console.log('🔗 Detected Farcaster Mini App - prioritizing Farcaster connector');
+  connectors = [
+    miniAppConnector(), // Farcaster connector first
+    baseAccount({
+      appName: 'NewsCast Debate',
+    }),
+    metaMask({
+      dappMetadata: {
+        name: 'NewsCast Debate',
+        url: 'https://news-debate-onbase-app.vercel.app',
+      },
+    }),
+    phantomConnector,
+  ];
+} else {
+  // In Base app or external browser - prioritize Base Account
+  console.log('🔵 Detected Base app or external browser - prioritizing Base Account connector');
+  connectors = [
+    baseAccount({
+      appName: 'NewsCast Debate',
+    }),
+    miniAppConnector(), // Farcaster connector as fallback
+    metaMask({
+      dappMetadata: {
+        name: 'NewsCast Debate',
+        url: 'https://news-debate-onbase-app.vercel.app',
+      },
+    }),
+    phantomConnector,
+  ];
+}
 if (hasValidWalletConnectId) {
   connectors.push(
     walletConnect({

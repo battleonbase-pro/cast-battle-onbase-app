@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { sdk } from '@farcaster/miniapp-sdk';
-import { useAccount } from 'wagmi';
+import { useAccount, useConnect } from 'wagmi';
 import { SignInWithBaseButton } from './SignInWithBaseButton';
 import { baseAccountAuthService, BaseAccountUser } from '../lib/services/base-account-auth-service';
 import { farcasterAuthService, FarcasterUser } from '../lib/services/farcaster-auth-service';
@@ -31,6 +31,32 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
   const [isSigningIn, setIsSigningIn] = useState<boolean>(false);
   const [farcasterUser, setFarcasterUser] = useState<FarcasterUser | null>(null);
   const { isConnected, address } = useAccount();
+  const { connect, connectors } = useConnect();
+
+  // Ensure Farcaster wallet is connected in Mini App environment
+  const ensureFarcasterWalletConnected = async () => {
+    if (!isMiniApp || isConnected) return;
+    
+    try {
+      console.log('🔗 Ensuring Farcaster wallet is connected...');
+      
+      // Find the Farcaster connector
+      const farcasterConnector = connectors.find(connector => 
+        connector.name.toLowerCase().includes('farcaster') ||
+        connector.id === 'farcasterMiniApp'
+      );
+      
+      if (farcasterConnector) {
+        console.log('🔗 Connecting to Farcaster wallet...');
+        await connect({ connector: farcasterConnector });
+        console.log('✅ Farcaster wallet connected successfully');
+      } else {
+        console.warn('⚠️ Farcaster connector not found');
+      }
+    } catch (error) {
+      console.error('❌ Failed to connect Farcaster wallet:', error);
+    }
+  };
 
   // Detect Base app ecosystem
   const detectBaseApp = (): boolean => {
@@ -114,6 +140,13 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
       }
     })();
   }, []);
+
+  // Ensure Farcaster wallet is connected when in Mini App
+  useEffect(() => {
+    if (isMiniApp && !isConnected) {
+      ensureFarcasterWalletConnected();
+    }
+  }, [isMiniApp, isConnected]);
 
   // Simple Farcaster Mini App ready() call
   useEffect(() => {
