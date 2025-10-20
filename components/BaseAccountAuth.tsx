@@ -257,7 +257,6 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
     }
   };
 
-
   return (
     <div className={styles.authContainer}>
       <div className={styles.authContent}>
