@@ -125,7 +125,7 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
     fetchBattlePreview();
     (async () => {
       try {
-        const inMiniApp = await sdk.isInMiniApp(100);
+        const inMiniApp = await sdk.isInMiniApp();
         setIsMiniApp(inMiniApp);
         
         // Only detect Base app if not in Farcaster Mini App
@@ -152,7 +152,7 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
   useEffect(() => {
     const callReady = async () => {
       try {
-        const inMiniApp = await sdk.isInMiniApp(100);
+        const inMiniApp = await sdk.isInMiniApp();
         if (inMiniApp) {
           console.log('🎯 Calling sdk.actions.ready() to hide splash screen');
           await sdk.actions.ready();

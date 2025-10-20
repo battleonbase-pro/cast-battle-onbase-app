@@ -13,7 +13,7 @@ export function RootProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     (async () => {
       try {
-        const inMiniApp = await sdk.isInMiniApp(100);
+        const inMiniApp = await sdk.isInMiniApp();
         if (!cancelled) setIsMiniApp(inMiniApp);
       } catch {
         if (!cancelled) setIsMiniApp(false);

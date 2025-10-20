@@ -25,7 +25,7 @@ export class FarcasterAuthService {
   async isInMiniApp(): Promise<boolean> {
     try {
       const { sdk } = await import('@farcaster/miniapp-sdk');
-      return await sdk.isInMiniApp(100);
+      return await sdk.isInMiniApp();
     } catch (error) {
       console.log('Not in Farcaster Mini App:', error);
       return false;

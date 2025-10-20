@@ -33,7 +33,7 @@ export function UnifiedPaymentButton({
   useEffect(() => {
     const detectMiniApp = async () => {
       try {
-        const inMiniApp = await sdk.isInMiniApp(100);
+        const inMiniApp = await sdk.isInMiniApp();
         setIsMiniApp(inMiniApp);
       } catch {
         setIsMiniApp(false);

@@ -624,7 +624,7 @@ export default function Home() {
   useEffect(() => {
     const callReady = async () => {
       try {
-        const inMiniApp = await sdk.isInMiniApp(100);
+        const inMiniApp = await sdk.isInMiniApp();
         if (inMiniApp) {
           console.log('🎯 Calling sdk.actions.ready() from main app');
           await sdk.actions.ready();
