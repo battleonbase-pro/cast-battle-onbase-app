@@ -1,0 +1,49 @@
+{
+  "version": "3",
+  "dataloss": false,
+  "steps": [
+    {
+      "tag": "CreateTable",
+      "table": "cast_likes"
+    },
+    {
+      "tag": "CreateTable", 
+      "table": "share_rewards"
+    },
+    {
+      "tag": "AddColumn",
+      "table": "users",
+      "column": "displayName"
+    },
+    {
+      "tag": "AddColumn",
+      "table": "users", 
+      "column": "fid"
+    },
+    {
+      "tag": "AddColumn",
+      "table": "users",
+      "column": "pfpUrl"
+    },
+    {
+      "tag": "AddColumn",
+      "table": "battles",
+      "column": "debateId"
+    },
+    {
+      "tag": "AddColumn",
+      "table": "battles",
+      "column": "imageUrl"
+    },
+    {
+      "tag": "AddColumn",
+      "table": "battles",
+      "column": "insights"
+    },
+    {
+      "tag": "AddColumn",
+      "table": "battles",
+      "column": "thumbnail"
+    }
+  ]
+}
