@@ -143,15 +143,29 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
     autoAuthenticate();
   }, [isMiniApp, isConnected, address, prefetchedNonce, isSigningIn, onAuthSuccess]);
 
-  // Set interface ready after component mounts
+  // Set interface ready after component mounts and data loads
   useEffect(() => {
+    const checkInterfaceReady = () => {
+      // Check if critical data is loaded
+      const hasData = battlePreview !== null && prefetchedNonce !== null;
+      
+      if (hasData) {
+        setIsInterfaceReady(true);
+        console.log('🎯 Interface marked as ready - data loaded');
+      }
+    };
+
+    // Check immediately
+    checkInterfaceReady();
+    
+    // Also set a fallback timer
     const timer = setTimeout(() => {
       setIsInterfaceReady(true);
-      console.log('🎯 Interface marked as ready');
-    }, 100); // Small delay to ensure everything is rendered
+      console.log('🎯 Interface marked as ready - fallback timer');
+    }, 500);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [battlePreview, prefetchedNonce]);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
