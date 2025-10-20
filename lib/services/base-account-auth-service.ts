@@ -31,7 +31,7 @@ export class BaseAccountAuthService {
     try {
       if (typeof window !== 'undefined') {
         this.sdk = createBaseAccountSDK({
-          appName: 'NewCast Debate'
+          appName: 'NewsCast Debate'
         });
         this.provider = (this.sdk as any).getProvider();
         this.isInitialized = true;
@@ -90,11 +90,15 @@ export class BaseAccountAuthService {
       }
       console.log('🔑 Using nonce:', nonce);
 
+      // Resolve chainId (Base Mainnet or Base Sepolia) per docs
+      const isTestnet = process.env.NEXT_PUBLIC_NETWORK === 'testnet' || process.env.NODE_ENV === 'development';
+      const chainIdHex = isTestnet ? '0x14A34' /* 84532 Base Sepolia */ : '0x2105' /* 8453 Base Mainnet */;
+
       // 2. Switch to Base Chain
       try {
         await (this.provider as any).request({
           method: "wallet_switchEthereumChain",
-          params: [{ chainId: '0x2105' }], // Base Mainnet
+          params: [{ chainId: chainIdHex }],
         });
         console.log('✅ Switched to Base Chain');
       } catch (switchError: unknown) {
@@ -116,7 +120,7 @@ export class BaseAccountAuthService {
             capabilities: {
               signInWithEthereum: { 
                 nonce: nonce!, 
-                chainId: '0x2105' // Base Mainnet
+                chainId: chainIdHex
               }
             }
           }]
@@ -159,7 +163,7 @@ ${this.buildSIWEMessage(nonce!, currentTime)}
 
 URI: ${uri}
 Version: 1
-Chain ID: 8453
+Chain ID: ${isTestnet ? 84532 : 8453}
 Nonce: ${nonce}
 Issued At: ${new Date(currentTime * 1000).toISOString()}`;
 

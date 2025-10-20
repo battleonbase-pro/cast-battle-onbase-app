@@ -145,7 +145,8 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
   const handleSignInWithBase = async () => {
     setError(null); // Clear any previous errors
     try {
-      const result = await baseAccountAuthService.signInWithBase();
+      // Pass prefetched nonce to strictly follow docs and avoid popups
+      const result = await baseAccountAuthService.signInWithBase(prefetchedNonce || undefined);
       if (result.success && result.user) {
         // Check if user is already joined after authentication
         await checkJoinStatus();
