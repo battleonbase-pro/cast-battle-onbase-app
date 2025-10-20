@@ -63,11 +63,7 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ SIWE signature verified for address:', address);
 
-    return NextResponse.json({
-      success: true,
-      message: 'Signature verified successfully',
-      address,
-    });
+    return NextResponse.json({ ok: true });
 
   } catch (error) {
     console.error('Error verifying SIWE signature:', error);
