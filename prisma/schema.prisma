@@ -11,6 +11,9 @@ model User {
   id             String                @id @default(cuid())
   address        String                @unique
   username       String?
+  fid            Int?                  // Farcaster ID
+  displayName    String?               // Farcaster display name
+  pfpUrl         String?               // Farcaster profile picture URL
   points         Int                   @default(0)
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt

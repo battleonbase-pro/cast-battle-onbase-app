@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Exit on any command failure
+set -e
+
 # GCP Configuration
 PROJECT_ID="battle-worker-phraseflow"
 SERVICE_NAME="news-debate-app"
@@ -12,9 +15,18 @@ echo "Service Name: ${SERVICE_NAME}"
 echo "Region: ${REGION}"
 echo "Image: ${IMAGE_NAME}"
 
+# First, test the build locally to ensure it works
+echo "🔍 Testing build locally before Docker build..."
+if ! npm run build; then
+    echo "❌ Local build failed! Aborting deployment."
+    echo "Please fix build errors before deploying."
+    exit 1
+fi
+echo "✅ Local build successful!"
+
 # Build the Docker image
 echo "📦 Building Docker image..."
-docker buildx build --platform linux/amd64 \
+if ! docker buildx build --platform linux/amd64 \
     --build-arg NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS=0x6D00f9F5C6a57B46bFa26E032D60B525A1DAe271 \
     --build-arg NEXT_PUBLIC_USDC_ADDRESS=0x036CbD53842c5426634e7929541eC2318f3dCF7e \
     --build-arg NEXT_PUBLIC_NETWORK=testnet \
@@ -23,15 +35,23 @@ docker buildx build --platform linux/amd64 \
     --build-arg BATTLE_GENERATION_ENABLED=true \
     --build-arg BATTLE_DURATION_HOURS=4 \
     --build-arg BATTLE_MAX_PARTICIPANTS=100 \
-    -t ${IMAGE_NAME} --load .
+    -t ${IMAGE_NAME} --load .; then
+    echo "❌ Docker build failed! Aborting deployment."
+    exit 1
+fi
+echo "✅ Docker build successful!"
 
 # Push the image to Google Container Registry
 echo "📤 Pushing image to Google Container Registry..."
-docker push ${IMAGE_NAME}
+if ! docker push ${IMAGE_NAME}; then
+    echo "❌ Docker push failed! Aborting deployment."
+    exit 1
+fi
+echo "✅ Docker push successful!"
 
 # Deploy to Cloud Run
 echo "🚀 Deploying to Cloud Run..."
-gcloud run deploy ${SERVICE_NAME} \
+if ! gcloud run deploy ${SERVICE_NAME} \
     --image ${IMAGE_NAME} \
     --platform managed \
     --region ${REGION} \
@@ -43,7 +63,11 @@ gcloud run deploy ${SERVICE_NAME} \
     --max-instances 10 \
     --timeout 3600 \
     --set-env-vars NODE_ENV=production,NEXT_PUBLIC_PROJECT_NAME=cast-battle-onbase,NEWS_SOURCE=serper,BATTLE_GENERATION_ENABLED=true,BATTLE_DURATION_HOURS=4,BATTLE_MAX_PARTICIPANTS=100,NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS=0x6D00f9F5C6a57B46bFa26E032D60B525A1DAe271,NEXT_PUBLIC_USDC_ADDRESS=0x036CbD53842c5426634e7929541eC2318f3dCF7e,NEXT_PUBLIC_NETWORK=testnet \
-    --set-secrets DATABASE_URL=database-url:latest,WORKER_BASE_URL=worker-base-url:latest,WORKER_API_KEY=worker-api-key:latest,GOOGLE_GENERATIVE_AI_API_KEY=google-generative-ai-api-key:latest,SERPER_API_KEY=serper-api-key:latest,NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=walletconnect-project-id:latest
+    --set-secrets DATABASE_URL=database-url:latest,WORKER_BASE_URL=worker-base-url:latest,WORKER_API_KEY=worker-api-key:latest,GOOGLE_GENERATIVE_AI_API_KEY=google-generative-ai-api-key:latest,SERPER_API_KEY=serper-api-key:latest,NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=walletconnect-project-id:latest; then
+    echo "❌ Cloud Run deployment failed!"
+    exit 1
+fi
+echo "✅ Cloud Run deployment successful!"
 
 echo "✅ Deployment complete!"
 

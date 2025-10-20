@@ -4,10 +4,11 @@ import { sdk } from '@farcaster/miniapp-sdk';
 import { useAccount } from 'wagmi';
 import { SignInWithBaseButton } from './SignInWithBaseButton';
 import { baseAccountAuthService, BaseAccountUser } from '../lib/services/base-account-auth-service';
+import { farcasterAuthService, FarcasterUser } from '../lib/services/farcaster-auth-service';
 import styles from './BaseAccountAuth.module.css';
 
 interface BaseAccountAuthProps {
-  onAuthSuccess: (user: BaseAccountUser | null) => void;
+  onAuthSuccess: (user: BaseAccountUser | FarcasterUser | null) => void;
   onAuthError: (error: string) => void;
 }
 
@@ -28,6 +29,7 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
   const [isMiniApp, setIsMiniApp] = useState<boolean>(false);
   const [prefetchedNonce, setPrefetchedNonce] = useState<string | null>(null);
   const [isSigningIn, setIsSigningIn] = useState<boolean>(false);
+  const [farcasterUser, setFarcasterUser] = useState<FarcasterUser | null>(null);
   const { isConnected, address } = useAccount();
 
   // Fetch battle preview for marketing
@@ -182,21 +184,25 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
     }
   };
 
-  const handleMiniAppConnect = async () => {
+  const handleFarcasterSignIn = async () => {
     setError(null);
     setIsSigningIn(true);
     try {
-      const result = await baseAccountAuthService.signInWithBase(prefetchedNonce || undefined);
+      console.log('🔐 Starting Farcaster sign-in...');
+      const result = await farcasterAuthService.signInWithFarcaster();
+      
       if (result.success && result.user) {
+        console.log('✅ Farcaster sign-in successful:', result.user);
+        setFarcasterUser(result.user);
         await checkJoinStatus();
         onAuthSuccess(result.user);
       } else {
-        const msg = result.error || 'Authentication failed';
+        const msg = result.error || 'Farcaster authentication failed';
         setError(msg);
         onAuthError(msg);
       }
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Authentication failed';
+      const msg = e instanceof Error ? e.message : 'Farcaster authentication failed';
       setError(msg);
       onAuthError(msg);
     }
@@ -266,19 +272,29 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
         {/* Authentication Section */}
         <div className={styles.authSection}>
           {isMiniApp ? (
-            !isConnected ? (
+            farcasterUser ? (
+              <div className={styles.authDescription}>
+                <div className={styles.userInfo}>
+                  <img 
+                    src={farcasterUser.pfpUrl} 
+                    alt={farcasterUser.displayName}
+                    className={styles.userAvatar}
+                  />
+                  <div>
+                    <div className={styles.userName}>{farcasterUser.displayName}</div>
+                    <div className={styles.userHandle}>@{farcasterUser.username}</div>
+                  </div>
+                </div>
+              </div>
+            ) : (
               <button
                 type="button"
                 className={styles.signInButton}
-                onClick={handleMiniAppConnect}
+                onClick={handleFarcasterSignIn}
                 disabled={isSigningIn}
               >
-                {isSigningIn ? 'Connecting…' : 'Connect Wallet'}
+                {isSigningIn ? 'Signing in…' : 'Sign In'}
               </button>
-            ) : (
-              <div className={styles.authDescription}>
-                {isSigningIn ? 'Signing in…' : `You're connected${address ? `: ${address.slice(0, 6)}…${address.slice(-4)}` : ''}`}
-              </div>
             )
           ) : (
             <div>

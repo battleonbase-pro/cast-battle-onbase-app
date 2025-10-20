@@ -223,16 +223,27 @@ export class DatabaseService {
   }
 
   // User Management
-  async createOrUpdateUser(address: string, username?: string) {
+  async createOrUpdateUser(address: string, farcasterData?: {
+    fid?: number;
+    username?: string;
+    displayName?: string;
+    pfpUrl?: string;
+  }) {
     return await prisma.user.upsert({
       where: { address },
       update: {
-        username,
+        username: farcasterData?.username,
+        fid: farcasterData?.fid,
+        displayName: farcasterData?.displayName,
+        pfpUrl: farcasterData?.pfpUrl,
         updatedAt: new Date(),
       },
       create: {
         address,
-        username,
+        username: farcasterData?.username,
+        fid: farcasterData?.fid,
+        displayName: farcasterData?.displayName,
+        pfpUrl: farcasterData?.pfpUrl,
       },
     });
   }

@@ -5,6 +5,21 @@ import BaseAccountAuth from '../components/BaseAccountAuth';
 import { BasePayButton } from '../components/BasePayButton';
 import LikeButton from '../components/LikeButton';
 import { baseAccountAuthService, BaseAccountUser } from '../lib/services/base-account-auth-service';
+import { FarcasterUser } from '../lib/services/farcaster-auth-service';
+
+// Union type for both user types
+type AppUser = BaseAccountUser | FarcasterUser;
+
+// Helper function to get user address from either user type
+const getUserAddress = (user: AppUser | null): string | null => {
+  if (!user) return null;
+  return user.address;
+};
+
+// Helper function to check if user is Farcaster user
+const isFarcasterUser = (user: AppUser | null): user is FarcasterUser => {
+  return user !== null && 'fid' in user;
+};
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -100,7 +115,7 @@ interface BattleHistory {
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [baseAccountUser, setBaseAccountUser] = useState<BaseAccountUser | null>(null);
+  const [baseAccountUser, setBaseAccountUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentBattle, setCurrentBattle] = useState<Battle | null>(null);
@@ -259,8 +274,9 @@ export default function Home() {
             
             // Check if user has already submitted a cast for this battle
             if (baseAccountUser && data.battle.casts) {
+              const userAddress = getUserAddress(baseAccountUser);
               const userHasSubmitted = data.battle.casts.some((cast: any) => 
-                cast.user?.address?.toLowerCase() === baseAccountUser.address.toLowerCase()
+                cast.user?.address?.toLowerCase() === userAddress?.toLowerCase()
               );
               if (userHasSubmitted) {
                 setHasSubmittedCast(true);
@@ -317,9 +333,10 @@ export default function Home() {
 
       // Check if user has submitted and is a participant
       if (baseAccountUser) {
+        const userAddress = getUserAddress(baseAccountUser);
         const userCast = castsList.find((cast: Cast) => 
-          cast.userAddress && baseAccountUser.address && 
-          cast.userAddress.toLowerCase() === baseAccountUser.address.toLowerCase()
+          cast.userAddress && userAddress && 
+          cast.userAddress.toLowerCase() === userAddress.toLowerCase()
         );
         setHasSubmittedCast(!!userCast);
       }
@@ -380,7 +397,8 @@ export default function Home() {
 
   // Submit cast with Base Pay SDK integration
   const submitCast = async () => {
-    if (!baseAccountUser || !castContent.trim()) return;
+    const userAddress = getUserAddress(baseAccountUser);
+    if (!userAddress || !castContent.trim()) return;
 
     let castSubmitted = false; // Flag to track if cast was submitted successfully
 
@@ -392,7 +410,7 @@ export default function Home() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userAddress: baseAccountUser.address,
+          userAddress: userAddress,
           content: castContent.trim(),
           side: castSide,
           transactionId: null // No payment initially
@@ -463,7 +481,7 @@ export default function Home() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  userAddress: baseAccountUser.address,
+                  userAddress: userAddress,
                   content: castContent.trim(),
                   side: castSide,
                   transactionId: payment.id
@@ -547,7 +565,7 @@ export default function Home() {
       
       // Process the final response (only if not already processed in payment block)
       if (!paymentStatus || paymentStatus !== 'completed') {
-        if (data.success) {
+      if (data.success) {
           setHasSubmittedCast(true);
           setCastContent('');
           
@@ -585,8 +603,8 @@ export default function Home() {
           if (data.alreadySubmitted) {
             setHasSubmittedCast(true);
             setError('You have already submitted an argument for this debate.');
-          } else {
-            setError(data.error);
+      } else {
+        setError(data.error);
           }
         }
       }
@@ -632,8 +650,9 @@ export default function Home() {
 
   // Fetch user points when authenticated
   useEffect(() => {
-    if (baseAccountUser?.address) {
-      fetchUserPoints(baseAccountUser.address);
+    const userAddress = getUserAddress(baseAccountUser);
+    if (userAddress) {
+      fetchUserPoints(userAddress);
     }
   }, [baseAccountUser, fetchUserPoints]);
 
@@ -666,7 +685,7 @@ export default function Home() {
             await fetchCasts();
             await fetchBattleHistory();
             if (baseAccountUser?.address) {
-              await fetchUserPoints(baseAccountUser.address);
+              await fetchUserPoints(getUserAddress(baseAccountUser)!);
             }
             // Sync battle timing on mobile every 30 seconds
             if (currentBattle?.endTime) {
@@ -684,7 +703,7 @@ export default function Home() {
         fetchCasts();
         fetchBattleHistory();
         if (baseAccountUser?.address) {
-          fetchUserPoints(baseAccountUser.address);
+          fetchUserPoints(getUserAddress(baseAccountUser)!);
         }
         
       } else {
@@ -756,7 +775,7 @@ export default function Home() {
               await fetchCasts();
               await fetchBattleHistory();
               if (baseAccountUser?.address) {
-                await fetchUserPoints(baseAccountUser.address);
+                await fetchUserPoints(getUserAddress(baseAccountUser)!);
               }
             } catch (error) {
               console.error('Polling error:', error);
@@ -856,7 +875,7 @@ export default function Home() {
           <BaseAccountAuth
             onAuthSuccess={(user) => {
               if (user) {
-                console.log('🔐 Auth success callback - user:', user.address);
+                console.log('🔐 Auth success callback - user:', getUserAddress(user));
                 console.log('🔐 Current hasSubmittedCast state:', hasSubmittedCast);
                 console.log('🔐 User object:', user);
                 setBaseAccountUser(user);
@@ -866,7 +885,7 @@ export default function Home() {
                 
                 // Fetch user points immediately after authentication
                 console.log('🔍 Fetching points immediately after auth...');
-                fetchUserPoints(user.address);
+                fetchUserPoints(getUserAddress(user)!);
               } else {
                 setBaseAccountUser(null);
                 setIsAuthenticated(false);
@@ -900,8 +919,10 @@ export default function Home() {
                 <div className={styles.userInfo}>
                   <span className={styles.userAddress}>
                     <div className="flex items-center gap-2">
-                      <span className="text-blue-500">🔵</span>
-                      <span>{baseAccountUser.address.slice(0, 6)}...{baseAccountUser.address.slice(-4)}</span>
+                      <span className="text-blue-500">
+                        {isFarcasterUser(baseAccountUser) ? '🔗' : '🔵'}
+                      </span>
+                      <span>{getUserAddress(baseAccountUser)?.slice(0, 6)}...{getUserAddress(baseAccountUser)?.slice(-4)}</span>
                     </div>
                   </span>
                   <span className={styles.userPoints}>
@@ -938,8 +959,8 @@ export default function Home() {
                   </svg>
                 </button>
               </div>
-            </div>
-          </header>
+        </div>
+      </header>
 
           {/* Help Modal */}
           {showHelp && (
@@ -975,7 +996,7 @@ export default function Home() {
                       <li><strong>Platform Fee:</strong> 20% goes to platform maintenance</li>
                       <li><strong>Automatic Payout:</strong> Winners receive USDC directly to their wallet</li>
                     </ul>
-                  </div>
+          </div>
 
                   <div className={styles.helpSection}>
                     <h3 className={styles.helpSectionTitle}>🔗 Base Sepolia Network</h3>
@@ -985,7 +1006,7 @@ export default function Home() {
                       <li><strong>Oracle:</strong> AI-powered oracle determines debate winners</li>
                       <li><strong>Security:</strong> EIP-712 signatures ensure secure transactions</li>
                     </ul>
-                  </div>
+        </div>
 
                   <div className={styles.helpSection}>
                     <h3 className={styles.helpSectionTitle}>⚡ Features</h3>
@@ -1036,7 +1057,7 @@ export default function Home() {
         ) : currentBattle ? (
           <div className={styles.battleCard}>
             <div className={styles.battleHeader}>
-              <div className={styles.topicMeta}>
+                <div className={styles.topicMeta}>
                 <span className={styles.topicCategory}>{currentBattle.category}</span>
                 <a 
                   href={currentBattle.sourceUrl || currentBattle.source} 
@@ -1055,7 +1076,7 @@ export default function Home() {
                   </span>
                 )}
               </div>
-              
+
               {currentBattle.imageUrl && (
                 <img 
                   src={currentBattle.imageUrl} 
@@ -1119,7 +1140,7 @@ export default function Home() {
             {activeTab === 'debate' && (
               <div className={styles.tabContent}>
                 {!showForm ? (
-                  <div className={styles.debatePoints}>
+              <div className={styles.debatePoints}>
                     {/* Cards container */}
                     <div className={styles.debateCardsContainer}>
                       {/* Oppose Card */}
@@ -1137,10 +1158,10 @@ export default function Home() {
                           <div className={styles.debateCardPoints}>
                             <ul>
                               {currentBattle.debatePoints.Oppose.map((point, index) => (
-                                <li key={index}>{point}</li>
-                              ))}
-                            </ul>
-                          </div>
+                      <li key={index}>{point}</li>
+                    ))}
+                  </ul>
+                </div>
                         </div>
                       </div>
                       
@@ -1159,11 +1180,11 @@ export default function Home() {
                           <div className={styles.debateCardPoints}>
                             <ul>
                               {currentBattle.debatePoints.Support.map((point, index) => (
-                                <li key={index}>{point}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
+                      <li key={index}>{point}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
                       </div>
                     </div>
                   </div>
@@ -1262,7 +1283,7 @@ export default function Home() {
                         <div className={styles.argumentActions}>
                           <LikeButton
                             castId={cast.id}
-                            userAddress={baseAccountUser?.address}
+                            userAddress={getUserAddress(baseAccountUser)}
                             onLikeChange={(likeCount, userLiked) => {
                               console.log(`Cast ${cast.id} like count: ${likeCount}, user liked: ${userLiked}`);
                             }}
@@ -1369,10 +1390,10 @@ export default function Home() {
                                   {win.position === 1 ? '🥇' : win.position === 2 ? '🥈' : '🥉'} {win.battleTitle}
                                 </div>
                               ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
+            </div>
+          )}
+        </div>
+      </div>
                     ))
                   ) : (
                     <div className={styles.loading}>Loading leaderboard...</div>
