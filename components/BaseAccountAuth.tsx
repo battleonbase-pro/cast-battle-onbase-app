@@ -5,6 +5,7 @@ import { useAccount, useConnect } from 'wagmi';
 import { SignInWithBaseButton } from './SignInWithBaseButton';
 import { baseAccountAuthService, BaseAccountUser } from '../lib/services/base-account-auth-service';
 import { farcasterAuthService, FarcasterUser } from '../lib/services/farcaster-auth-service';
+import { environmentDetector } from '../lib/utils/environment-detector';
 import styles from './BaseAccountAuth.module.css';
 
 interface BaseAccountAuthProps {
@@ -28,6 +29,7 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
   const [error, setError] = useState<string | null>(null);
   const [isMiniApp, setIsMiniApp] = useState<boolean>(false);
   const [isBaseApp, setIsBaseApp] = useState<boolean>(false);
+  const [environment, setEnvironment] = useState<'farcaster' | 'base' | 'external'>('external');
   const [isSigningIn, setIsSigningIn] = useState<boolean>(false);
   const [farcasterUser, setFarcasterUser] = useState<FarcasterUser | null>(null);
   const { isConnected, address } = useAccount();
@@ -120,25 +122,24 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
     }
   }, [battlePreview]);
 
-  // Fetch battle preview on component mount
+  // Fetch battle preview and detect environment on component mount
   useEffect(() => {
     fetchBattlePreview();
-    (async () => {
+    const detectEnvironment = async () => {
       try {
-        const inMiniApp = await sdk.isInMiniApp();
-        setIsMiniApp(inMiniApp);
-        
-        // Only detect Base app if not in Farcaster Mini App
-        if (!inMiniApp) {
-          const inBaseApp = detectBaseApp();
-          setIsBaseApp(inBaseApp);
-        }
-      } catch {
+        const envInfo = await environmentDetector.detectEnvironment();
+        setEnvironment(envInfo.environment);
+        setIsMiniApp(envInfo.isFarcasterMiniApp);
+        setIsBaseApp(envInfo.isBaseMiniApp);
+        console.log('🔍 Auth component environment detected:', envInfo.environment);
+      } catch (error) {
+        console.error('❌ Environment detection failed:', error);
+        setEnvironment('external');
         setIsMiniApp(false);
-        const inBaseApp = detectBaseApp();
-        setIsBaseApp(inBaseApp);
+        setIsBaseApp(false);
       }
-    })();
+    };
+    detectEnvironment();
   }, []);
 
   // Ensure Farcaster wallet is connected when in Mini App
@@ -320,7 +321,7 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
 
         {/* Authentication Section */}
         <div className={styles.authSection}>
-          {isMiniApp ? (
+            {environment === 'farcaster' ? (
             // Farcaster Mini App - use Quick Auth
             farcasterUser ? (
               <div className={styles.authDescription}>

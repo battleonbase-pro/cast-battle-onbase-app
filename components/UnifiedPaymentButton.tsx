@@ -4,6 +4,8 @@ import { sdk } from '@farcaster/miniapp-sdk';
 import { BasePayButton } from './BasePayButton';
 import { useAccount, useSendTransaction, usePublicClient } from 'wagmi';
 import { parseUnits } from 'viem';
+import { environmentDetector } from '../lib/utils/environment-detector';
+import { farcasterPaymentService } from '../lib/services/farcaster-payment-service';
 
 interface UnifiedPaymentButtonProps {
   onClick: () => Promise<void>;
@@ -24,32 +26,34 @@ export function UnifiedPaymentButton({
   amount = '1.00', // Default 1 USDC
   recipientAddress = '0x6D00f9F5C6a57B46bFa26E032D60B525A1DAe271' // Default recipient
 }: UnifiedPaymentButtonProps) {
-  const [isMiniApp, setIsMiniApp] = useState<boolean>(false);
   const [isDetecting, setIsDetecting] = useState<boolean>(true);
+  const [environment, setEnvironment] = useState<'farcaster' | 'base' | 'external'>('external');
   const [hasPaymasterService, setHasPaymasterService] = useState<boolean>(false);
   const { isConnected, address } = useAccount();
   const { sendTransaction } = useSendTransaction();
   const publicClient = usePublicClient();
 
-  // Detect Farcaster Mini App environment
+  // Detect environment using improved detection
   useEffect(() => {
-    const detectMiniApp = async () => {
+    const detectEnvironment = async () => {
       try {
-        const inMiniApp = await sdk.isInMiniApp();
-        setIsMiniApp(inMiniApp);
-      } catch {
-        setIsMiniApp(false);
+        const envInfo = await environmentDetector.detectEnvironment();
+        setEnvironment(envInfo.environment);
+        console.log('🔍 Payment button environment detected:', envInfo.environment);
+      } catch (error) {
+        console.error('❌ Environment detection failed:', error);
+        setEnvironment('external');
       } finally {
         setIsDetecting(false);
       }
     };
-    detectMiniApp();
+    detectEnvironment();
   }, []);
 
   // Detect Base Account capabilities (only for non-Farcaster environments)
   useEffect(() => {
     const detectBaseAccountCapabilities = async () => {
-      if (isMiniApp || !address || !publicClient) {
+      if (environment === 'farcaster' || !address || !publicClient) {
         setHasPaymasterService(false);
         return;
       }
@@ -73,42 +77,32 @@ export function UnifiedPaymentButton({
     };
 
     detectBaseAccountCapabilities();
-  }, [isMiniApp, address, publicClient]);
+  }, [environment, address, publicClient]);
 
-  // Handle Farcaster wallet payment
+  // Handle Farcaster native payment
   const handleFarcasterPayment = async () => {
     try {
-      console.log('🔐 Processing Farcaster wallet payment...');
+      console.log('🔗 Processing Farcaster native payment...');
       
-      // USDC contract address on Base
-      const usdcAddress = '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
-      
-      // Parse amount (USDC has 6 decimals)
-      const amountWei = parseUnits(amount, 6);
-      
-      // Create transaction data for USDC transfer
-      const transactionData = {
-        to: usdcAddress,
-        data: `0xa9059cbb${recipientAddress.slice(2).padStart(64, '0')}${amountWei.toString(16).padStart(64, '0')}`,
-        value: '0x0' // No ETH value for token transfer
-      };
-
-      console.log('📝 Transaction data:', transactionData);
-
-      // Send transaction using Farcaster wallet
-      const hash = await sendTransaction({
-        to: transactionData.to as `0x${string}`,
-        data: transactionData.data as `0x${string}`,
-        value: BigInt(transactionData.value)
+      const result = await farcasterPaymentService.sendUSDCPayment({
+        amount,
+        recipientAddress,
+        onTransactionHash: (hash) => {
+          console.log('✅ Farcaster payment transaction hash:', hash);
+        },
+        onError: (error) => {
+          console.error('❌ Farcaster payment error:', error);
+        }
       });
 
-      console.log('✅ Farcaster payment successful:', hash);
-      
-      // Call the original onClick handler
-      await onClick();
-      
+      if (result.success) {
+        console.log('✅ Farcaster native payment successful');
+        await onClick(); // Trigger original onClick after successful payment
+      } else {
+        throw new Error(result.error || 'Farcaster payment failed');
+      }
     } catch (error) {
-      console.error('❌ Farcaster payment failed:', error);
+      console.error('❌ Farcaster native payment failed:', error);
       throw error;
     }
   };
@@ -127,42 +121,41 @@ export function UnifiedPaymentButton({
     );
   }
 
-  // In Farcaster Mini App - use Farcaster wallet
-  if (isMiniApp) {
+  // In Farcaster Mini App - use Farcaster native payment
+  if (environment === 'farcaster') {
     return (
       <button
         type="button"
         onClick={handleFarcasterPayment}
-        disabled={disabled || loading || !isConnected}
+        disabled={disabled || loading}
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           gap: '8px',
           padding: '12px 16px',
-          backgroundColor: colorScheme === 'light' ? '#ffffff' : '#0000FF',
+          backgroundColor: colorScheme === 'light' ? '#ffffff' : '#8B5CF6',
           border: 'none',
           borderRadius: '8px',
-          cursor: disabled || loading || !isConnected ? 'not-allowed' : 'pointer',
+          cursor: disabled || loading ? 'not-allowed' : 'pointer',
           fontFamily: 'system-ui, -apple-system, sans-serif',
           fontSize: '14px',
           fontWeight: '500',
           color: colorScheme === 'light' ? '#000000' : '#ffffff',
           minWidth: '180px',
           height: '44px',
-          opacity: disabled || loading || !isConnected ? 0.6 : 1
+          opacity: disabled || loading ? 0.6 : 1
         }}
       >
         <div style={{
           width: '16px',
           height: '16px',
-          backgroundColor: colorScheme === 'light' ? '#0000FF' : '#FFFFFF',
+          backgroundColor: colorScheme === 'light' ? '#8B5CF6' : '#FFFFFF',
           borderRadius: '2px',
           flexShrink: 0
         }} />
         <span>
-          {loading ? 'Processing...' : 
-           hasPaymasterService ? `${children} (Gas-Free)` : children}
+          {loading ? 'Processing...' : children}
         </span>
       </button>
     );
@@ -176,7 +169,7 @@ export function UnifiedPaymentButton({
       loading={loading}
       colorScheme={colorScheme}
     >
-      {hasPaymasterService ? `${children} (Gas-Free)` : children}
+      {hasPaymasterService && environment === 'base' ? `${children} (Gas-Free)` : children}
     </BasePayButton>
   );
 }
