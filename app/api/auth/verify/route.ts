@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createPublicClient, http } from 'viem';
-import { base } from 'viem/chains';
-import { nonces } from '../nonce/route';
+import { base, baseSepolia } from 'viem/chains';
 import databaseService from '@/lib/services/database';
+import { nonces } from '../nonce/route';
 
-// Create viem client for Base chain
-const client = createPublicClient({ 
-  chain: base, 
-  transport: http() 
+// Select chain: Base or Base Sepolia (testnet)
+const isTestnet = process.env.NEXT_PUBLIC_NETWORK === 'testnet' || process.env.NODE_ENV === 'development';
+const client = createPublicClient({
+  chain: isTestnet ? baseSepolia : base,
+  transport: http(),
 });
 
 export async function POST(request: NextRequest) {
@@ -21,55 +22,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1. Check nonce hasn't been reused
-    console.log('📝 Message for nonce extraction:', message);
-    
-    // Try multiple nonce patterns to match different SIWE formats
-    const noncePatterns = [
-      /Nonce: (\w+)/,           // Standard SIWE format
-      /nonce: (\w+)/,           // Lowercase
-      /Nonce (\w+)/,            // Without colon
-      /nonce (\w+)/,            // Lowercase without colon
-      /at (\w{32})$/,           // Pattern from your example
-      /Nonce: ([a-f0-9]{32})/,  // Hex pattern
-      /nonce: ([a-f0-9]{32})/   // Hex pattern lowercase
-    ];
-    
-    let nonce = null;
-    for (const pattern of noncePatterns) {
-      const match = message.match(pattern);
-      if (match) {
-        nonce = match[1];
-        console.log('🔍 Found nonce with pattern:', pattern.toString(), 'nonce:', nonce);
-        break;
-      }
+    // 1. Check nonce hasn't been reused (matches docs recommendation)
+    const nonceMatch = message.match(/Nonce: (\w+)|nonce: (\w+)|at (\w{32})$/);
+    const extracted = nonceMatch?.[1] || nonceMatch?.[2] || nonceMatch?.[3] || null;
+    if (!extracted || !nonces.delete(extracted)) {
+      return NextResponse.json({ error: 'Invalid or reused nonce' }, { status: 400 });
     }
-    
-    if (!nonce) {
-      console.log('❌ No nonce found in message');
-      console.log('📝 Available nonces in store:', Array.from(nonces));
-      return NextResponse.json(
-        { error: 'No nonce found in message' },
-        { status: 400 }
-      );
-    }
-    
-    console.log('📝 Nonces store before deletion:', Array.from(nonces));
-    console.log('📝 Attempting to delete nonce:', nonce);
-    
-    if (!nonces.delete(nonce)) {
-      console.log('❌ Invalid or reused nonce:', nonce);
-      console.log('📝 Available nonces in store:', Array.from(nonces));
-      return NextResponse.json(
-        { error: 'Invalid or reused nonce' },
-        { status: 400 }
-      );
-    }
-    
-    console.log('📝 Nonces store after deletion:', Array.from(nonces));
-    console.log('✅ Nonce validated:', nonce);
 
-    // 2. Verify signature using standard viem approach
+    // 2. Verify signature using standard viem approach per docs
     console.log('🔍 Verifying signature with viem client...');
     console.log('📝 Address:', address);
     console.log('📝 Message:', message);
