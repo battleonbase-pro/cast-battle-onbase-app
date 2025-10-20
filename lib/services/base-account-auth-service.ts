@@ -65,8 +65,27 @@ export class BaseAccountAuthService {
   }
 
   /**
-   * Sign in with Base Account using SIWE (Sign in with Ethereum)
+   * Detect if we're running in Base app's integrated browser
    */
+  private isBaseAppBrowser(): boolean {
+    if (typeof window === 'undefined') return false;
+    
+    const userAgent = navigator.userAgent.toLowerCase();
+    
+    // Check for Base app specific indicators
+    return (
+      userAgent.includes('base') ||
+      userAgent.includes('coinbase') ||
+      userAgent.includes('cbwallet') ||
+      // Check for Base-specific globals
+      typeof (window as any).base !== 'undefined' ||
+      typeof (window as any).baseApp !== 'undefined' ||
+      // Check for Base Account connector
+      typeof (window as any).ethereum?.isBase === true ||
+      // Check for Coinbase Wallet
+      typeof (window as any).ethereum?.isCoinbaseWallet === true
+    );
+  }
   async signInWithBase(nonceOverride?: string): Promise<AuthResult> {
     if (!this.isAvailable()) {
       return {
@@ -77,6 +96,7 @@ export class BaseAccountAuthService {
 
     try {
       console.log('🔐 Starting Base Account authentication...');
+      console.log('🌐 Browser environment:', this.isBaseAppBrowser() ? 'Base App Browser' : 'External Browser');
       
       // 1. Get a fresh nonce (use override if provided)
       let nonce = nonceOverride;
@@ -110,46 +130,18 @@ export class BaseAccountAuthService {
       let message: string;
       let signature: string;
 
-      // 3. Try wallet_connect first (Base Account SDK method)
-      try {
-        console.log('🔄 Attempting wallet_connect method...');
-        const { accounts } = await (this.provider as any).request({
-          method: 'wallet_connect',
-          params: [{
-            version: '1',
-            capabilities: {
-              signInWithEthereum: { 
-                nonce: nonce!, 
-                chainId: chainIdHex
-              }
-            }
-          }]
-        });
-
-        address = accounts[0].address;
-        message = accounts[0].capabilities.signInWithEthereum.message;
-        signature = accounts[0].capabilities.signInWithEthereum.signature;
+      // 3. For Base app browser, use optimized flow
+      if (this.isBaseAppBrowser()) {
+        console.log('🔵 Base app browser detected - using optimized flow');
         
-        console.log('✅ wallet_connect method successful');
-        console.log('📝 Received SIWE data:', { address, message, signature });
-
-      } catch (walletConnectError: unknown) {
-        const error = walletConnectError as Error & { code?: string };
-        console.log('⚠️ wallet_connect failed:', error.message);
-        
-        // Check if it's method_not_supported error
-        if (error.message?.includes('method_not_supported') || 
-            error.code === 'METHOD_NOT_SUPPORTED') {
-          
-          console.log('🔄 Falling back to eth_requestAccounts + personal_sign...');
-          
-          // Fallback: Use eth_requestAccounts and personal_sign
+        try {
+          // First try to get accounts
           const accounts = await (this.provider as any).request({
             method: 'eth_requestAccounts'
           });
           
           address = accounts[0];
-          console.log('✅ Connected to address:', address);
+          console.log('✅ Connected to address in Base app:', address);
 
           // Create SIWE message manually
           const domain = window.location.host;
@@ -159,15 +151,19 @@ export class BaseAccountAuthService {
           message = `${domain} wants you to sign in with your Ethereum account:
 ${address}
 
-${this.buildSIWEMessage(nonce!, currentTime)}
+Welcome to NewsCast Debate!
+
+This request will not trigger a blockchain transaction or cost any gas fees.
+
+Your authentication status will reset after 24 hours.
 
 URI: ${uri}
 Version: 1
-Chain ID: ${isTestnet ? 84532 : 8453}
+Chain ID: ${parseInt(chainIdHex, 16)}
 Nonce: ${nonce}
 Issued At: ${new Date(currentTime * 1000).toISOString()}`;
 
-          console.log('📝 Generated SIWE message:', message);
+          console.log('📝 Generated SIWE message for Base app:', message);
 
           // Sign the message
           signature = await (this.provider as any).request({
@@ -175,12 +171,128 @@ Issued At: ${new Date(currentTime * 1000).toISOString()}`;
             params: [message, address]
           });
 
-          console.log('✅ personal_sign successful');
+          console.log('✅ personal_sign successful in Base app');
           console.log('📝 Generated signature:', signature);
 
-        } else {
-          // Re-throw if it's not a method_not_supported error
-          throw error;
+        } catch (baseAppError: unknown) {
+          const error = baseAppError as Error;
+          console.error('❌ Base app authentication failed:', error);
+          console.error('❌ Error details:', {
+            message: error.message,
+            name: error.name,
+            stack: error.stack,
+            userAgent: navigator.userAgent,
+            ethereum: typeof (window as any).ethereum,
+            provider: !!this.provider
+          });
+          
+          // Try alternative approach for Base app
+          try {
+            console.log('🔄 Trying alternative Base app authentication...');
+            
+            // Try wallet_connect with simpler params
+            const { accounts } = await (this.provider as any).request({
+              method: 'wallet_connect',
+              params: [{
+                version: '1',
+                capabilities: {
+                  signInWithEthereum: { 
+                    nonce: nonce!
+                  }
+                }
+              }]
+            });
+
+            address = accounts[0].address;
+            message = accounts[0].capabilities.signInWithEthereum.message;
+            signature = accounts[0].capabilities.signInWithEthereum.signature;
+            
+            console.log('✅ Alternative Base app authentication successful');
+            console.log('📝 Received SIWE data:', { address, message, signature });
+
+          } catch (altError: unknown) {
+            const altErr = altError as Error;
+            console.error('❌ Alternative Base app authentication also failed:', altErr);
+            throw new Error(`Base app authentication failed: ${error.message}. Alternative method also failed: ${altErr.message}`);
+          }
+        }
+      } else {
+        // 4. For external browsers, try wallet_connect first (Base Account SDK method)
+        try {
+          console.log('🔄 Attempting wallet_connect method...');
+          const { accounts } = await (this.provider as any).request({
+            method: 'wallet_connect',
+            params: [{
+              version: '1',
+              capabilities: {
+                signInWithEthereum: { 
+                  nonce: nonce!, 
+                  chainId: chainIdHex
+                }
+              }
+            }]
+          });
+
+          address = accounts[0].address;
+          message = accounts[0].capabilities.signInWithEthereum.message;
+          signature = accounts[0].capabilities.signInWithEthereum.signature;
+          
+          console.log('✅ wallet_connect method successful');
+          console.log('📝 Received SIWE data:', { address, message, signature });
+
+        } catch (walletConnectError: unknown) {
+          const error = walletConnectError as Error & { code?: string };
+          console.log('⚠️ wallet_connect failed:', error.message);
+          
+          // Check if it's method_not_supported error
+          if (error.message?.includes('method_not_supported') || 
+              error.code === 'METHOD_NOT_SUPPORTED') {
+            
+            console.log('🔄 Falling back to eth_requestAccounts + personal_sign...');
+            
+            // Fallback: Use eth_requestAccounts and personal_sign
+            const accounts = await (this.provider as any).request({
+              method: 'eth_requestAccounts'
+            });
+            
+            address = accounts[0];
+            console.log('✅ Connected to address:', address);
+
+            // Create SIWE message manually
+            const domain = window.location.host;
+            const uri = window.location.origin;
+            const currentTime = Math.floor(Date.now() / 1000);
+            
+            message = `${domain} wants you to sign in with your Ethereum account:
+${address}
+
+Welcome to NewsCast Debate!
+
+This request will not trigger a blockchain transaction or cost any gas fees.
+
+Your authentication status will reset after 24 hours.
+
+URI: ${uri}
+Version: 1
+Chain ID: ${parseInt(chainIdHex, 16)}
+Nonce: ${nonce}
+Issued At: ${new Date(currentTime * 1000).toISOString()}`;
+
+            console.log('📝 Generated SIWE message:', message);
+
+            // Sign the message
+            signature = await (this.provider as any).request({
+              method: 'personal_sign',
+              params: [message, address]
+            });
+
+            console.log('✅ personal_sign successful');
+            console.log('📝 Generated signature:', signature);
+
+          } else {
+            // Re-throw if it's not a method_not_supported error
+            throw error;
+          }
         }
       }
 
