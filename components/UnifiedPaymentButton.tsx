@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { sdk } from '@farcaster/miniapp-sdk';
 import { BasePayButton } from './BasePayButton';
-import { useAccount, useSendTransaction } from 'wagmi';
+import { useAccount, useSendTransaction, usePublicClient } from 'wagmi';
 import { parseUnits } from 'viem';
 
 interface UnifiedPaymentButtonProps {
@@ -26,8 +26,10 @@ export function UnifiedPaymentButton({
 }: UnifiedPaymentButtonProps) {
   const [isMiniApp, setIsMiniApp] = useState<boolean>(false);
   const [isDetecting, setIsDetecting] = useState<boolean>(true);
+  const [hasPaymasterService, setHasPaymasterService] = useState<boolean>(false);
   const { isConnected, address } = useAccount();
   const { sendTransaction } = useSendTransaction();
+  const publicClient = usePublicClient();
 
   // Detect Farcaster Mini App environment
   useEffect(() => {
@@ -43,6 +45,35 @@ export function UnifiedPaymentButton({
     };
     detectMiniApp();
   }, []);
+
+  // Detect Base Account capabilities (only for non-Farcaster environments)
+  useEffect(() => {
+    const detectBaseAccountCapabilities = async () => {
+      if (isMiniApp || !address || !publicClient) {
+        setHasPaymasterService(false);
+        return;
+      }
+
+      try {
+        console.log('🔍 Detecting Base Account capabilities for payments...');
+        const caps = await publicClient.request({
+          method: 'wallet_getCapabilities',
+          params: [address]
+        });
+
+        const chainCapabilities = caps[publicClient.chain?.id?.toString() || '8453'] || {};
+        const paymasterSupported = chainCapabilities['paymasterService']?.supported || false;
+        
+        setHasPaymasterService(paymasterSupported);
+        console.log('✅ Base Account paymaster service:', paymasterSupported ? 'supported' : 'not supported');
+      } catch (error) {
+        console.log('⚠️ Could not detect Base Account capabilities:', error);
+        setHasPaymasterService(false);
+      }
+    };
+
+    detectBaseAccountCapabilities();
+  }, [isMiniApp, address, publicClient]);
 
   // Handle Farcaster wallet payment
   const handleFarcasterPayment = async () => {
@@ -129,7 +160,10 @@ export function UnifiedPaymentButton({
           borderRadius: '2px',
           flexShrink: 0
         }} />
-        <span>{loading ? 'Processing...' : children}</span>
+        <span>
+          {loading ? 'Processing...' : 
+           hasPaymasterService ? `${children} (Gas-Free)` : children}
+        </span>
       </button>
     );
   }
@@ -142,7 +176,7 @@ export function UnifiedPaymentButton({
       loading={loading}
       colorScheme={colorScheme}
     >
-      {children}
+      {hasPaymasterService ? `${children} (Gas-Free)` : children}
     </BasePayButton>
   );
 }
