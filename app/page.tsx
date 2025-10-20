@@ -279,58 +279,45 @@ export default function Home() {
     try {
       const response = await fetch('/api/battle/current');
       const data = await response.json();
-      
-      if (data.success) {
-        setCasts(data.casts);
-        
-        // Calculate sentiment data
-        const support = data.casts.filter((cast: Cast) => cast.side === 'SUPPORT').length;
-        const oppose = data.casts.filter((cast: Cast) => cast.side === 'OPPOSE').length;
-        const total = support + oppose;
-        
-        if (total > 0) {
-          const sentiment = {
-            support,
-            oppose,
-            supportPercent: Math.round((support / total) * 100),
-            opposePercent: Math.round((oppose / total) * 100)
-          };
-          
-          setSentimentData(sentiment);
-          
-          // Add to history
-          const historyEntry = {
-            timestamp: Date.now(),
-            ...sentiment
-          };
-          
-          setSentimentHistory(prev => {
-            const newHistory = [...prev, historyEntry];
-            return newHistory.slice(-20);
-          });
-        }
-        
-        // Check if user has submitted and is a participant
-        if (baseAccountUser) {
-          console.log('🔍 Checking if user has submitted cast:', {
-            userAddress: baseAccountUser.address,
-            casts: data.casts.map((c: Cast) => ({ id: c.id, userAddress: c.userAddress, content: c.content }))
-          });
-          
-          const userCast = data.casts.find((cast: Cast) => 
-            cast.userAddress && baseAccountUser.address && 
-            cast.userAddress.toLowerCase() === baseAccountUser.address.toLowerCase()
-          );
-          
-          console.log('🔍 User cast found:', userCast);
-          console.log('🔍 Setting hasSubmittedCast to:', !!userCast);
-          setHasSubmittedCast(!!userCast);
-          
-          // User has submitted a cast, they are automatically a participant
-          if (userCast) {
-            console.log('🔍 User has submitted cast and is automatically a participant');
-          }
-        }
+
+      if (!data || !data.success) return;
+
+      // Normalize casts shape
+      const castsList: Cast[] = Array.isArray(data.casts)
+        ? data.casts
+        : (Array.isArray(data.battle?.casts) ? data.battle.casts : []);
+
+      setCasts(castsList);
+
+      // Calculate sentiment data
+      const support = castsList.filter((cast: Cast) => cast.side === 'SUPPORT').length;
+      const oppose = castsList.filter((cast: Cast) => cast.side === 'OPPOSE').length;
+      const total = support + oppose;
+
+      if (total > 0) {
+        const sentiment = {
+          support,
+          oppose,
+          supportPercent: Math.round((support / total) * 100),
+          opposePercent: Math.round((oppose / total) * 100)
+        };
+
+        setSentimentData(sentiment);
+
+        const historyEntry = { timestamp: Date.now(), ...sentiment } as any;
+        setSentimentHistory(prev => {
+          const newHistory = [...prev, historyEntry];
+          return newHistory.slice(-20);
+        });
+      }
+
+      // Check if user has submitted and is a participant
+      if (baseAccountUser) {
+        const userCast = castsList.find((cast: Cast) => 
+          cast.userAddress && baseAccountUser.address && 
+          cast.userAddress.toLowerCase() === baseAccountUser.address.toLowerCase()
+        );
+        setHasSubmittedCast(!!userCast);
       }
     } catch (error) {
       console.error('Failed to fetch casts:', error);
