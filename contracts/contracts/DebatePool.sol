@@ -26,7 +26,7 @@ contract DebatePool is ReentrancyGuard, Ownable, EIP712 {
     uint256 public constant DEBATE_WINNER_POINTS = 1000;       // Winner bonus
     uint256 public constant LIKE_POINTS = 10;                  // Free like
     uint256 public constant SHARE_POINTS = 10;                 // Any share
-
+    
     // State variables
     IERC20 public immutable usdcToken;
     address public immutable oracle; // AI judge oracle address
@@ -48,7 +48,7 @@ contract DebatePool is ReentrancyGuard, Ownable, EIP712 {
     uint256 public airdropSnapshotBlock;
     uint256 public totalAirdropAmount;
     mapping(address => uint256) public airdropClaimed;
-
+    
     // EIP-712 type hash for winner results
     bytes32 private constant WINNER_RESULT_TYPEHASH = keccak256(
         "WinnerResult(uint256 debateId,address winner,uint256 timestamp)"
@@ -253,10 +253,10 @@ contract DebatePool is ReentrancyGuard, Ownable, EIP712 {
         debate.isActive = false;
 
         // Transfer winner prize
-        require(
-            usdcToken.transfer(result.winner, winnerPrize),
-            "DebatePool: Winner transfer failed"
-        );
+            require(
+                usdcToken.transfer(result.winner, winnerPrize),
+                "DebatePool: Winner transfer failed"
+            );
 
         // Award winner bonus points
         userPoints[result.winner] += DEBATE_WINNER_POINTS;
@@ -503,7 +503,7 @@ contract DebatePool is ReentrancyGuard, Ownable, EIP712 {
                 result.timestamp
             )
         );
-        
+
         bytes32 hash = _hashTypedDataV4(structHash);
         address signer = ECDSA.recover(hash, result.signature);
         return signer == oracle;

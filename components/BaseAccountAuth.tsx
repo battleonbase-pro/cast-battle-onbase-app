@@ -27,7 +27,6 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [isMiniApp, setIsMiniApp] = useState<boolean>(false);
-  const [prefetchedNonce, setPrefetchedNonce] = useState<string | null>(null);
   const [isSigningIn, setIsSigningIn] = useState<boolean>(false);
   const [farcasterUser, setFarcasterUser] = useState<FarcasterUser | null>(null);
   const { isConnected, address } = useAccount();
@@ -89,13 +88,6 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
       } catch {
         setIsMiniApp(false);
       }
-      try {
-        const nonceResponse = await fetch('/api/auth/nonce');
-        if (nonceResponse.ok) {
-          const { nonce } = await nonceResponse.json();
-          setPrefetchedNonce(nonce);
-        }
-      } catch {}
     })();
   }, []);
 
@@ -162,7 +154,7 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
     try {
       setIsSigningIn(true);
       // Pass prefetched nonce to strictly follow docs and avoid popups
-      const result = await baseAccountAuthService.signInWithBase(prefetchedNonce || undefined);
+      const result = await baseAccountAuthService.signInWithBase();
       if (result.success && result.user) {
         // Check if user is already joined after authentication
         await checkJoinStatus();

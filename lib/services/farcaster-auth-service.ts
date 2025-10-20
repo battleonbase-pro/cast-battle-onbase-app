@@ -1,4 +1,4 @@
-import { verifySignInMessage } from '@farcaster/auth-client';
+import { createClient } from '@farcaster/quick-auth';
 
 export interface FarcasterUser {
   fid: number;
@@ -17,6 +17,7 @@ export interface FarcasterAuthResult {
 
 export class FarcasterAuthService {
   private user: FarcasterUser | null = null;
+  private quickAuthClient = createClient();
 
   /**
    * Check if we're in a Farcaster Mini App environment
@@ -32,35 +33,33 @@ export class FarcasterAuthService {
   }
 
   /**
-   * Sign in with Farcaster using the Mini App SDK
+   * Sign in with Farcaster using Quick Auth
    */
   async signInWithFarcaster(): Promise<FarcasterAuthResult> {
     try {
       const { sdk } = await import('@farcaster/miniapp-sdk');
       
-      console.log('🔐 Starting Farcaster authentication...');
+      console.log('🔐 Starting Farcaster Quick Auth...');
       
-      // Call sdk.actions.signIn() to prompt user to sign in with Farcaster
-      const result = await sdk.actions.signIn();
+      // Get a Quick Auth token
+      const { token } = await sdk.quickAuth.getToken();
+      console.log('📝 Received Quick Auth token:', token ? 'present' : 'missing');
       
-      console.log('📝 Received Farcaster sign-in result:', result);
-      
-      // The result should contain message and signature
-      if (!result.message || !result.signature) {
-        throw new Error('Invalid sign-in result: missing message or signature');
+      if (!token) {
+        throw new Error('Failed to get Quick Auth token');
       }
 
-      // Verify the signature on the server
-      const verificationResult = await this.verifySignature(result.message, result.signature);
+      // Verify the token on the server and get user info
+      const verificationResult = await this.verifyToken(token);
       
       if (!verificationResult.success) {
-        throw new Error(verificationResult.error || 'Signature verification failed');
+        throw new Error(verificationResult.error || 'Token verification failed');
       }
 
       // Create user session
       this.user = verificationResult.user!;
       
-      console.log('✅ Farcaster authentication successful');
+      console.log('✅ Farcaster Quick Auth successful');
       
       return {
         success: true,
@@ -69,7 +68,7 @@ export class FarcasterAuthService {
 
     } catch (error: unknown) {
       const err = error as Error;
-      console.error('❌ Farcaster authentication failed:', err);
+      console.error('❌ Farcaster Quick Auth failed:', err);
       
       return {
         success: false,
@@ -79,26 +78,28 @@ export class FarcasterAuthService {
   }
 
   /**
-   * Verify the Farcaster signature on the server
+   * Verify the Quick Auth token on the server
    */
-  private async verifySignature(message: string, signature: string): Promise<FarcasterAuthResult> {
+  private async verifyToken(token: string): Promise<FarcasterAuthResult> {
     try {
-      console.log('🔍 Verifying Farcaster signature...');
+      console.log('🔍 Verifying Quick Auth token...');
       
       // Send to backend for verification
-      const response = await fetch('/api/auth/verify-farcaster', {
+      const response = await fetch('/api/auth/verify-farcaster-quick', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, signature })
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Signature verification failed');
+        throw new Error(errorData.error || 'Token verification failed');
       }
 
       const verificationData = await response.json();
-      console.log('✅ Farcaster signature verified:', verificationData);
+      console.log('✅ Quick Auth token verified:', verificationData);
 
       // Create user object from verification data
       const user: FarcasterUser = {
@@ -117,11 +118,11 @@ export class FarcasterAuthService {
 
     } catch (error: unknown) {
       const err = error as Error;
-      console.error('❌ Farcaster signature verification failed:', err);
+      console.error('❌ Quick Auth token verification failed:', err);
       
       return {
         success: false,
-        error: err.message || 'Signature verification failed'
+        error: err.message || 'Token verification failed'
       };
     }
   }
