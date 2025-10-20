@@ -920,14 +920,11 @@ export default function Home() {
                 <div className={styles.userInfo}>
                   <span className={styles.userAddress}>
                     <div className="flex items-center gap-2">
-                      <span className="text-blue-500">
-                        {isFarcasterUser(baseAccountUser) ? '🔗' : '🔵'}
-                      </span>
                       <span>{getUserAddress(baseAccountUser)?.slice(0, 6)}...{getUserAddress(baseAccountUser)?.slice(-4)}</span>
                     </div>
                   </span>
                   <span className={styles.userPoints}>
-                    🔵 {userPoints} pts
+                    {userPoints} pts
                   </span>
                 </div>
                 <button 
