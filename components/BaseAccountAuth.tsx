@@ -84,6 +84,13 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
       try {
         const inMiniApp = await sdk.isInMiniApp(100);
         setIsMiniApp(inMiniApp);
+        
+        // If we're in a Farcaster Mini App, call ready() to hide splash screen
+        if (inMiniApp) {
+          console.log('🎯 Farcaster Mini App detected - calling ready() to hide splash screen');
+          await sdk.ready();
+          console.log('✅ Farcaster Mini App ready() called successfully');
+        }
       } catch {
         setIsMiniApp(false);
       }

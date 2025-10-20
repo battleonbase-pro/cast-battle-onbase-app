@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { sdk } from '@farcaster/miniapp-sdk';
 import BaseAccountAuth from '../components/BaseAccountAuth';
 import { BasePayButton } from '../components/BasePayButton';
 import LikeButton from '../components/LikeButton';
@@ -597,6 +598,24 @@ export default function Home() {
       }
     }
   };
+
+  // Farcaster Mini App ready() call
+  useEffect(() => {
+    const initializeFarcaster = async () => {
+      try {
+        const inMiniApp = await sdk.isInMiniApp(100);
+        if (inMiniApp) {
+          console.log('🎯 Farcaster Mini App detected in main app - calling ready()');
+          await sdk.ready();
+          console.log('✅ Farcaster Mini App ready() called from main app');
+        }
+      } catch (error) {
+        console.log('ℹ️ Not in Farcaster Mini App or ready() failed:', error);
+      }
+    };
+    
+    initializeFarcaster();
+  }, []);
 
   // Load initial data
   useEffect(() => {
