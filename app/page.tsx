@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { sdk } from '@farcaster/miniapp-sdk';
 import BaseAccountAuth from '../components/BaseAccountAuth';
 import { BasePayButton } from '../components/BasePayButton';
+import { UnifiedPaymentButton } from '../components/UnifiedPaymentButton';
 import LikeButton from '../components/LikeButton';
 import { baseAccountAuthService, BaseAccountUser } from '../lib/services/base-account-auth-service';
 import { FarcasterUser } from '../lib/services/farcaster-auth-service';
@@ -1229,17 +1230,19 @@ export default function Home() {
                             </div>
                             
                             {/* Single Payment Button with Dynamic States */}
-                            <BasePayButton
+                            <UnifiedPaymentButton
                               onClick={submitCast}
                               disabled={submittingCast || castContent.trim().length < 10 || castContent.trim().length > 140}
                               loading={submittingCast}
                               colorScheme="light"
+                              amount="1.00"
+                              recipientAddress="0x6D00f9F5C6a57B46bFa26E032D60B525A1DAe271"
                             >
                               {submittingCast 
                                 ? (paymentStatus === 'processing' ? 'Processing Payment...' : 'Submitting...')
                                 : 'Pay & Submit'
                               }
-                            </BasePayButton>
+                            </UnifiedPaymentButton>
                             
                             {/* Single Status Display - Only for errors */}
                             {paymentStatus === 'failed' && (

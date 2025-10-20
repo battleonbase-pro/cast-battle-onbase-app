@@ -27,9 +27,25 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [isMiniApp, setIsMiniApp] = useState<boolean>(false);
+  const [isBaseApp, setIsBaseApp] = useState<boolean>(false);
   const [isSigningIn, setIsSigningIn] = useState<boolean>(false);
   const [farcasterUser, setFarcasterUser] = useState<FarcasterUser | null>(null);
   const { isConnected, address } = useAccount();
+
+  // Detect Base app ecosystem
+  const detectBaseApp = (): boolean => {
+    if (typeof window === 'undefined') return false;
+    const userAgent = navigator.userAgent.toLowerCase();
+    return (
+      userAgent.includes('base') ||
+      userAgent.includes('coinbase') ||
+      userAgent.includes('cbwallet') ||
+      typeof (window as any).base !== 'undefined' ||
+      typeof (window as any).baseApp !== 'undefined' ||
+      typeof (window as any).ethereum?.isBase === true ||
+      typeof (window as any).ethereum?.isCoinbaseWallet === true
+    );
+  };
 
   // Fetch battle preview for marketing
   const fetchBattlePreview = async () => {
@@ -85,8 +101,16 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
       try {
         const inMiniApp = await sdk.isInMiniApp(100);
         setIsMiniApp(inMiniApp);
+        
+        // Only detect Base app if not in Farcaster Mini App
+        if (!inMiniApp) {
+          const inBaseApp = detectBaseApp();
+          setIsBaseApp(inBaseApp);
+        }
       } catch {
         setIsMiniApp(false);
+        const inBaseApp = detectBaseApp();
+        setIsBaseApp(inBaseApp);
       }
     })();
   }, []);
@@ -264,6 +288,7 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
         {/* Authentication Section */}
         <div className={styles.authSection}>
           {isMiniApp ? (
+            // Farcaster Mini App - use Quick Auth
             farcasterUser ? (
               <div className={styles.authDescription}>
                 <div className={styles.userInfo}>
@@ -289,6 +314,7 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
               </button>
             )
           ) : (
+            // Non-Farcaster environment - use Base Account authentication
             <div>
               <SignInWithBaseButton
                 colorScheme="light"
