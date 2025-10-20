@@ -247,7 +247,10 @@ export default function Home() {
             setBattleEndTime(endTime);
             
             // Reset payment and submission states for new battle
-            setHasSubmittedCast(false);
+            // Only reset hasSubmittedCast if we're not in the middle of a submission
+            if (!submittingCast) {
+              setHasSubmittedCast(false);
+            }
             setPaymentStatus('idle');
             setPaymentError(null);
             setPaymentTransactionId(null);
@@ -472,15 +475,14 @@ export default function Home() {
               // If cast submission successful, mark as submitted
               if (data.success) {
                 console.log('✅ Argument submitted successfully after payment');
+                
+                // Immediately update all relevant states
                 setHasSubmittedCast(true);
                 setCastContent('');
+                setSubmittingCast(false);
                 castSubmitted = true; // Mark that cast was submitted
                 
-                // Force UI update after state changes
-                setTimeout(() => {
-                  console.log('🔄 Forcing UI update after successful submission');
-                  setSubmittingCast(false);
-                }, 200);
+                console.log('🔄 Form state updated - hasSubmittedCast: true, castContent cleared');
                 
                 // Update points and show animation
                 if (data.points !== undefined) {
