@@ -102,13 +102,8 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
     
-    if (hours > 0) {
-      return `${hours}h ${minutes}m ${secs}s`;
-    } else if (minutes > 0) {
-      return `${minutes}m ${secs}s`;
-    } else {
-      return `${secs}s`;
-    }
+    // Retro digital style: HH:MM:SS format
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   const checkJoinStatus = async () => {
@@ -200,10 +195,7 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
         <div className={styles.brandingSection}>
           <h1 className={styles.brandTitle}>
             <span className={styles.baseText}>NewsCast</span> 
-            <span className={styles.debateContainer}>
-              <span className={styles.betaLabel}>Beta</span>
-              <span className={styles.debateText}>Debate</span>
-            </span>
+            <span className={styles.debateText}>Debate</span>
           </h1>
           <h2 className={styles.brandSubtitle}>
             AI-Powered News Debates

@@ -561,9 +561,9 @@
 .topicImage {
   float: left;
   width: 200px;
-  height: auto;
-  max-height: 140px;
+  height: 150px;
   object-fit: cover;
+  object-position: center;
   border-radius: 8px;
   margin-right: 20px;
   margin-bottom: 10px;
@@ -1775,8 +1775,7 @@
   
   .topicImage {
     width: 100%;
-    height: auto;
-    max-height: 200px;
+    height: 200px;
     margin-right: 0;
     margin-bottom: 12px;
     object-fit: contain; /* Keep contain to maintain aspect ratio */
