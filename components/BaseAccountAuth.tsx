@@ -104,6 +104,34 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
     })();
   }, []);
 
+  // Auto-authenticate connected users in Base app
+  useEffect(() => {
+    const autoAuthenticate = async () => {
+      if (isMiniApp && isConnected && address && !isSigningIn) {
+        console.log('🔄 Auto-authenticating connected user in Base app:', address);
+        try {
+          setIsSigningIn(true);
+          const result = await baseAccountAuthService.signInWithBase(prefetchedNonce || undefined);
+          if (result.success && result.user) {
+            await checkJoinStatus();
+            console.log('✅ Auto-authentication successful, calling onAuthSuccess');
+            onAuthSuccess(result.user);
+          } else {
+            console.log('⚠️ Auto-authentication failed:', result.error);
+            // Don't show error for auto-auth failures, just log it
+          }
+        } catch (error) {
+          console.log('⚠️ Auto-authentication error:', error);
+          // Don't show error for auto-auth failures, just log it
+        } finally {
+          setIsSigningIn(false);
+        }
+      }
+    };
+
+    autoAuthenticate();
+  }, [isMiniApp, isConnected, address, prefetchedNonce, isSigningIn, onAuthSuccess]);
+
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -267,7 +295,7 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
               </button>
             ) : (
               <div className={styles.authDescription}>
-                You're connected{address ? `: ${address.slice(0, 6)}…${address.slice(-4)}` : ''}
+                {isSigningIn ? 'Signing in…' : `You're connected${address ? `: ${address.slice(0, 6)}…${address.slice(-4)}` : ''}}
               </div>
             )
           ) : (
