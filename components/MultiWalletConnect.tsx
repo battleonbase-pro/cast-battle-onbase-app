@@ -41,9 +41,14 @@ export function MultiWalletConnect({ onConnect, onError }: MultiWalletConnectPro
           console.log('No previous connection to disconnect');
         }
 
-        // 1. Generate nonce for SIWE (as per official docs)
-        const nonce = window.crypto.randomUUID().replace(/-/g, '');
-        console.log('🔐 Generated nonce for SIWE:', nonce);
+        // 1. Fetch nonce from server for SIWE (as per official docs)
+        console.log('🔑 Fetching nonce from server...');
+        const nonceResponse = await fetch('/api/auth/nonce');
+        if (!nonceResponse.ok) {
+          throw new Error('Failed to fetch nonce from server');
+        }
+        const { nonce } = await nonceResponse.json();
+        console.log('🔐 Received nonce from server for SIWE:', nonce);
 
         // 2. Connect and get the provider (as per official docs)
         await connectAsync({ connector });

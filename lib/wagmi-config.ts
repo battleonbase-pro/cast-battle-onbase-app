@@ -21,10 +21,21 @@ const hasValidWalletConnectId = walletConnectProjectId &&
   walletConnectProjectId !== 'your-project-id' && 
   walletConnectProjectId !== 'your-walletconnect-project-id';
 
+// Get the current URL for WalletConnect metadata
+const getCurrentUrl = () => {
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return 'https://news-debate-onbase-app.vercel.app'; // fallback for SSR
+};
+
+const currentUrl = getCurrentUrl();
+
 // Log WalletConnect configuration status
 if (process.env.NODE_ENV === 'development') {
   console.log('WalletConnect Project ID:', walletConnectProjectId);
   console.log('Has valid WalletConnect ID:', hasValidWalletConnectId);
+  console.log('Current URL for metadata:', currentUrl);
 }
 
 // Function to detect if we're in a Farcaster Mini App
@@ -55,7 +66,7 @@ if (inFarcasterMiniApp) {
     metaMask({
       dappMetadata: {
         name: 'NewsCast Debate',
-        url: 'https://news-debate-onbase-app.vercel.app',
+        url: currentUrl,
       },
     }),
     phantomConnector,
@@ -71,7 +82,7 @@ if (inFarcasterMiniApp) {
     metaMask({
       dappMetadata: {
         name: 'NewsCast Debate',
-        url: 'https://news-debate-onbase-app.vercel.app',
+        url: currentUrl,
       },
     }),
     phantomConnector,
@@ -84,8 +95,8 @@ if (hasValidWalletConnectId) {
       metadata: {
         name: 'NewsCast Debate',
         description: 'AI-powered news debate platform',
-        url: 'https://news-debate-onbase-app.vercel.app',
-        icons: ['https://news-debate-onbase-app.vercel.app/og-image.png'],
+        url: currentUrl,
+        icons: [`${currentUrl}/og-image.png`],
       },
     }) as any
   );

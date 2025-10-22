@@ -283,3 +283,55 @@
     gap: 15px;
   }
 }
+
+/* Connected Info Styles */
+.connectedInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #f0f9ff;
+  border: 1px solid #0ea5e9;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.connectedIcon {
+  font-size: 20px;
+}
+
+.connectedText {
+  flex: 1;
+  text-align: left;
+}
+
+.connectedTitle {
+  font-weight: 600;
+  color: #0c4a6e;
+  font-size: 14px;
+}
+
+.connectedAddress {
+  font-family: 'Courier New', monospace;
+  color: #0369a1;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+/* Back Button Styles */
+.backButton {
+  background: none;
+  border: 1px solid #d1d5db;
+  color: #6b7280;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.backButton:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  color: #374151;
+}

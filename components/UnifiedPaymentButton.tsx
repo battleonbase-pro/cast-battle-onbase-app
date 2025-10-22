@@ -1,11 +1,11 @@
 "use client";
-import { useState } from 'react';
 import BasePaymentButton from './BasePaymentButton';
 import FarcasterPaymentButton from './FarcasterPaymentButton';
 import { useEnvironmentDetection } from '../hooks/useEnvironmentDetection';
 
 interface UnifiedPaymentButtonProps {
   onClick: () => void;
+  onSuccess?: (transactionId?: string) => void;
   disabled?: boolean;
   loading?: boolean;
   children: React.ReactNode;
@@ -15,6 +15,7 @@ interface UnifiedPaymentButtonProps {
 
 export default function UnifiedPaymentButton({
   onClick,
+  onSuccess,
   disabled = false,
   loading = false,
   children,
@@ -44,6 +45,7 @@ export default function UnifiedPaymentButton({
       return (
         <BasePaymentButton
           onClick={onClick}
+          onSuccess={onSuccess}
           disabled={disabled}
           loading={loading}
           amount={amount}

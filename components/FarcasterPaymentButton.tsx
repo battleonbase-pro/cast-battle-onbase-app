@@ -25,7 +25,7 @@ export default function FarcasterPaymentButton({
   const [error, setError] = useState<string | null>(null);
 
   // USDC contract address on Base Sepolia
-  const USDC_CONTRACT_ADDRESS = '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
+  const USDC_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS!;
 
   const handleFarcasterPayment = async () => {
     try {

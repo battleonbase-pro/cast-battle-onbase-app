@@ -28,8 +28,10 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
   const [userAddress, setUserAddress] = useState<string | null>(null);
   const [sdk, setSdk] = useState<any>(null);
 
-  // Initialize Base Account SDK
+  // Initialize Base Account SDK (only once)
   useEffect(() => {
+    if (sdk) return; // Don't re-initialize if already initialized
+    
     try {
       const baseSDK = createBaseAccountSDK({ 
         appName: 'NewsCast Debate',
@@ -41,10 +43,10 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
       console.error('❌ Failed to initialize Base Account SDK:', error);
       onAuthError('Failed to initialize Base Account SDK');
     }
-  }, [onAuthError]);
+  }, [onAuthError, sdk]);
 
-  // Handle Base Account authentication using official SDK
-  const handleBaseAccountConnect = useCallback(async () => {
+  // Handle Base Account authentication using official SDK approach
+  const handleSignInWithBase = useCallback(async () => {
     if (!sdk) {
       onAuthError('Base Account SDK not initialized');
       return;
@@ -54,7 +56,7 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
       setIsSigningIn(true);
       setError(null);
 
-      console.log('🔐 Starting Base Account authentication...');
+      console.log('🔐 Starting Sign in with Base...');
 
       // Get the provider from the SDK
       const provider = sdk.getProvider();
@@ -62,17 +64,22 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
         throw new Error('Failed to get Base Account provider');
       }
 
-      // Generate a unique nonce
-      const nonce = window.crypto.randomUUID().replace(/-/g, '');
-      console.log('🔑 Generated nonce:', nonce);
+      // 1. Get a fresh nonce (prefetch from backend as recommended)
+      console.log('🔑 Fetching nonce from server...');
+      const nonceResponse = await fetch('/api/auth/nonce');
+      if (!nonceResponse.ok) {
+        throw new Error('Failed to fetch nonce from server');
+      }
+      const nonceData = await nonceResponse.json();
+      const nonce = nonceData.nonce;
+      console.log('🔑 Received nonce from server:', nonce);
 
-      // Determine target chain (Base Sepolia for development, Base Mainnet for production)
+      // 2. Switch to Base Sepolia Chain (testnet mode)
       const isTestnet = process.env.NEXT_PUBLIC_NETWORK === 'testnet' || process.env.NODE_ENV === 'development';
-      const chainId = isTestnet ? '0x14A34' : '0x2105'; // Base Sepolia : Base Mainnet
+      const chainId = '0x14A34'; // Always use Base Sepolia for testnet mode
       
-      console.log('🔗 Target chain:', { isTestnet, chainId });
-
-      // Switch to Base chain first
+      console.log('🔗 Switching to Base Sepolia testnet:', { isTestnet, chainId, network: 'Base Sepolia' });
+      
       try {
         await provider.request({
           method: "wallet_switchEthereumChain",
@@ -81,8 +88,8 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
         console.log('✅ Switched to Base chain');
       } catch (switchError: any) {
         if (switchError.code === 4902) {
-          // Chain not recognized, add it
-          const chainParams = isTestnet ? {
+          // Chain not recognized, add Base Sepolia
+          const chainParams = {
             chainId: '0x14A34',
             chainName: 'Base Sepolia',
             nativeCurrency: {
@@ -92,143 +99,94 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
             },
             rpcUrls: ['https://sepolia.base.org'],
             blockExplorerUrls: ['https://sepolia.basescan.org'],
-          } : {
-            chainId: '0x2105',
-            chainName: 'Base',
-            nativeCurrency: {
-              name: 'Ethereum',
-              symbol: 'ETH',
-              decimals: 18,
-            },
-            rpcUrls: ['https://mainnet.base.org'],
-            blockExplorerUrls: ['https://basescan.org'],
           };
 
           await provider.request({
             method: "wallet_addEthereumChain",
             params: [chainParams],
           });
-          console.log('✅ Added Base chain to wallet');
+          console.log('✅ Added Base Sepolia testnet to wallet');
         } else {
           console.log('⚠️ Chain switch failed:', switchError);
         }
       }
 
-      // Connect using wallet_connect with SIWE capabilities
-      console.log('🔐 Connecting with wallet_connect and SIWE capabilities...');
+      // 3. Connect and authenticate using wallet_connect with signInWithEthereum
+      console.log('🔐 Connecting with wallet_connect and signInWithEthereum...');
       
-      const { accounts } = await provider.request({
-        method: 'wallet_connect',
-        params: [{
-          version: '1',
-          capabilities: {
-            signInWithEthereum: { 
-              nonce, 
-              chainId
+      try {
+        const { accounts } = await provider.request({
+          method: 'wallet_connect',
+          params: [{
+            version: '1',
+            capabilities: {
+              signInWithEthereum: { 
+                nonce, 
+                chainId 
+              }
             }
-          }
-        }]
-      });
+          }]
+        });
 
-      if (!accounts || accounts.length === 0) {
-        throw new Error('No accounts returned from Base Account');
-      }
+        const { address } = accounts[0];
+        const { message, signature } = accounts[0].capabilities.signInWithEthereum;
 
-      const account = accounts[0];
-      const { address } = account;
-      const { message, signature } = account.capabilities.signInWithEthereum;
+        console.log('✅ Base Account connected successfully');
+        console.log('📝 Address:', address);
+        console.log('📝 Message:', message);
+        console.log('📝 Signature:', signature);
 
-      if (!address || !message || !signature) {
-        throw new Error('Missing authentication data from Base Account');
-      }
+        // Verify signature with backend
+        console.log('🔍 Verifying signature with backend...');
+        
+        const response = await fetch('/api/auth/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address, message, signature })
+        });
 
-      console.log('✅ Base Account connected successfully');
-      console.log('📝 Address:', address);
-      console.log('📝 Message:', message);
-      console.log('📝 Signature:', signature);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Signature verification failed');
+        }
 
-      // Verify signature with backend
-      console.log('🔍 Verifying signature with backend...');
-      
-      const response = await fetch('/api/auth/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address, message, signature })
-      });
+        const verificationResult = await response.json();
+        console.log('✅ Backend verification successful:', verificationResult);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Signature verification failed');
-      }
+        // Create user object
+        const user = {
+          address: address,
+          isAuthenticated: true,
+          environment: 'base'
+        };
 
-      const verificationResult = await response.json();
-      console.log('✅ Backend verification successful:', verificationResult);
+        setUserAddress(address);
+        setIsConnected(true);
+        
+        console.log('✅ Sign in with Base successful:', user);
+        onAuthSuccess(user);
 
-      // Create user object
-      const user = {
-        address: address,
-        isAuthenticated: true,
-        environment: 'base'
-      };
-
-      setUserAddress(address);
-      setIsConnected(true);
-      
-      console.log('✅ Base Account authentication successful:', user);
-      onAuthSuccess(user);
-
-    } catch (error: any) {
-      const errorMessage = error.message || 'Base Account authentication failed';
-      
-      // Handle specific Base Account errors
-      if (errorMessage.includes('method_not_supported')) {
-        console.log('⚠️ wallet_connect not supported, falling back to eth_requestAccounts');
+      } catch (walletConnectError: any) {
+        console.log('⚠️ wallet_connect not supported, falling back to eth_requestAccounts + personal_sign');
+        
         // Fallback to eth_requestAccounts + personal_sign
-        await handleFallbackAuthentication();
-        return;
-      }
-      
-      setError(errorMessage);
-      onAuthError(errorMessage);
-      console.error('❌ Base Account authentication error:', error);
-    } finally {
-      setIsSigningIn(false);
-    }
-  }, [sdk, onAuthSuccess, onAuthError]);
+        const accounts = await provider.request({
+          method: 'eth_requestAccounts'
+        });
 
-  // Fallback authentication using eth_requestAccounts + personal_sign
-  const handleFallbackAuthentication = useCallback(async () => {
-    if (!sdk) return;
+        if (!accounts || accounts.length === 0) {
+          throw new Error('No accounts returned');
+        }
 
-    try {
-      console.log('🔄 Using fallback authentication method...');
-      
-      const provider = sdk.getProvider();
-      if (!provider) {
-        throw new Error('Failed to get Base Account provider');
-      }
+        const address = accounts[0];
+        console.log('✅ Connected to address:', address);
 
-      // Request accounts
-      const accounts = await provider.request({
-        method: 'eth_requestAccounts'
-      });
+        const domain = window.location.host;
+        const uri = window.location.origin;
+        const currentTime = Math.floor(Date.now() / 1000);
+        const chainIdDecimal = 84532; // Base Sepolia testnet
 
-      if (!accounts || accounts.length === 0) {
-        throw new Error('No accounts returned');
-      }
-
-      const address = accounts[0];
-      console.log('✅ Connected to address:', address);
-
-      // Generate nonce and create SIWE message
-      const nonce = window.crypto.randomUUID().replace(/-/g, '');
-      const domain = window.location.host;
-      const uri = window.location.origin;
-      const currentTime = Math.floor(Date.now() / 1000);
-      const isTestnet = process.env.NEXT_PUBLIC_NETWORK === 'testnet' || process.env.NODE_ENV === 'development';
-      const chainId = isTestnet ? 84532 : 8453; // Base Sepolia : Base Mainnet
-
-      const message = `${domain} wants you to sign in with your Ethereum account:
+        const message = `${domain} wants you to sign in with your Ethereum account:
 ${address}
 
 Welcome to NewsCast Debate!
@@ -239,56 +197,61 @@ Your authentication status will reset after 24 hours.
 
 URI: ${uri}
 Version: 1
-Chain ID: ${chainId}
+Chain ID: ${chainIdDecimal}
 Nonce: ${nonce}
 Issued At: ${new Date(currentTime * 1000).toISOString()}`;
 
-      console.log('📝 Generated SIWE message:', message);
+        console.log('📝 Generated SIWE message:', message);
 
-      // Sign the message
-      const signature = await provider.request({
-        method: 'personal_sign',
-        params: [message, address]
-      });
+        // Sign the message
+        const signature = await provider.request({
+          method: 'personal_sign',
+          params: [message, address]
+        });
 
-      console.log('✅ personal_sign successful');
-      console.log('📝 Generated signature:', signature);
+        console.log('✅ personal_sign successful');
+        console.log('📝 Generated signature:', signature);
 
-      // Verify with backend
-      const response = await fetch('/api/auth/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address, message, signature })
-      });
+        // Verify with backend
+        const response = await fetch('/api/auth/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address, message, signature })
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Signature verification failed');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Signature verification failed');
+        }
+
+        const verificationResult = await response.json();
+        console.log('✅ Backend verification successful:', verificationResult);
+
+        // Create user object
+        const user = {
+          address: address,
+          isAuthenticated: true,
+          environment: 'base'
+        };
+
+        setUserAddress(address);
+        setIsConnected(true);
+        
+        console.log('✅ Fallback authentication successful:', user);
+        onAuthSuccess(user);
       }
 
-      const verificationResult = await response.json();
-      console.log('✅ Backend verification successful:', verificationResult);
-
-      // Create user object
-      const user = {
-        address: address,
-        isAuthenticated: true,
-        environment: 'base'
-      };
-
-      setUserAddress(address);
-      setIsConnected(true);
-      
-      console.log('✅ Fallback authentication successful:', user);
-      onAuthSuccess(user);
-
     } catch (error: any) {
-      const errorMessage = error.message || 'Fallback authentication failed';
+      const errorMessage = error.message || 'Sign in with Base failed';
       setError(errorMessage);
       onAuthError(errorMessage);
-      console.error('❌ Fallback authentication error:', error);
+      console.error('❌ Sign in with Base error:', error);
+    } finally {
+      setIsSigningIn(false);
     }
   }, [sdk, onAuthSuccess, onAuthError]);
+
+
 
   const handleSignOut = () => {
     setIsConnected(false);
@@ -440,18 +403,42 @@ Issued At: ${new Date(currentTime * 1000).toISOString()}`;
               </button>
             </div>
           ) : (
-            // User needs to connect - use Base Account SDK
+            // Sign in with Base - standard approach
             <div>
               <button
-                onClick={handleBaseAccountConnect}
+                onClick={handleSignInWithBase}
                 disabled={isSigningIn || !sdk}
                 className={styles.signInButton}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  padding: '12px 16px',
+                  backgroundColor: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#000000',
+                  minWidth: '180px',
+                  height: '44px'
+                }}
               >
-                {isSigningIn ? 'Connecting...' : 'Sign In with Base Account'}
+                <div style={{
+                  width: '16px',
+                  height: '16px',
+                  backgroundColor: '#0000FF',
+                  borderRadius: '2px',
+                  flexShrink: 0
+                }} />
+                <span>{isSigningIn ? 'Signing in...' : 'Sign in with Base'}</span>
               </button>
               {isSigningIn && (
                 <div className={styles.authDescription} style={{ marginTop: 8 }}>
-                  Connecting to Base Account…
+                  Please approve the connection and sign the message in your Base Account wallet…
                 </div>
               )}
             </div>

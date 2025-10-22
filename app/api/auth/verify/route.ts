@@ -30,14 +30,16 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. Check nonce hasn't been reused (matches docs recommendation)
-    const nonceMatch = message.match(/Nonce: (\w+)|nonce: (\w+)|at (\w{32})$/i);
-    const extracted = nonceMatch?.[1] || nonceMatch?.[2] || nonceMatch?.[3] || null;
+    // Extract nonce from SIWE message format: "Nonce: <nonce>"
+    const nonceMatch = message.match(/Nonce:\s*([a-f0-9]{32})/i);
+    const extracted = nonceMatch?.[1] || null;
     
     console.log('🔍 Nonce extraction:', { 
       message: message.substring(0, 100) + '...', 
       nonceMatch, 
       extracted,
-      noncesSize: nonces.size 
+      noncesSize: nonces.size,
+      allNonces: Array.from(nonces)
     });
     
     if (!extracted || !nonces.delete(extracted)) {

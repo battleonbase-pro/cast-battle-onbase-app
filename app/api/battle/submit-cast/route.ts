@@ -105,8 +105,31 @@ export async function POST(request: NextRequest) {
     // Initialize payment flow service
     const paymentFlowService = new DebatePaymentFlowService(debateId);
     
-    // If transaction ID is provided, verify the payment first
-    if (transactionId) {
+    // Check for X-PAYMENT header (x402 protocol)
+    const xPaymentHeader = request.headers.get('X-PAYMENT');
+    
+    if (xPaymentHeader) {
+      console.log(`🔍 Verifying X-PAYMENT header: ${xPaymentHeader}`);
+      try {
+        const paymentProof = JSON.parse(xPaymentHeader);
+        const paymentResult = await paymentFlowService.checkExistingPayment(paymentProof.transactionId, userAddress);
+        
+        if (!paymentResult.success) {
+          return NextResponse.json({ 
+            error: paymentResult.error || 'Payment verification failed',
+            requiresPayment: true
+          }, { status: 402 });
+        }
+        console.log(`✅ X-PAYMENT verified successfully for transaction: ${paymentProof.transactionId}`);
+      } catch (error) {
+        console.error('❌ Invalid X-PAYMENT header:', error);
+        return NextResponse.json({ 
+          error: 'Invalid payment proof',
+          requiresPayment: true
+        }, { status: 402 });
+      }
+    } else if (transactionId) {
+      // Legacy support: transaction ID in request body
       console.log(`🔍 Verifying payment for transaction: ${transactionId}`);
       const paymentResult = await paymentFlowService.checkExistingPayment(transactionId, userAddress);
       
@@ -118,14 +141,32 @@ export async function POST(request: NextRequest) {
       }
       console.log(`✅ Payment verified successfully for transaction: ${transactionId}`);
     } else {
-      // No transaction ID provided, check if user has already paid on-chain
-      console.log(`💰 No transaction ID provided, checking if user has already paid on-chain...`);
+      // No payment proof provided, check if user has already paid on-chain
+      console.log(`💰 No payment proof provided, checking if user has already paid on-chain...`);
       const canParticipate = await paymentFlowService.canParticipate(userAddress);
       if (!canParticipate.canParticipate) {
-        return NextResponse.json({ 
-          error: canParticipate.reason || 'Payment required to submit cast',
-          requiresPayment: true
-        }, { status: 402 }); // 402 Payment Required
+        // x402 compliant Payment Required Response
+        const paymentRequiredResponse = {
+          x402Version: 1,
+          accepts: [{
+            scheme: "exact",
+            network: "base-sepolia",
+            maxAmountRequired: "1000000", // 1 USDC in atomic units (6 decimals)
+            resource: "/api/battle/submit-cast",
+            description: "Debate participation fee",
+            mimeType: "application/json",
+            payTo: process.env.NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS!, // DebatePool contract
+            maxTimeoutSeconds: 30,
+            asset: process.env.NEXT_PUBLIC_USDC_ADDRESS!, // USDC contract
+            extra: {
+              name: "USD Coin",
+              version: "2"
+            }
+          }],
+          error: canParticipate.reason || 'Payment required to submit cast'
+        };
+        
+        return NextResponse.json(paymentRequiredResponse, { status: 402 });
       }
       console.log(`✅ User has already paid on-chain for this debate`);
     }
@@ -204,7 +245,15 @@ export async function POST(request: NextRequest) {
       console.error('Failed to broadcast cast submission event:', broadcastError);
     }
     
-    return NextResponse.json({ 
+    // Create settlement response for X-PAYMENT-RESPONSE header (x402 protocol)
+    const settlementResponse = {
+      success: true,
+      txHash: xPaymentHeader ? JSON.parse(xPaymentHeader).transactionId : transactionId,
+      networkId: "base-sepolia",
+      timestamp: Date.now()
+    };
+    
+    const response = NextResponse.json({ 
       success: true, 
       cast: {
         id: cast.id,
@@ -215,6 +264,13 @@ export async function POST(request: NextRequest) {
       points: userPoints,
       pointsAwarded: 10
     });
+    
+    // Add X-PAYMENT-RESPONSE header (x402 protocol)
+    if (xPaymentHeader || transactionId) {
+      response.headers.set('X-PAYMENT-RESPONSE', Buffer.from(JSON.stringify(settlementResponse)).toString('base64'));
+    }
+    
+    return response;
     
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

@@ -279,7 +279,7 @@ Issued At: ${new Date(currentTime * 1000).toISOString()}`;
       }
 
       const result = await basePaySDK.send({
-        to: '0x6D00f9F5C6a57B46bFa26E032D60B525A1DAe271', // Recipient address
+        to: process.env.NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS!, // Recipient address
         value: entryFee,
         currency: 'USDC'
       });

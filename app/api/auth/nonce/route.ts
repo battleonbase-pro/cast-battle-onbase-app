@@ -15,6 +15,7 @@ const nonces = global.__nonces;
 
 export async function GET() {
   try {
+    // Generate a 32-character hex nonce (same format as client-side UUID without dashes)
     const nonce = crypto.randomBytes(16).toString('hex');
     nonces.add(nonce);
     

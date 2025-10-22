@@ -176,7 +176,7 @@ export class FarcasterAuthService {
       }
 
       // USDC contract address on Base Sepolia
-      const usdcAddress = '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
+      const usdcAddress = process.env.NEXT_PUBLIC_USDC_ADDRESS!;
       
       // Parse amount (USDC has 6 decimals)
       const { parseUnits } = await import('viem');

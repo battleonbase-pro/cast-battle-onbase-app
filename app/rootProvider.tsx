@@ -1,40 +1,20 @@
 'use client';
 import { ReactNode } from 'react';
-import { WagmiProvider, createConfig, http } from 'wagmi';
-import { baseSepolia } from 'wagmi/chains';
-import { coinbaseWallet, injected, walletConnect } from 'wagmi/connectors';
-import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
+import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { OnchainKitProvider } from '@coinbase/onchainkit';
 import '@coinbase/onchainkit/styles.css';
+import { config } from '@/lib/wagmi-config';
 
 const queryClient = new QueryClient();
 
-const wagmiConfig = createConfig({
-  chains: [baseSepolia],
-  connectors: [
-    farcasterMiniApp(), // Add Farcaster Mini App connector first
-    coinbaseWallet({
-      appName: 'NewsCast Debate',
-    }),
-    injected(),
-    walletConnect({
-      projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'your-project-id',
-    }),
-  ],
-  ssr: true,
-  transports: {
-    [baseSepolia.id]: http(),
-  },
-});
-
 export function RootProvider({ children }: { children: ReactNode }) {
   return (
-    <WagmiProvider config={wagmiConfig}>
+    <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <OnchainKitProvider
           apiKey={process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY}
-          chain={baseSepolia}
+          chain={config.chains[0]} // Use the first chain from the config
           config={{
             appearance: {
               mode: 'auto',

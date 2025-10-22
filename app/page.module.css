@@ -1730,7 +1730,7 @@
     font-size: 0.75rem;
     margin-top: 0;
     margin-bottom: 3px;
-    font-weight: 600;
+  font-weight: 600;
     color: #1f2937;
     width: 100%;
     display: block;
@@ -1821,9 +1821,9 @@
   
   .topicSource {
     font-size: 0.75rem;
-  }
-  
-  .topicDescription {
+}
+
+.topicDescription {
   font-size: 0.95rem;
   line-height: 1.4;
 }
@@ -2041,7 +2041,7 @@
   }
   
   /* Mobile-specific stacked layout */
-  .debatePoints {
+.debatePoints {
     height: auto;
     margin-top: 16px;
   }

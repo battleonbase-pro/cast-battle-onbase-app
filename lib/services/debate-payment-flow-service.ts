@@ -109,8 +109,42 @@ export class DebatePaymentFlowService {
   }
 
   /**
+   * Wait for transaction confirmation with x402-optimized timing
+   * @param transactionId Transaction hash to wait for
+   */
+  private async waitForTransactionConfirmation(transactionId: string): Promise<void> {
+    const maxWaitTime = 10000; // 10 seconds maximum (x402 standard)
+    const checkInterval = 1000; // Check every 1 second
+    const startTime = Date.now();
+    
+    while (Date.now() - startTime < maxWaitTime) {
+      try {
+        // Initialize verification service to get provider
+        await paymentVerificationService.initialize();
+        
+        // Quick check if transaction exists and is confirmed
+        const isConfirmed = await paymentVerificationService.isTransactionConfirmed(transactionId);
+        
+        if (isConfirmed) {
+          console.log(`✅ Transaction confirmed in ${Date.now() - startTime}ms (x402 optimized)`);
+          return;
+        }
+        
+        // Wait before next check
+        await new Promise(resolve => setTimeout(resolve, checkInterval));
+        
+      } catch (error) {
+        console.log(`🔍 Confirmation check failed, retrying...`);
+        await new Promise(resolve => setTimeout(resolve, checkInterval));
+      }
+    }
+    
+    console.log(`⚠️ Transaction confirmation timeout after ${maxWaitTime}ms`);
+  }
+
+  /**
    * Check payment status without processing new payment
-   * @param transactionId Existing transaction ID
+   * @param transactionId Existing transaction ID (could be OnchainKit hash or Base Pay ID)
    * @param userAddress User's wallet address
    */
   async checkExistingPayment(transactionId: string, userAddress: string): Promise<DebatePaymentFlow> {
@@ -120,33 +154,72 @@ export class DebatePaymentFlowService {
       // Initialize verification service
       await paymentVerificationService.initialize();
 
-      // Check payment status
-      const paymentStatus = await usdcPaymentService.checkPaymentStatus(transactionId);
+      // Check if this looks like an OnchainKit transaction hash (starts with 0x and is 66 chars)
+      const isOnchainKitHash = transactionId.startsWith('0x') && transactionId.length === 66;
       
-      if (paymentStatus.status === 'completed') {
-        console.log(`✅ Base Pay payment completed: ${transactionId}`);
+      if (isOnchainKitHash) {
+        console.log(`🔗 Detected OnchainKit transaction hash: ${transactionId}`);
         
-        // For Base Pay transactions, trust the payment status from the SDK
-        // On-chain verification might take time or work differently
-        return {
-          success: true,
-          transactionId,
-          verificationStatus: 'verified'
-        };
-      } else if (paymentStatus.status === 'failed') {
-        return {
-          success: false,
-          transactionId,
-          error: 'Payment failed',
-          verificationStatus: 'failed'
-        };
+        // For OnchainKit transactions, verify on-chain using proper verification
+        console.log(`⏳ Waiting for transaction confirmation (x402 optimized)...`);
+        await this.waitForTransactionConfirmation(transactionId);
+        
+        try {
+          // Use proper on-chain verification instead of trusting frontend
+          const isVerified = await paymentVerificationService.verifyOnChainTransaction(transactionId, userAddress, this.debateId);
+          
+          if (isVerified) {
+            console.log(`✅ OnchainKit transaction verified on-chain: ${transactionId}`);
+            return {
+              success: true,
+              transactionId,
+              verificationStatus: 'verified'
+            };
+          } else {
+            console.log(`⚠️ OnchainKit transaction not yet verified: ${transactionId}`);
+            return {
+              success: false,
+              transactionId,
+              error: 'Transaction not yet confirmed on-chain',
+              verificationStatus: 'pending'
+            };
+          }
+        } catch (verificationError) {
+          console.error(`❌ Failed to verify OnchainKit transaction: ${verificationError}`);
+          return {
+            success: false,
+            transactionId,
+            error: 'Failed to verify transaction on-chain',
+            verificationStatus: 'failed'
+          };
+        }
       } else {
-        return {
-          success: false,
-          transactionId,
-          error: 'Payment still pending',
-          verificationStatus: 'pending'
-        };
+        // This is a Base Pay transaction ID
+        console.log(`💰 Checking Base Pay payment status: ${transactionId}`);
+        const paymentStatus = await usdcPaymentService.checkPaymentStatus(transactionId);
+        
+        if (paymentStatus.status === 'completed') {
+          console.log(`✅ Base Pay payment completed: ${transactionId}`);
+          return {
+            success: true,
+            transactionId,
+            verificationStatus: 'verified'
+          };
+        } else if (paymentStatus.status === 'failed') {
+          return {
+            success: false,
+            transactionId,
+            error: 'Payment failed',
+            verificationStatus: 'failed'
+          };
+        } else {
+          return {
+            success: false,
+            transactionId,
+            error: 'Payment still pending',
+            verificationStatus: 'pending'
+          };
+        }
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

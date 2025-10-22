@@ -4,7 +4,7 @@ import { sdk } from '@farcaster/miniapp-sdk';
 import UnifiedAuth from '../components/UnifiedAuth';
 import UnifiedPaymentButton from '../components/UnifiedPaymentButton';
 import LikeButton from '../components/LikeButton';
-import { useAccount as useWagmiAccount, useDisconnect } from 'wagmi';
+import { useAccount as useWagmiAccount, useDisconnect, useConnect } from 'wagmi';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -108,6 +108,8 @@ export default function Home() {
   const [baseAccountUser, setBaseAccountUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [paymentSuccessCastFailed, setPaymentSuccessCastFailed] = useState(false);
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [currentBattle, setCurrentBattle] = useState<Battle | null>(null);
   const [battleLoading, setBattleLoading] = useState(false);
   
@@ -158,6 +160,7 @@ export default function Home() {
   // Use wagmi account hook
   const { address, isConnected } = useWagmiAccount();
   const { disconnect } = useDisconnect();
+  const { connect, connectors } = useConnect();
   
   // Form interaction state
   const [showForm, setShowForm] = useState(false);
@@ -281,10 +284,45 @@ export default function Home() {
             setPaymentTransactionId(null);
             setCastContent('');
             setError(null);
+            setPaymentSuccessCastFailed(false);
+            setPaymentCompleted(false);
+          } else {
+            // No active battle available
+            console.log('ℹ️ No active battle available');
+            setCurrentBattle(null);
+            setHasSubmittedCast(false);
+            setPaymentStatus('idle');
+            setPaymentError(null);
+            setPaymentTransactionId(null);
+            setCastContent('');
+            setError('No active debate available. Please check back later.');
+            setPaymentSuccessCastFailed(false);
+            setPaymentCompleted(false);
           }
+        } else {
+          // API error - no battle available
+          console.log('ℹ️ No active battle available (API error)');
+          setCurrentBattle(null);
+          setHasSubmittedCast(false);
+          setPaymentStatus('idle');
+          setPaymentError(null);
+          setPaymentTransactionId(null);
+          setCastContent('');
+          setError('No active debate available. Please check back later.');
+          setPaymentSuccessCastFailed(false);
+          setPaymentCompleted(false);
         }
       } catch (error) {
         console.error('❌ Failed to fetch current battle:', error);
+        setCurrentBattle(null);
+        setHasSubmittedCast(false);
+        setPaymentStatus('idle');
+        setPaymentError(null);
+        setPaymentTransactionId(null);
+        setCastContent('');
+        setError('Failed to load debate. Please refresh the page.');
+        setPaymentSuccessCastFailed(false);
+        setPaymentCompleted(false);
       } finally {
         setBattleLoading(false);
       }
@@ -394,15 +432,17 @@ export default function Home() {
     }
   }, []);
 
-  // Submit cast after payment is completed
-  const submitCastAfterPayment = async () => {
+  // Check if payment is required before opening wallet (x402 protocol)
+  const checkPaymentRequired = async (): Promise<{ requiresPayment: boolean; paymentDetails?: any }> => {
     const userAddress = baseAccountUser?.address;
-    if (!userAddress || !castContent.trim()) return;
+    if (!userAddress || !castContent.trim()) {
+      return { requiresPayment: false };
+    }
 
     try {
-      setSubmittingCast(true);
+      console.log('🔍 Checking if payment is required...');
       
-      // Submit the cast without transaction ID (payment already handled by UnifiedPaymentButton)
+      // Make initial request without payment proof
       const response = await fetch('/api/battle/submit-cast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -410,17 +450,155 @@ export default function Home() {
           userAddress: userAddress,
           content: castContent.trim(),
           side: selectedSide,
-          transactionId: null // Payment was already processed
+          transactionId: null // No payment proof
+        })
+      });
+
+      if (response.status === 402) {
+        const paymentRequiredResponse = await response.json();
+        console.log('💰 Payment required (402):', paymentRequiredResponse);
+        
+        // Extract payment requirements from x402 response
+        const paymentRequirements = paymentRequiredResponse.accepts?.[0];
+        if (paymentRequirements) {
+          console.log('📋 Payment requirements:', {
+            scheme: paymentRequirements.scheme,
+            network: paymentRequirements.network,
+            amount: paymentRequirements.maxAmountRequired,
+            currency: paymentRequirements.asset,
+            description: paymentRequirements.description,
+            payTo: paymentRequirements.payTo
+          });
+        }
+        
+        return { 
+          requiresPayment: true, 
+          paymentDetails: paymentRequiredResponse,
+          paymentRequirements: paymentRequirements
+        };
+      } else if (response.ok) {
+        console.log('✅ No payment required');
+        return { requiresPayment: false };
+      } else {
+        console.log('❌ Unexpected response:', response.status);
+        return { requiresPayment: false };
+      }
+    } catch (error) {
+      console.error('❌ Failed to check payment requirement:', error);
+      return { requiresPayment: false };
+    }
+  };
+
+  // Handle payment flow with proper x402 protocol
+  const handlePaymentFlow = async () => {
+    try {
+      // Step 1: Check if payment is required
+      const paymentCheck = await checkPaymentRequired();
+      
+      if (!paymentCheck.requiresPayment) {
+        // No payment required, submit directly
+        console.log('✅ No payment required, submitting cast directly');
+        await submitCastAfterPayment();
+        return;
+      }
+
+      // Step 2: Payment required, show payment details and open wallet
+      console.log('💰 Payment required:', paymentCheck.paymentDetails);
+      
+      // Update UI to show payment is required
+      setPaymentStatus('processing');
+      
+      // The wallet will open via OnchainKit Transaction component
+      // When payment succeeds, handlePaymentSuccess will be called
+      
+    } catch (error) {
+      console.error('❌ Payment flow failed:', error);
+      setError('Failed to process payment. Please try again.');
+      setPaymentStatus('failed');
+    }
+  };
+
+  // Handle payment success - called by BasePaymentButton (x402 protocol)
+  const handlePaymentSuccess = (transactionId?: string) => {
+    console.log('💰 Payment completed successfully');
+    console.log('📝 Transaction ID:', transactionId);
+    setPaymentCompleted(true);
+    setPaymentStatus('completed');
+    setPaymentTransactionId(transactionId || null);
+    
+    // Clear the input field immediately after payment success
+    setCastContent('');
+    
+    // Automatically submit cast after payment success with X-PAYMENT header
+    setTimeout(() => {
+      submitCastAfterPayment(transactionId);
+    }, 1000);
+  };
+
+  // Submit cast after payment is completed
+  const submitCastAfterPayment = async (transactionId?: string) => {
+    // Prevent multiple submissions
+    if (submittingCast || hasSubmittedCast || paymentSuccessCastFailed) {
+      console.log('⚠️ Already submitting, submitted, or payment succeeded but cast failed - skipping...');
+      return;
+    }
+
+    console.log('🔄 submitCastAfterPayment called');
+    console.log('📝 Transaction ID:', transactionId);
+    const userAddress = baseAccountUser?.address;
+    if (!userAddress || !castContent.trim()) {
+      console.log('❌ Missing userAddress or castContent:', { userAddress, castContent: castContent.trim() });
+      return;
+    }
+
+    console.log('📝 Submitting cast:', {
+      userAddress,
+      content: castContent.trim(),
+      side: selectedSide,
+      contentLength: castContent.trim().length,
+      transactionId: transactionId ? String(transactionId) : null // Convert to string to avoid BigInt issues
+    });
+
+    try {
+      setSubmittingCast(true);
+      
+      // Prepare payment proof for x402 protocol
+      const paymentProof = transactionId ? {
+        transactionId: String(transactionId),
+        timestamp: Date.now(),
+        userAddress: userAddress
+      } : null;
+      
+      // Submit the cast with X-PAYMENT header (x402 protocol)
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (paymentProof) {
+        headers['X-PAYMENT'] = JSON.stringify(paymentProof);
+      }
+      
+      const response = await fetch('/api/battle/submit-cast', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          userAddress: userAddress,
+          content: castContent.trim(),
+          side: selectedSide,
+          transactionId: transactionId ? String(transactionId) : null // Convert to string to avoid BigInt serialization issues
         })
       });
 
       const data = await response.json();
       
       if (response.ok && data.success) {
-        console.log('✅ Cast submitted successfully');
+        console.log('✅ Cast submitted successfully:', data);
         setHasSubmittedCast(true);
         setCastContent('');
         setSubmittingCast(false);
+        
+        // Show additional success message for cast submission
+        console.log('🎯 Cast submission completed - showing success state');
         
         // Update points and show animation
         if (data.points !== undefined) {
@@ -431,13 +609,52 @@ export default function Home() {
         
         // Refresh casts to show the new submission
         fetchCasts();
+      } else if (response.status === 402) {
+        // Handle x402 Payment Required response
+        console.log('💰 Payment required (402):', data);
+        
+        if (transactionId) {
+          // We have a transaction ID but payment verification failed
+          const errorMessage = data.error || 'Payment verification failed';
+          console.error('❌ Cast submission failed:', errorMessage);
+          
+          setError(`Payment successful but cast submission failed: ${errorMessage}`);
+          setPaymentSuccessCastFailed(true);
+          setSubmittingCast(false);
+          setCastContent('');
+          
+          console.log('🆘 Payment succeeded but cast submission failed - user should contact support');
+        } else {
+          // No payment provided, user needs to pay first
+          console.log('💳 User needs to make payment first');
+          setError('Payment required to submit cast. Please complete payment first.');
+          setSubmittingCast(false);
+        }
       } else {
-        throw new Error(data.error || 'Failed to submit cast');
+        // Handle other API errors
+        const errorMessage = data.error || 'Failed to submit cast';
+        console.error('❌ Cast submission failed:', errorMessage);
+        
+        setError(`Payment successful but cast submission failed: ${errorMessage}`);
+        setPaymentSuccessCastFailed(true);
+        setSubmittingCast(false);
+        setCastContent('');
+        
+        console.log('🆘 Payment succeeded but cast submission failed - user should contact support');
       }
     } catch (error) {
       console.error('❌ Failed to submit cast:', error);
       setSubmittingCast(false);
-      setError(error instanceof Error ? error.message : 'Failed to submit cast');
+      
+      // Handle network or other errors gracefully
+      const errorMessage = error instanceof Error ? error.message : 'Failed to submit cast';
+      setError(`Payment successful but cast submission failed: ${errorMessage}`);
+      setPaymentSuccessCastFailed(true);
+      
+      // Clear the input field on network error as well
+      setCastContent('');
+      
+      console.log('🆘 Payment succeeded but cast submission failed due to network error - user should contact support');
     }
   };
 
@@ -537,7 +754,7 @@ export default function Home() {
               data = await response.json();
               
               // If cast submission successful, mark as submitted
-              if (data.success) {
+      if (data.success) {
                 console.log('✅ Argument submitted successfully after payment');
                 
                 // Immediately update all relevant states
@@ -939,13 +1156,28 @@ export default function Home() {
               {!baseAccountUser ? (
                 <section className={styles.authSection}>
                   <UnifiedAuth
-                    onAuthSuccess={(user) => {
+                    onAuthSuccess={async (user) => {
                       if (user) {
                         console.log('🔐 Auth success callback - user:', user.address);
                         setBaseAccountUser(user);
                         setIsAuthenticated(true);
                         setActiveTab('debate');
                         console.log('✅ Unified authentication successful');
+                        
+                        // Connect to wagmi for payment transactions
+                        try {
+                          console.log('🔗 Connecting to wagmi for payment transactions...');
+                          const baseAccountConnector = connectors.find(c => c.id === 'baseAccount');
+                          if (baseAccountConnector) {
+                            await connect({ connector: baseAccountConnector });
+                            console.log('✅ Connected to wagmi successfully');
+                          } else {
+                            console.log('⚠️ Base Account connector not found in wagmi');
+                          }
+                        } catch (error) {
+                          console.error('❌ Failed to connect to wagmi:', error);
+                          // Don't fail authentication if wagmi connection fails
+                        }
                         
                         // Fetch user points immediately after authentication
                         fetchUserPoints(user.address);
@@ -1049,7 +1281,7 @@ export default function Home() {
                   >
                     ×
                   </button>
-                </div>
+          </div>
                 
                 <div className={styles.helpModalBody}>
                   <div className={styles.helpSection}>
@@ -1060,7 +1292,7 @@ export default function Home() {
                       <li><strong>Pay Entry Fee:</strong> Pay 1 USDC using Base Pay to participate</li>
                       <li><strong>Earn Points:</strong> Get 10 points for participation, 100 points for winning</li>
                     </ul>
-                  </div>
+        </div>
 
                   <div className={styles.helpSection}>
                     <h3 className={styles.helpSectionTitle}>💰 Prize Pool</h3>
@@ -1157,15 +1389,6 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Thank You Message - Prominently displayed below header */}
-          {hasSubmittedCast && (
-            <div className={styles.thankYouBanner}>
-              <div className={styles.thankYouContent}>
-                <span className={styles.thankYouIcon}>✅</span>
-                <span className={styles.thankYouText}>Thank you for participating! Good luck winning the pot! 🍀</span>
-              </div>
-            </div>
-          )}
 
           {/* Main App Content */}
           <main className={styles.appMain}>
@@ -1198,7 +1421,7 @@ export default function Home() {
                     ⏰ {formatTime(timeRemaining)}
                   </span>
                 )}
-              </div>
+                </div>
 
               {currentBattle.imageUrl && (
                 <img 
@@ -1210,7 +1433,7 @@ export default function Home() {
               
               <h2 className={styles.topicTitle}>{currentBattle.title}</h2>
               <p className={styles.topicDescription}>{currentBattle.description}</p>
-            </div>
+              </div>
 
             {/* Market Sentiment Graph - Always Visible */}
             <div className={styles.compactGraph}>
@@ -1226,7 +1449,7 @@ export default function Home() {
               <div className={styles.chartContainer}>
                 <Line data={chartData} options={chartOptions} />
               </div>
-            </div>
+              </div>
 
             {/* Tab Navigation */}
             <nav className={styles.tabNav}>
@@ -1320,7 +1543,7 @@ export default function Home() {
                         aria-label="Back to side selection"
                       >
                         ← Back
-                      </button>
+                  </button>
                       <h3 className={styles.formTitle}>
                         Submit Your Argument
                       </h3>
@@ -1331,9 +1554,9 @@ export default function Home() {
                         {hasSubmittedCast ? (
                           <div className={styles.alreadySubmitted}>
                             <div className={styles.submittedIcon}>✅</div>
-                            <h3 className={styles.submittedTitle}>Thank You for Participating!</h3>
+                            <h3 className={styles.submittedTitle}>🎉 Thank You for Participating!</h3>
                             <p className={styles.submittedMessage}>
-                              Your argument has been submitted successfully. Good luck winning the pot! 🍀
+                              🎉 Thank you for participating in NewsCast Debate! Your 1 USDC payment has been processed successfully and your argument has been submitted! Good luck with your debate - may the best debater win! 🏆
                             </p>
                             <div className={styles.submittedFooter}>
                               <p className={styles.submittedNote}>
@@ -1348,7 +1571,12 @@ export default function Home() {
                               className={styles.argumentInput}
                               placeholder="Your argument... (140 chars max)"
                               value={castContent}
-                              onChange={(e) => setCastContent(e.target.value)}
+                              onChange={(e) => {
+                                console.log('📝 Input changed:', e.target.value);
+                                console.log('📝 Length:', e.target.value.length);
+                                console.log('📝 Trimmed length:', e.target.value.trim().length);
+                                setCastContent(e.target.value);
+                              }}
                               rows={3}
                               maxLength={140}
                             />
@@ -1358,14 +1586,30 @@ export default function Home() {
                             
                             {/* Single Payment Button with Dynamic States */}
                             <UnifiedPaymentButton
-                              onClick={submitCastAfterPayment}
-                              disabled={submittingCast || castContent.trim().length < 10 || castContent.trim().length > 140}
+                              onClick={handlePaymentFlow} // Check payment requirement first (x402 protocol)
+                              onSuccess={handlePaymentSuccess}
+                              disabled={(() => {
+                                const isDisabled = submittingCast || castContent.trim().length < 10 || castContent.trim().length > 140 || paymentSuccessCastFailed || paymentCompleted;
+                                console.log('🔘 Button disabled state:', {
+                                  submittingCast,
+                                  castContentLength: castContent.length,
+                                  castContentTrimmedLength: castContent.trim().length,
+                                  paymentSuccessCastFailed,
+                                  paymentCompleted,
+                                  isDisabled
+                                });
+                                return isDisabled;
+                              })()}
                               loading={submittingCast}
                               amount="1.00"
-                              recipientAddress={process.env.NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS || "0x6D00f9F5C6a57B46bFa26E032D60B525A1DAe271"}
+                              recipientAddress={process.env.NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS!}
                             >
                               {submittingCast 
                                 ? (paymentStatus === 'processing' ? 'Processing Payment...' : 'Submitting...')
+                                : paymentCompleted
+                                ? 'Payment Complete - Submitting...'
+                                : paymentSuccessCastFailed
+                                ? 'Contact Support'
                                 : 'Pay & Submit'
                               }
                             </UnifiedPaymentButton>
@@ -1379,19 +1623,42 @@ export default function Home() {
                                     {paymentError || 'Payment failed. Please try again.'}
                                   </p>
                                 </div>
+                  </div>
+                            )}
+
+                            {/* Special Error Display for Payment Success + Cast Failure */}
+                            {error && error.includes('Payment successful but cast submission failed') && (
+                              <div className={styles.statusDisplay}>
+                                <div className={styles.statusError}>
+                                  <span className={styles.errorIcon}>⚠️</span>
+                                  <div className={styles.errorText}>
+                                    <p><strong>Payment Successful ✅</strong></p>
+                                    <p>Your 1 USDC payment was processed successfully, but we encountered an issue submitting your argument.</p>
+                                    <p><strong>Please contact customer support with these details:</strong></p>
+                                    <ul style={{ fontSize: '0.9em', marginTop: '8px' }}>
+                                      <li>User Address: {baseAccountUser?.address}</li>
+                                      <li>Error: {error.replace('Payment successful but cast submission failed: ', '')}</li>
+                                      <li>Timestamp: {new Date().toISOString()}</li>
+                                      <li>Argument: "{castContent.trim()}"</li>
+                                    </ul>
+                                    <p style={{ marginTop: '12px', fontSize: '0.9em' }}>
+                                      <strong>Contact:</strong> support@newsdebate.com or Discord: #support
+                                    </p>
+                                  </div>
+                                </div>
                               </div>
                             )}
                           </>
-                        )}
-                      </div>
+                )}
+              </div>
                     ) : (
                       <div className={styles.signInPrompt}>
                         Sign in with Base Account to participate in this debate!
-                      </div>
-                    )}
-                  </div>
+            </div>
+          )}
+        </div>
                 )}
-              </div>
+      </div>
             )}
 
             {activeTab === 'arguments' && (
@@ -1535,10 +1802,15 @@ export default function Home() {
         ) : (
           <div className={styles.battleCard}>
             <div className={styles.battleHeader}>
-              <h2 className={styles.topicTitle}>No active battle</h2>
+              <h2 className={styles.topicTitle}>No Active Debate</h2>
               <p className={styles.topicDescription}>
-                There's currently no active debate. Check back soon for the next battle!
+                There's currently no active debate available. New debates are created regularly - please check back soon!
               </p>
+              {error && (
+                <div className={styles.errorMessage}>
+                  <p>Error: {error}</p>
+                </div>
+              )}
             </div>
           </div>
         )}

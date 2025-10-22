@@ -5,8 +5,8 @@ import { ethers } from 'ethers';
  */
 export const CONTRACT_ADDRESSES = {
   BASE_SEPOLIA: {
-    USDC: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
-    DEBATE_POOL: process.env.NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS || '',
+    USDC: process.env.NEXT_PUBLIC_USDC_ADDRESS!,
+    DEBATE_POOL: process.env.NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS!,
   },
   BASE_MAINNET: {
     USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
@@ -197,6 +197,122 @@ export class PaymentVerificationService {
       return isParticipant;
     } catch (error) {
       console.error('❌ Payment verification failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Quick check if transaction is confirmed (for x402 optimization)
+   * @param transactionHash Transaction hash to check
+   * @returns True if transaction is confirmed
+   */
+  async isTransactionConfirmed(transactionHash: string): Promise<boolean> {
+    try {
+      if (!this.provider) {
+        await this.initialize();
+      }
+
+      // Get transaction receipt
+      const receipt = await this.provider.getTransactionReceipt(transactionHash);
+      
+      // Return true if receipt exists and transaction was successful
+      return receipt !== null && receipt.status === 1;
+      
+    } catch (error) {
+      console.log(`🔍 Transaction confirmation check failed: ${error}`);
+      return false;
+    }
+  }
+
+  /**
+   * Verify an on-chain transaction for OnchainKit payments
+   * @param transactionHash Transaction hash from OnchainKit
+   * @param userAddress User's wallet address
+   * @param debateId Debate ID to verify payment for
+   * @returns True if transaction is verified and user is participating
+   */
+  async verifyOnChainTransaction(transactionHash: string, userAddress: string, debateId: number): Promise<boolean> {
+    try {
+      console.log(`🔍 Verifying on-chain transaction: ${transactionHash}`);
+      
+      if (!this.provider) {
+        throw new Error('Provider not initialized');
+      }
+
+      // Get transaction details
+      const tx = await this.provider.getTransaction(transactionHash);
+      if (!tx) {
+        console.log(`❌ Transaction not found: ${transactionHash}`);
+        return false;
+      }
+
+      // Check if transaction is confirmed
+      const receipt = await this.provider.getTransactionReceipt(transactionHash);
+      if (!receipt || receipt.status !== 1) {
+        console.log(`❌ Transaction not confirmed or failed: ${transactionHash}`);
+        return false;
+      }
+
+      console.log(`✅ Transaction confirmed: ${transactionHash}`);
+
+      // Log transaction details for debugging
+      console.log(`🔍 Transaction details:`, {
+        hash: transactionHash,
+        from: tx.from,
+        to: tx.to,
+        data: tx.data,
+        value: tx.value?.toString()
+      });
+
+      // Check if this is a USDC transfer transaction
+      if (tx.to?.toLowerCase() === CONTRACT_ADDRESSES.BASE_SEPOLIA.USDC.toLowerCase()) {
+        console.log(`🔍 Checking USDC transfer details...`);
+        
+        // Verify the transaction was from the user
+        if (tx.from.toLowerCase() === userAddress.toLowerCase()) {
+          console.log(`✅ USDC transfer from user ${userAddress} confirmed`);
+          
+          // Parse transaction data to verify it's a transfer to our debate pool contract
+          try {
+            // Decode the transaction data to check if it's a transfer to our contract
+            const contractAddress = CONTRACT_ADDRESSES.BASE_SEPOLIA.DEBATE_POOL.toLowerCase();
+            
+            console.log(`🔍 Expected recipient: ${contractAddress}`);
+            console.log(`🔍 Transaction data: ${tx.data}`);
+            
+            // For ERC20 transfers, the data contains the recipient address
+            // The transfer function signature is: transfer(address to, uint256 amount)
+            // Data format: 0xa9059cbb + 32-byte recipient + 32-byte amount
+            
+            if (tx.data && tx.data.length >= 74) { // 4 (selector) + 32 (address) + 32 (amount) + 2 (0x)
+              const recipientAddress = '0x' + tx.data.slice(34, 74); // Extract recipient from data
+              
+              console.log(`🔍 Extracted recipient: ${recipientAddress}`);
+              
+              if (recipientAddress.toLowerCase() === contractAddress) {
+                console.log(`✅ USDC transfer to debate pool contract confirmed`);
+                return true;
+              } else {
+                console.log(`⚠️ USDC transfer not to debate pool contract. Recipient: ${recipientAddress}, Expected: ${contractAddress}`);
+              }
+            } else {
+              console.log(`⚠️ Invalid transaction data format for USDC transfer. Length: ${tx.data?.length}`);
+            }
+          } catch (error) {
+            console.log(`⚠️ Error parsing USDC transfer data: ${error}`);
+          }
+        } else {
+          console.log(`⚠️ Transaction not from user. From: ${tx.from}, User: ${userAddress}`);
+        }
+      } else {
+        console.log(`⚠️ Transaction not to USDC contract. To: ${tx.to}, Expected: ${CONTRACT_ADDRESSES.BASE_SEPOLIA.USDC}`);
+      }
+
+      console.log(`❌ Transaction verification failed: ${transactionHash}`);
+      return false;
+
+    } catch (error) {
+      console.error(`❌ Failed to verify on-chain transaction: ${error}`);
       return false;
     }
   }

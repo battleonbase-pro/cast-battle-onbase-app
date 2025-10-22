@@ -5,7 +5,7 @@ import { ethers } from 'ethers';
  */
 export const CONTRACT_ADDRESSES = {
   BASE_SEPOLIA: {
-    USDC: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+    USDC: process.env.NEXT_PUBLIC_USDC_ADDRESS!,
     DEBATE_POOL: process.env.NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS || '', // Will be set after deployment
   },
   BASE_MAINNET: {
