@@ -1,7 +1,8 @@
 "use client";
 import { useState } from 'react';
 import { Transaction, TransactionButton } from '@coinbase/onchainkit/transaction';
-import { parseUnits } from 'viem';
+import { parseUnits, encodeFunctionData } from 'viem';
+import { erc20Abi } from 'viem';
 import styles from './BasePaymentButton.module.css';
 
 interface BasePaymentButtonProps {
@@ -37,13 +38,22 @@ export default function BasePaymentButton({
     setIsProcessing(false);
   };
 
+  // For testing: Use ETH transfer instead of USDC
+  // TODO: Switch back to USDC transfer once testing is complete
+  const ethAmount = parseUnits('0.001', 18); // 0.001 ETH for testing
+
+  console.log('🔧 Base Payment Transaction Details:');
+  console.log('  - Recipient:', recipientAddress);
+  console.log('  - Amount:', '0.001 ETH (testing)');
+  console.log('  - Chain ID:', 84532);
+
   return (
     <div className={styles.paymentButtonContainer}>
       <Transaction
         calls={[{
-          to: USDC_CONTRACT_ADDRESS,
-          data: `0xa9059cbb${recipientAddress.slice(2).padStart(64, '0')}${parseUnits(amount, 6).toString(16).padStart(64, '0')}`,
-          value: '0',
+          to: recipientAddress as `0x${string}`,
+          data: '0x', // Empty data for ETH transfer
+          value: ethAmount.toString(),
         }]}
         chainId={84532} // Base Sepolia
         onSuccess={handleTransactionSuccess}

@@ -1362,7 +1362,7 @@ export default function Home() {
                               disabled={submittingCast || castContent.trim().length < 10 || castContent.trim().length > 140}
                               loading={submittingCast}
                               amount="1.00"
-                              recipientAddress="0x6D00f9F5C6a57B46bFa26E032D60B525A1DAe271"
+                              recipientAddress={process.env.NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS || "0x6D00f9F5C6a57B46bFa26E032D60B525A1DAe271"}
                             >
                               {submittingCast 
                                 ? (paymentStatus === 'processing' ? 'Processing Payment...' : 'Submitting...')
