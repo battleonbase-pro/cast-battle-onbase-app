@@ -204,10 +204,33 @@ Issued At: ${new Date(currentTime * 1000).toISOString()}`;
             // Switch to Base Sepolia if needed
             if (isTestnet) {
               console.log('🔗 Ensuring wallet is on Base Sepolia...');
-              await window.ethereum?.request({
-                method: 'wallet_switchEthereumChain',
-                params: [{ chainId: '0x14A34' }], // Base Sepolia chain ID in hex
-              });
+              try {
+                await window.ethereum?.request({
+                  method: 'wallet_switchEthereumChain',
+                  params: [{ chainId: '0x14A34' }], // Base Sepolia chain ID in hex
+                });
+              } catch (switchError: any) {
+                // If chain is not recognized, add it first
+                if (switchError.code === 4902) {
+                  console.log('🔗 Adding Base Sepolia network to wallet...');
+                  await window.ethereum?.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [{
+                      chainId: '0x14A34',
+                      chainName: 'Base Sepolia',
+                      nativeCurrency: {
+                        name: 'Ethereum',
+                        symbol: 'ETH',
+                        decimals: 18,
+                      },
+                      rpcUrls: ['https://sepolia.base.org'],
+                      blockExplorerUrls: ['https://sepolia.basescan.org'],
+                    }],
+                  });
+                } else {
+                  console.log('⚠️ Chain switch failed:', switchError);
+                }
+              }
             }
           } catch (switchError) {
             console.log('⚠️ Chain switch failed or already on correct chain:', switchError);
