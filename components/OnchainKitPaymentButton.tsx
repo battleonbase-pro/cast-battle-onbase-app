@@ -1,8 +1,9 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { TransactionButton, useAccount } from '@coinbase/onchainkit';
-import { parseUnits } from 'viem';
+import { TransactionButton } from '@coinbase/onchainkit/transaction';
+import { useAccount } from '@coinbase/onchainkit';
 import { useAccount as useWagmiAccount } from 'wagmi';
+import { parseUnits } from 'viem';
 
 interface OnchainKitPaymentButtonProps {
   onClick: () => void;

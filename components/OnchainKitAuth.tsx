@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { ConnectWallet, useAccount, useDisconnect } from '@coinbase/onchainkit';
-import { useAccount as useWagmiAccount } from 'wagmi';
+import { ConnectWallet } from '@coinbase/onchainkit/wallet';
+import { useAccount } from '@coinbase/onchainkit';
+import { useAccount as useWagmiAccount, useDisconnect } from 'wagmi';
 import { sdk } from '@farcaster/miniapp-sdk';
 import styles from './BaseAccountAuth.module.css';
 
