@@ -4,6 +4,7 @@ import { sdk } from '@farcaster/miniapp-sdk';
 import BaseAccountAuth from '../components/BaseAccountAuth';
 import { BasePayButton } from '../components/BasePayButton';
 import { UnifiedPaymentButton } from '../components/UnifiedPaymentButton';
+import { paymentService } from '../lib/services/payment-service';
 import LikeButton from '../components/LikeButton';
 import { baseAccountAuthService, BaseAccountUser } from '../lib/services/base-account-auth-service';
 import { FarcasterUser } from '../lib/services/farcaster-auth-service';
@@ -212,6 +213,15 @@ export default function Home() {
     console.log('🔄 hasSubmittedCast state changed:', hasSubmittedCast);
   }, [hasSubmittedCast]);
 
+  // Format time in HH:MM:SS format (retro digital style)
+  const formatTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   // Base Account authentication initialization
   useEffect(() => {
     const initializeAuth = async () => {
@@ -262,27 +272,28 @@ export default function Home() {
             const endTime = new Date(data.battle.endTime).getTime();
             setBattleEndTime(endTime);
             
+            // Check if user has already submitted a cast for this battle FIRST
+            let userHasSubmitted = false;
+            if (baseAccountUser && data.battle.casts) {
+              const userAddress = getUserAddress(baseAccountUser);
+              userHasSubmitted = data.battle.casts.some((cast: any) => 
+                cast.user?.address?.toLowerCase() === userAddress?.toLowerCase()
+              );
+            }
+            
             // Reset payment and submission states for new battle
             // Only reset hasSubmittedCast if we're not in the middle of a submission
-            if (!submittingCast) {
+            // AND if the user hasn't already submitted
+            if (!submittingCast && !userHasSubmitted) {
               setHasSubmittedCast(false);
+            } else if (userHasSubmitted) {
+              setHasSubmittedCast(true);
             }
             setPaymentStatus('idle');
             setPaymentError(null);
             setPaymentTransactionId(null);
             setCastContent('');
             setError(null);
-            
-            // Check if user has already submitted a cast for this battle
-            if (baseAccountUser && data.battle.casts) {
-              const userAddress = getUserAddress(baseAccountUser);
-              const userHasSubmitted = data.battle.casts.some((cast: any) => 
-                cast.user?.address?.toLowerCase() === userAddress?.toLowerCase()
-              );
-              if (userHasSubmitted) {
-                setHasSubmittedCast(true);
-              }
-            }
           }
         }
       } catch (error) {
@@ -395,6 +406,53 @@ export default function Home() {
       setUserPoints(0);
     }
   }, []);
+
+  // Submit cast after payment is completed
+  const submitCastAfterPayment = async () => {
+    const userAddress = getUserAddress(baseAccountUser);
+    if (!userAddress || !castContent.trim()) return;
+
+    try {
+      setSubmittingCast(true);
+      
+      // Submit the cast without transaction ID (payment already handled by UnifiedPaymentButton)
+      const response = await fetch('/api/battle/submit-cast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userAddress: userAddress,
+          content: castContent.trim(),
+          side: castSide,
+          transactionId: null // Payment was already processed
+        })
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        console.log('✅ Cast submitted successfully');
+        setHasSubmittedCast(true);
+        setCastContent('');
+        setSubmittingCast(false);
+        
+        // Update points and show animation
+        if (data.points !== undefined) {
+          setUserPoints(data.points);
+          setPointsAnimation(true);
+          setTimeout(() => setPointsAnimation(false), 2000);
+        }
+        
+        // Refresh casts to show the new submission
+        fetchCasts();
+      } else {
+        throw new Error(data.error || 'Failed to submit cast');
+      }
+    } catch (error) {
+      console.error('❌ Failed to submit cast:', error);
+      setSubmittingCast(false);
+      setError(error instanceof Error ? error.message : 'Failed to submit cast');
+    }
+  };
 
   // Submit cast with Base Pay SDK integration
   const submitCast = async () => {
@@ -1070,7 +1128,7 @@ export default function Home() {
                 </span>
                 {timeRemaining !== null && (
                   <span className={styles.timer}>
-                    ⏰ {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+                    ⏰ {formatTime(timeRemaining)}
                   </span>
                 )}
               </div>
@@ -1228,7 +1286,7 @@ export default function Home() {
                             
                             {/* Single Payment Button with Dynamic States */}
                             <UnifiedPaymentButton
-                              onClick={submitCast}
+                              onClick={submitCastAfterPayment}
                               disabled={submittingCast || castContent.trim().length < 10 || castContent.trim().length > 140}
                               loading={submittingCast}
                               colorScheme="light"

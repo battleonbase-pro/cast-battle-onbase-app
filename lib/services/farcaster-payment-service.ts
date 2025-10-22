@@ -110,7 +110,43 @@ export class FarcasterPaymentService {
         params: [transactionData]
       });
 
-      console.log('✅ Farcaster native payment successful:', hash);
+      console.log('✅ Farcaster payment transaction submitted:', hash);
+      
+      // Wait for transaction confirmation
+      console.log('⏳ Waiting for transaction confirmation...');
+      
+      // Poll for transaction receipt
+      let confirmed = false;
+      let attempts = 0;
+      const maxAttempts = 30; // 30 seconds max
+      
+      while (!confirmed && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+        attempts++;
+        
+        try {
+          const receipt = await provider.request({
+            method: 'eth_getTransactionReceipt',
+            params: [hash]
+          });
+          
+          if (receipt && receipt.status === '0x1') {
+            console.log('✅ Farcaster payment transaction confirmed');
+            confirmed = true;
+          } else if (receipt && receipt.status === '0x0') {
+            throw new Error('Transaction failed');
+          }
+        } catch (receiptError) {
+          console.log(`🔍 Transaction confirmation check ${attempts}/${maxAttempts}...`);
+          if (attempts >= maxAttempts) {
+            throw new Error('Transaction confirmation timeout');
+          }
+        }
+      }
+      
+      if (!confirmed) {
+        throw new Error('Transaction confirmation timeout');
+      }
       
       // Call success callback
       if (options.onTransactionHash) {

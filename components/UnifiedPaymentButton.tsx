@@ -1,11 +1,10 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { sdk } from '@farcaster/miniapp-sdk';
 import { BasePayButton } from './BasePayButton';
-import { useAccount, useSendTransaction, usePublicClient } from 'wagmi';
-import { parseUnits } from 'viem';
+import { useAccount } from 'wagmi';
 import { environmentDetector } from '../lib/utils/environment-detector';
-import { farcasterPaymentService } from '../lib/services/farcaster-payment-service';
+import { paymentService } from '../lib/services/payment-service';
+import { useBaseAccountCapabilities } from '../lib/services/base-account-capabilities-service';
 
 interface UnifiedPaymentButtonProps {
   onClick: () => Promise<void>;
@@ -28,10 +27,10 @@ export function UnifiedPaymentButton({
 }: UnifiedPaymentButtonProps) {
   const [isDetecting, setIsDetecting] = useState<boolean>(true);
   const [environment, setEnvironment] = useState<'farcaster' | 'base' | 'external'>('external');
-  const [hasPaymasterService, setHasPaymasterService] = useState<boolean>(false);
-  const { isConnected, address } = useAccount();
-  const { sendTransaction } = useSendTransaction();
-  const publicClient = usePublicClient();
+  const { address } = useAccount();
+  
+  // Use Base Account capabilities hook
+  const { capabilities } = useBaseAccountCapabilities(address);
 
   // Detect environment using improved detection
   useEffect(() => {
@@ -50,59 +49,31 @@ export function UnifiedPaymentButton({
     detectEnvironment();
   }, []);
 
-  // Detect Base Account capabilities (only for non-Farcaster environments)
-  useEffect(() => {
-    const detectBaseAccountCapabilities = async () => {
-      if (environment === 'farcaster' || !address || !publicClient) {
-        setHasPaymasterService(false);
-        return;
-      }
-
-      try {
-        console.log('🔍 Detecting Base Account capabilities for payments...');
-        const caps = await publicClient.request({
-          method: 'wallet_getCapabilities',
-          params: [address]
-        });
-
-        const chainCapabilities = caps[publicClient.chain?.id?.toString() || '84532'] || {};
-        const paymasterSupported = chainCapabilities['paymasterService']?.supported || false;
-        
-        setHasPaymasterService(paymasterSupported);
-        console.log('✅ Base Account paymaster service:', paymasterSupported ? 'supported' : 'not supported');
-      } catch (error) {
-        console.log('⚠️ Could not detect Base Account capabilities:', error);
-        setHasPaymasterService(false);
-      }
-    };
-
-    detectBaseAccountCapabilities();
-  }, [environment, address, publicClient]);
-
-  // Handle Farcaster native payment
-  const handleFarcasterPayment = async () => {
+  // Handle payment processing
+  const handlePayment = async () => {
     try {
-      console.log('🔗 Processing Farcaster native payment...');
+      console.log('💰 Processing payment...');
       
-      const result = await farcasterPaymentService.sendUSDCPayment({
+      const result = await paymentService.processPayment({
         amount,
         recipientAddress,
         onTransactionHash: (hash) => {
-          console.log('✅ Farcaster payment transaction hash:', hash);
+          console.log('✅ Payment transaction hash:', hash);
         },
         onError: (error) => {
-          console.error('❌ Farcaster payment error:', error);
+          console.error('❌ Payment error:', error);
         }
       });
 
       if (result.success) {
-        console.log('✅ Farcaster native payment successful');
-        await onClick(); // Trigger original onClick after successful payment
+        console.log('✅ Payment successful, calling onClick...');
+        // Call the original onClick handler with the transaction ID
+        await onClick();
       } else {
-        throw new Error(result.error || 'Farcaster payment failed');
+        throw new Error(result.error || 'Payment failed');
       }
     } catch (error) {
-      console.error('❌ Farcaster native payment failed:', error);
+      console.error('❌ Payment processing failed:', error);
       throw error;
     }
   };
@@ -126,7 +97,7 @@ export function UnifiedPaymentButton({
     return (
       <button
         type="button"
-        onClick={handleFarcasterPayment}
+        onClick={handlePayment}
         disabled={disabled || loading}
         style={{
           display: 'flex',
@@ -164,12 +135,12 @@ export function UnifiedPaymentButton({
   // In Base app or external browser - use Base Pay
   return (
     <BasePayButton
-      onClick={onClick}
+      onClick={handlePayment}
       disabled={disabled}
       loading={loading}
       colorScheme={colorScheme}
     >
-      {hasPaymasterService && environment === 'base' ? `${children} (Gas-Free)` : children}
+      {capabilities.paymasterService && environment === 'base' ? `${children} (Gas-Free)` : children}
     </BasePayButton>
   );
 }
