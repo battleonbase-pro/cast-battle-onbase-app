@@ -102,6 +102,8 @@ Issued At: ${new Date(currentTime * 1000).toISOString()}`;
       console.log('📝 Generated SIWE message:', message);
       const signature = await signMessageAsync({ message });
       console.log('📝 Generated signature:', signature);
+      console.log('📝 Signature length:', signature.length);
+      console.log('📝 Signature type:', typeof signature);
 
       // 3. Verify signature with your backend
       const verifyResponse = await fetch('/api/auth/verify', {

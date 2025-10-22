@@ -50,6 +50,8 @@ export async function POST(request: NextRequest) {
     console.log('📝 Address:', address);
     console.log('📝 Message:', message);
     console.log('📝 Signature:', signature);
+    console.log('📝 Signature length:', signature.length);
+    console.log('📝 Signature type:', typeof signature);
     
     const isValid = await client.verifyMessage({
       address: address as `0x${string}`,
