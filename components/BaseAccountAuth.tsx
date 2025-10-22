@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createBaseAccountSDK } from '@base-org/account';
 import Image from 'next/image';
-import styles from './BaseAuth.module.css';
+import styles from './BaseAccountAuth.module.css';
 
 interface BaseAccountAuthProps {
   onAuthSuccess: (user: { address: string; isAuthenticated: boolean; environment: string } | null) => void;
