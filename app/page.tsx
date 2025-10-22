@@ -1113,6 +1113,49 @@ export default function Home() {
             </div>
           )}
 
+          {/* Debug Info - Remove in production */}
+          <div style={{ 
+            position: 'fixed', 
+            top: '10px', 
+            right: '10px', 
+            background: 'rgba(0,0,0,0.8)', 
+            color: 'white', 
+            padding: '10px', 
+            fontSize: '12px',
+            zIndex: 9999,
+            borderRadius: '5px'
+          }}>
+            <div>Auth: {baseAccountUser ? '✅' : '❌'}</div>
+            <div>Address: {baseAccountUser?.address?.slice(0, 8)}...</div>
+            <div>ShowForm: {showForm ? '✅' : '❌'}</div>
+            <div>HasSubmitted: {hasSubmittedCast ? '✅' : '❌'}</div>
+            <div>SelectedSide: {selectedSide || 'None'}</div>
+            <button 
+              onClick={() => {
+                console.log('🔧 Debug button clicked');
+                console.log('Current state:', { 
+                  baseAccountUser: baseAccountUser?.address, 
+                  showForm, 
+                  hasSubmittedCast, 
+                  selectedSide 
+                });
+                setShowForm(true);
+                setSelectedSide('SUPPORT');
+              }}
+              style={{ 
+                background: '#007bff', 
+                color: 'white', 
+                border: 'none', 
+                padding: '5px', 
+                borderRadius: '3px',
+                cursor: 'pointer',
+                marginTop: '5px'
+              }}
+            >
+              Force Show Form
+            </button>
+          </div>
+
           {/* Thank You Message - Prominently displayed below header */}
           {hasSubmittedCast && (
             <div className={styles.thankYouBanner}>
