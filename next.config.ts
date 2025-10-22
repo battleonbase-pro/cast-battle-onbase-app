@@ -11,6 +11,23 @@ const nextConfig: NextConfig = {
     // Disable TypeScript errors during builds for deployment
     ignoreBuildErrors: true,
   },
+  // Configure images
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'unsplash.com',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+  },
   // Configure redirects
   async redirects() {
     return [];
