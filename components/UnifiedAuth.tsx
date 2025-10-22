@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import BaseAuth from './BaseAuth';
+import BaseAccountAuth from './BaseAccountAuth';
 import FarcasterAuth from './FarcasterAuth';
 import { useEnvironmentDetection } from '../hooks/useEnvironmentDetection';
 
@@ -52,7 +52,7 @@ export default function UnifiedAuth({ onAuthSuccess, onAuthError }: UnifiedAuthP
     case 'external':
     default:
       return (
-        <BaseAuth 
+        <BaseAccountAuth 
           onAuthSuccess={onAuthSuccess} 
           onAuthError={onAuthError} 
         />
