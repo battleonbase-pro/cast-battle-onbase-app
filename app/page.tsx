@@ -178,9 +178,16 @@ export default function Home() {
 
   // Handle side selection
   const handleSideSelection = (side: 'SUPPORT' | 'OPPOSE') => {
+    console.log('🎯 Side selection clicked:', side);
+    console.log('🎯 Current state - hasSubmittedCast:', hasSubmittedCast);
+    console.log('🎯 Current state - showForm:', showForm);
+    console.log('🎯 Current state - baseAccountUser:', baseAccountUser?.address);
+    
     setSelectedSide(side);
     setCastSide(side);
     setShowForm(true);
+    
+    console.log('🎯 After setting - showForm should be true');
   };
   
   // Handle back to side selection
@@ -251,9 +258,19 @@ export default function Home() {
             let userHasSubmitted = false;
             if (baseAccountUser && data.battle.casts) {
               const userAddress = baseAccountUser?.address;
-              userHasSubmitted = data.battle.casts.some((cast: any) => 
-                cast.user?.address?.toLowerCase() === userAddress?.toLowerCase()
-              );
+              console.log('🔍 Checking if user has submitted cast:');
+              console.log('  - User address:', userAddress);
+              console.log('  - Battle casts:', data.battle.casts);
+              
+              userHasSubmitted = data.battle.casts.some((cast: any) => {
+                const castAddress = cast.user?.address?.toLowerCase();
+                const userAddr = userAddress?.toLowerCase();
+                const hasSubmitted = castAddress === userAddr;
+                console.log(`  - Cast address: ${castAddress}, User address: ${userAddr}, Match: ${hasSubmitted}`);
+                return hasSubmitted;
+              });
+              
+              console.log('  - User has submitted:', userHasSubmitted);
             }
             
             // Reset payment and submission states for new battle
@@ -1201,6 +1218,7 @@ export default function Home() {
             {/* Tab Content */}
             {activeTab === 'debate' && (
               <div className={styles.tabContent}>
+                {console.log('🔍 Rendering debate tab - showForm:', showForm, 'hasSubmittedCast:', hasSubmittedCast)}
                 {!showForm ? (
               <div className={styles.debatePoints}>
                     {/* Cards container */}
