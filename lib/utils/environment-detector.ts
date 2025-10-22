@@ -18,6 +18,12 @@ export class EnvironmentDetector {
   }
 
   private async initialize() {
+    // Only initialize on client-side
+    if (typeof window === 'undefined') {
+      console.log('⚠️ Skipping environment detector initialization on server-side');
+      return;
+    }
+
     try {
       // Try to initialize Farcaster SDK
       this.sdk = await import('@farcaster/miniapp-sdk').then(m => m.sdk);

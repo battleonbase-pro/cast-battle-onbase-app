@@ -208,12 +208,14 @@ export const UnifiedPaymentButton: React.FC<UnifiedPaymentButtonProps> = ({
   );
 };
 
-// Add CSS for spinner animation
-const style = document.createElement('style');
-style.textContent = `
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-`;
-document.head.appendChild(style);
+// Add CSS for spinner animation only on client-side
+if (typeof window !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  `;
+  document.head.appendChild(style);
+}

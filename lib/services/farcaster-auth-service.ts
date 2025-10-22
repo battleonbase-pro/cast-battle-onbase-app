@@ -38,6 +38,12 @@ export class FarcasterAuthService {
   }
 
   private async initialize() {
+    // Only initialize on client-side
+    if (typeof window === 'undefined') {
+      console.log('⚠️ Skipping Farcaster SDK initialization on server-side');
+      return;
+    }
+
     try {
       // Initialize Farcaster SDK
       this.sdk = await import('@farcaster/miniapp-sdk').then(m => m.sdk);
@@ -75,6 +81,14 @@ export class FarcasterAuthService {
    * Based on FIP-11 specification: https://github.com/farcasterxyz/protocol/discussions/110
    */
   async signInWithFarcaster(): Promise<FarcasterAuthResult> {
+    // Only work on client-side
+    if (typeof window === 'undefined') {
+      return {
+        success: false,
+        error: 'Authentication only available on client-side'
+      };
+    }
+
     if (!this.isAvailable()) {
       return {
         success: false,

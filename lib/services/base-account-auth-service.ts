@@ -28,6 +28,12 @@ export class BaseAccountAuthService {
   }
 
   private async initialize() {
+    // Only initialize on client-side
+    if (typeof window === 'undefined') {
+      console.log('⚠️ Skipping Base Account SDK initialization on server-side');
+      return;
+    }
+
     try {
       // Initialize Base Account SDK
       this.sdk = await createBaseAccountSDK();
@@ -69,6 +75,14 @@ export class BaseAccountAuthService {
    * Sign in with Base Account using the simple, working approach
    */
   async signInWithBase(): Promise<AuthResult> {
+    // Only work on client-side
+    if (typeof window === 'undefined') {
+      return {
+        success: false,
+        error: 'Authentication only available on client-side'
+      };
+    }
+
     if (!this.isAvailable()) {
       return {
         success: false,
