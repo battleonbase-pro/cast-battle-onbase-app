@@ -21,21 +21,36 @@ export class BaseAccountAuthService {
   private sdk: unknown = null;
   private provider: unknown = null;
   private isInitialized = false;
+  private isInitializing = false;
   private user: BaseAccountUser | null = null;
 
   constructor() {
-    this.initialize();
+    // Don't initialize in constructor - wait for first use
   }
 
-  private async initialize() {
+  private async initialize(): Promise<boolean> {
     // Only initialize on client-side
     if (typeof window === 'undefined') {
       console.log('⚠️ Skipping Base Account SDK initialization on server-side');
-      return;
+      return false;
     }
 
+    // Prevent multiple initialization attempts
+    if (this.isInitializing) {
+      console.log('⏳ Base Account SDK initialization already in progress...');
+      return false;
+    }
+
+    if (this.isInitialized) {
+      return true;
+    }
+
+    this.isInitializing = true;
+
     try {
-      // Initialize Base Account SDK
+      console.log('🔧 Initializing Base Account SDK...');
+      
+      // Try to initialize Base Account SDK
       this.sdk = await createBaseAccountSDK();
       console.log('✅ Base Account SDK initialized');
       
@@ -44,17 +59,43 @@ export class BaseAccountAuthService {
       console.log('✅ Base Account provider obtained');
       
       this.isInitialized = true;
+      return true;
     } catch (error) {
       console.error('❌ Failed to initialize Base Account SDK:', error);
+      console.error('❌ Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        userAgent: navigator.userAgent,
+        hasEthereum: !!(window as any).ethereum,
+        hasBaseApp: !!(window as any).ethereum?.isBase
+      });
+      
+      // Fallback: Try to use window.ethereum if available
+      if ((window as any).ethereum) {
+        console.log('🔄 Falling back to window.ethereum provider...');
+        this.provider = (window as any).ethereum;
+        this.isInitialized = true;
+        return true;
+      }
+      
       this.isInitialized = false;
+      return false;
+    } finally {
+      this.isInitializing = false;
     }
   }
 
   /**
-   * Check if Base Account is available
+   * Check if Base Account is available (async)
    */
-  isAvailable(): boolean {
-    return this.isInitialized && !!this.provider;
+  async isAvailable(): Promise<boolean> {
+    if (this.isInitialized) {
+      return !!this.provider;
+    }
+    
+    // Try to initialize if not already done
+    const initialized = await this.initialize();
+    return initialized && !!this.provider;
   }
 
   /**
@@ -83,10 +124,12 @@ export class BaseAccountAuthService {
       };
     }
 
-    if (!this.isAvailable()) {
+    // Ensure SDK is initialized
+    const isAvailable = await this.isAvailable();
+    if (!isAvailable) {
       return {
         success: false,
-        error: 'Base Account SDK not available'
+        error: 'Base Account SDK not available. Please ensure you are using a compatible browser or Base app.'
       };
     }
 
@@ -214,6 +257,14 @@ Issued At: ${new Date(currentTime * 1000).toISOString()}`;
       return {
         success: false,
         error: 'User not authenticated'
+      };
+    }
+
+    const isAvailable = await this.isAvailable();
+    if (!isAvailable) {
+      return {
+        success: false,
+        error: 'Base Account SDK not available'
       };
     }
 
