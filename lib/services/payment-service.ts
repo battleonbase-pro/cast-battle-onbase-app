@@ -2,8 +2,8 @@
 import { useState } from 'react';
 import { useAccount, useSendTransaction, usePublicClient } from 'wagmi';
 import { parseUnits } from 'viem';
-import { environmentDetector } from '../lib/utils/environment-detector';
-import { farcasterPaymentService } from '../lib/services/farcaster-payment-service';
+import { environmentDetector } from '../utils/environment-detector';
+import { farcasterPaymentService } from './farcaster-payment-service';
 
 export interface PaymentResult {
   success: boolean;
