@@ -10,81 +10,61 @@ export const runtime = 'nodejs';
  */
 export async function GET(_request: NextRequest) {
   try {
-    // Try to get battle manager, but provide fallback if it fails
-    let currentBattle = null;
-    
+    // Try to get battle from database first
     try {
       const battleManager = await BattleManagerDB.getInstance();
-      currentBattle = await battleManager.getCurrentBattleSafe();
-    } catch (battleManagerError) {
-      console.warn('BattleManagerDB not available, using fallback:', battleManagerError);
+      const currentBattle = await battleManager.getCurrentBattleSafe();
       
-      // Fallback: Create a simple mock battle for testing
-      currentBattle = {
-        id: 'fallback-battle-1',
-        title: 'Should AI be regulated by governments?',
-        description: 'A debate about the role of government in regulating artificial intelligence development and deployment.',
-        category: 'Technology',
-        source: 'Mock Data',
-        imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=300&fit=crop',
-        debatePoints: {
-          Support: [
-            'AI regulation ensures safety and prevents misuse',
-            'Government oversight protects citizens from AI risks',
-            'Regulation promotes responsible AI development'
-          ],
-          Oppose: [
-            'Over-regulation stifles innovation and progress',
-            'AI development should be market-driven, not government-controlled',
-            'Regulation may lag behind rapidly evolving AI technology'
-          ]
-        },
-        participants: [],
-        casts: [],
-        status: 'ACTIVE',
-        startTime: new Date().toISOString(),
-        endTime: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(), // 4 hours from now
-        winners: []
-      };
+      if (currentBattle) {
+        console.log('✅ Retrieved battle from database:', currentBattle.id);
+        return NextResponse.json({
+          success: true,
+          battle: currentBattle
+        });
+      }
+      
+      console.log('ℹ️ No active battle found in database');
+      
+    } catch (battleManagerError) {
+      console.warn('⚠️ Database unavailable, using fallback battle:', battleManagerError.message);
     }
 
-    if (!currentBattle) {
-      // If no battle from database, return fallback battle
-      currentBattle = {
-        id: 'fallback-battle-1',
-        title: 'Should AI be regulated by governments?',
-        description: 'A debate about the role of government in regulating artificial intelligence development and deployment.',
-        category: 'Technology',
-        source: 'Mock Data',
-        imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=300&fit=crop',
-        debatePoints: {
-          Support: [
-            'AI regulation ensures safety and prevents misuse',
-            'Government oversight protects citizens from AI risks',
-            'Regulation promotes responsible AI development'
-          ],
-          Oppose: [
-            'Over-regulation stifles innovation and progress',
-            'AI development should be market-driven, not government-controlled',
-            'Regulation may lag behind rapidly evolving AI technology'
-          ]
-        },
-        participants: [],
-        casts: [],
-        status: 'ACTIVE',
-        startTime: new Date().toISOString(),
-        endTime: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(), // 4 hours from now
-        winners: []
-      };
-    }
+    // Only use fallback when database is unavailable or no battle exists
+    console.log('🔄 Using fallback battle data');
+    const fallbackBattle = {
+      id: 'fallback-battle-1',
+      title: 'Should AI be regulated by governments?',
+      description: 'A debate about the role of government in regulating artificial intelligence development and deployment.',
+      category: 'Technology',
+      source: 'Mock Data',
+      imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=300&fit=crop',
+      debatePoints: {
+        Support: [
+          'AI regulation ensures safety and prevents misuse',
+          'Government oversight protects citizens from AI risks',
+          'Regulation promotes responsible AI development'
+        ],
+        Oppose: [
+          'Over-regulation stifles innovation and progress',
+          'AI development should be market-driven, not government-controlled',
+          'Regulation may lag behind rapidly evolving AI technology'
+        ]
+      },
+      participants: [],
+      casts: [],
+      status: 'ACTIVE',
+      startTime: new Date().toISOString(),
+      endTime: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(), // 4 hours from now
+      winners: []
+    };
 
     return NextResponse.json({
       success: true,
-      battle: currentBattle
+      battle: fallbackBattle
     });
 
   } catch (error) {
-    console.error('Error fetching current battle:', error);
+    console.error('❌ Error fetching current battle:', error);
     return NextResponse.json({
       success: false,
       error: 'Failed to fetch current battle'
