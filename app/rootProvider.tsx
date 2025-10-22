@@ -3,6 +3,7 @@ import { ReactNode } from 'react';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { baseSepolia } from 'wagmi/chains';
 import { coinbaseWallet, injected, walletConnect } from 'wagmi/connectors';
+import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { OnchainKitProvider } from '@coinbase/onchainkit';
 import '@coinbase/onchainkit/styles.css';
@@ -12,6 +13,7 @@ const queryClient = new QueryClient();
 const wagmiConfig = createConfig({
   chains: [baseSepolia],
   connectors: [
+    farcasterMiniApp(), // Add Farcaster Mini App connector first
     coinbaseWallet({
       appName: 'NewsCast Debate',
     }),

@@ -43,7 +43,7 @@ export default function FarcasterAuth({ onAuthSuccess, onAuthError }: FarcasterA
       await sdk.actions.ready();
 
       // Connect to Farcaster's native Ethereum wallet
-      const ethProvider = await sdk.wallet.ethProvider();
+      const ethProvider = await sdk.wallet.getEthereumProvider();
       if (!ethProvider) {
         throw new Error('Failed to get Farcaster Ethereum provider');
       }
