@@ -81,7 +81,12 @@ interface Cast {
   id: string;
   content: string;
   side: 'SUPPORT' | 'OPPOSE';
-  userAddress: string;
+  user?: {
+    address: string;
+    username?: string;
+    displayName?: string;
+    pfpUrl?: string;
+  };
   createdAt: string;
 }
 
@@ -347,8 +352,8 @@ export default function Home() {
       if (baseAccountUser) {
         const userAddress = getUserAddress(baseAccountUser);
         const userCast = castsList.find((cast: Cast) => 
-          cast.userAddress && userAddress && 
-          cast.userAddress.toLowerCase() === userAddress.toLowerCase()
+          cast.user?.address && userAddress && 
+          cast.user.address.toLowerCase() === userAddress.toLowerCase()
         );
         setHasSubmittedCast(!!userCast);
       }
@@ -1334,7 +1339,7 @@ export default function Home() {
                             {cast.side}
                           </span>
                           <span className={styles.argumentUser}>
-                            {cast.userAddress ? `${cast.userAddress.slice(0, 6)}...${cast.userAddress.slice(-4)}` : 'Unknown'}
+                            {cast.user?.address ? `${cast.user.address.slice(0, 6)}...${cast.user.address.slice(-4)}` : 'Unknown'}
                           </span>
                         </div>
                         <div className={styles.argumentContent}>{cast.content}</div>
