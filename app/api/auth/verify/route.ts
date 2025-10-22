@@ -6,6 +6,13 @@ import { nonces } from '../nonce/route';
 
 // Select chain: Base or Base Sepolia (testnet)
 const isTestnet = process.env.NEXT_PUBLIC_NETWORK === 'testnet' || process.env.NODE_ENV === 'development';
+console.log('🔗 Verification endpoint chain configuration:', { 
+  isTestnet, 
+  chain: isTestnet ? 'Base Sepolia' : 'Base Mainnet',
+  nodeEnv: process.env.NODE_ENV, 
+  network: process.env.NEXT_PUBLIC_NETWORK 
+});
+
 const client = createPublicClient({
   chain: isTestnet ? baseSepolia : base,
   transport: http(),
@@ -23,9 +30,18 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. Check nonce hasn't been reused (matches docs recommendation)
-    const nonceMatch = message.match(/Nonce: (\w+)|nonce: (\w+)|at (\w{32})$/);
+    const nonceMatch = message.match(/Nonce: (\w+)|nonce: (\w+)|at (\w{32})$/i);
     const extracted = nonceMatch?.[1] || nonceMatch?.[2] || nonceMatch?.[3] || null;
+    
+    console.log('🔍 Nonce extraction:', { 
+      message: message.substring(0, 100) + '...', 
+      nonceMatch, 
+      extracted,
+      noncesSize: nonces.size 
+    });
+    
     if (!extracted || !nonces.delete(extracted)) {
+      console.log('❌ Invalid or reused nonce:', extracted);
       return NextResponse.json({ error: 'Invalid or reused nonce' }, { status: 400 });
     }
 

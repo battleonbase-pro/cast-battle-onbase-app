@@ -43,6 +43,7 @@ export default function BaseAuth({ onAuthSuccess, onAuthError }: BaseAuthProps) 
       setError(null);
 
       console.log('🔐 Performing SIWE authentication for:', connectedAddress);
+      console.log('🔐 Connection state:', { isConnected, address, connectedAddress });
 
       // Check if we're actually connected before proceeding
       if (!isConnected || !address) {
@@ -65,8 +66,31 @@ export default function BaseAuth({ onAuthSuccess, onAuthError }: BaseAuthProps) 
       }
       const { nonce } = await nonceResponse.json();
 
-      // 2. Sign the message with the nonce
-      const message = `Sign in with Ethereum to NewsCast Debate.\n\nNonce: ${nonce}`;
+      // 2. Create proper SIWE message format
+      const domain = window.location.host;
+      const uri = window.location.origin;
+      const currentTime = Math.floor(Date.now() / 1000);
+      
+      // Use the same chain detection logic as the verification endpoint
+      const isTestnet = process.env.NEXT_PUBLIC_NETWORK === 'testnet' || process.env.NODE_ENV === 'development';
+      const chainId = isTestnet ? 84532 : 8453; // Base Sepolia : Base Mainnet
+      
+      console.log('🔗 Chain configuration:', { isTestnet, chainId, nodeEnv: process.env.NODE_ENV, network: process.env.NEXT_PUBLIC_NETWORK });
+      
+      const message = `${domain} wants you to sign in with your Ethereum account:
+${connectedAddress}
+
+Welcome to NewsCast Debate!
+
+This request will not trigger a blockchain transaction or cost any gas fees.
+
+Your authentication status will reset after 24 hours.
+
+URI: ${uri}
+Version: 1
+Chain ID: ${chainId}
+Nonce: ${nonce}
+Issued At: ${new Date(currentTime * 1000).toISOString()}`;
       
       // Final check before signing
       if (!isConnected || !address) {
@@ -75,7 +99,9 @@ export default function BaseAuth({ onAuthSuccess, onAuthError }: BaseAuthProps) 
         return;
       }
       
+      console.log('📝 Generated SIWE message:', message);
       const signature = await signMessageAsync({ message });
+      console.log('📝 Generated signature:', signature);
 
       // 3. Verify signature with your backend
       const verifyResponse = await fetch('/api/auth/verify', {
@@ -129,6 +155,12 @@ export default function BaseAuth({ onAuthSuccess, onAuthError }: BaseAuthProps) 
       
       console.log('🔐 Starting wallet connection...');
       
+      // Determine target chain
+      const isTestnet = process.env.NEXT_PUBLIC_NETWORK === 'testnet' || process.env.NODE_ENV === 'development';
+      const targetChainId = isTestnet ? 84532 : 8453; // Base Sepolia : Base Mainnet
+      
+      console.log('🔗 Target chain:', { isTestnet, chainId: targetChainId });
+      
       // Try to connect with Coinbase Wallet
       await connect({ connector: coinbaseWallet({ appName: 'NewsCast Debate' }) });
       
@@ -162,9 +194,26 @@ export default function BaseAuth({ onAuthSuccess, onAuthError }: BaseAuthProps) 
       setIsConnecting(false); // Connection is complete
       
       // Add a small delay to ensure wagmi state is stable
-      const timeoutId = setTimeout(() => {
+      const timeoutId = setTimeout(async () => {
         // Double-check conditions before proceeding
         if (isConnected && address && !isSigningIn && !hasAuthenticated) {
+          // Ensure we're on the correct chain before authentication
+          const isTestnet = process.env.NEXT_PUBLIC_NETWORK === 'testnet' || process.env.NODE_ENV === 'development';
+          
+          try {
+            // Switch to Base Sepolia if needed
+            if (isTestnet) {
+              console.log('🔗 Ensuring wallet is on Base Sepolia...');
+              await window.ethereum?.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: '0x14A34' }], // Base Sepolia chain ID in hex
+              });
+            }
+          } catch (switchError) {
+            console.log('⚠️ Chain switch failed or already on correct chain:', switchError);
+            // Continue with authentication even if chain switch fails
+          }
+          
           performAuthentication(address);
         }
       }, 100);

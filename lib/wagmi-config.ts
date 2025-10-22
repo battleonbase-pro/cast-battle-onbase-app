@@ -91,6 +91,18 @@ if (hasValidWalletConnectId) {
   );
 }
 
+// Determine default chain based on environment
+const isTestnet = process.env.NEXT_PUBLIC_NETWORK === 'testnet' || process.env.NODE_ENV === 'development';
+const defaultChain = isTestnet ? baseSepolia : base;
+
+console.log('🔗 Wagmi Configuration:', {
+  isTestnet,
+  defaultChain: defaultChain.name,
+  chainId: defaultChain.id,
+  nodeEnv: process.env.NODE_ENV,
+  network: process.env.NEXT_PUBLIC_NETWORK
+});
+
 export const config = createConfig({
   chains: [baseSepolia, base, mainnet],
   transports: {
@@ -101,4 +113,6 @@ export const config = createConfig({
   connectors,
   ssr: true,
   autoConnect: true,
+  // Set default chain for development/testnet
+  ...(isTestnet && { defaultChain: baseSepolia }),
 })
