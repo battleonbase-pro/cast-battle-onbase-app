@@ -1,129 +1,169 @@
 /**
- * Environment Detection Utilities
- * Properly detects Base Mini App vs Farcaster Mini App vs External Browser
+ * Environment detection utility for distinguishing between different app environments
  */
-
-export interface EnvironmentInfo {
-  isFarcasterMiniApp: boolean;
-  isBaseMiniApp: boolean;
-  isExternalBrowser: boolean;
-  environment: 'farcaster' | 'base' | 'external';
-  userAgent: string;
-  detectedFeatures: string[];
-}
-
 export class EnvironmentDetector {
   private static instance: EnvironmentDetector;
-  private environmentInfo: EnvironmentInfo | null = null;
+  private sdk: any = null;
+  private isInitialized = false;
 
-  static getInstance(): EnvironmentDetector {
+  private constructor() {
+    this.initialize();
+  }
+
+  public static getInstance(): EnvironmentDetector {
     if (!EnvironmentDetector.instance) {
       EnvironmentDetector.instance = new EnvironmentDetector();
     }
     return EnvironmentDetector.instance;
   }
 
-  /**
-   * Detect the current environment with comprehensive checks
-   */
-  async detectEnvironment(): Promise<EnvironmentInfo> {
-    if (this.environmentInfo) {
-      return this.environmentInfo;
-    }
-
-    const userAgent = typeof window !== 'undefined' ? navigator.userAgent.toLowerCase() : '';
-    const detectedFeatures: string[] = [];
-
-    // Check for Farcaster Mini App environment
-    let isFarcasterMiniApp = false;
+  private async initialize() {
     try {
-      if (typeof window !== 'undefined') {
-        const { sdk } = await import('@farcaster/miniapp-sdk');
-        isFarcasterMiniApp = await sdk.isInMiniApp();
-        if (isFarcasterMiniApp) {
-          detectedFeatures.push('farcaster-sdk');
+      // Try to initialize Farcaster SDK
+      this.sdk = await import('@farcaster/miniapp-sdk').then(m => m.sdk);
+      this.isInitialized = true;
+      console.log('✅ Environment detector initialized');
+    } catch (error) {
+      console.log('⚠️ Farcaster SDK not available, using fallback detection');
+      this.isInitialized = false;
+    }
+  }
+
+  /**
+   * Detect the current environment
+   * @returns 'farcaster' | 'base' | 'external'
+   */
+  async detectEnvironment(): Promise<'farcaster' | 'base' | 'external'> {
+    try {
+      // First check if we're in Farcaster Mini App
+      if (this.isInitialized && this.sdk) {
+        const isInFarcaster = await this.sdk.isInMiniApp();
+        if (isInFarcaster) {
+          console.log('🔍 Environment detected: Farcaster Mini App');
+          return 'farcaster';
         }
       }
+
+      // Check if we're in Base App browser
+      if (this.isBaseAppBrowser()) {
+        console.log('🔍 Environment detected: Base App Browser');
+        return 'base';
+      }
+
+      // Default to external browser
+      console.log('🔍 Environment detected: External Browser');
+      return 'external';
+
     } catch (error) {
-      console.log('Farcaster SDK not available:', error);
+      console.error('❌ Error detecting environment:', error);
+      return 'external';
     }
-
-    // Additional Farcaster detection methods
-    if (!isFarcasterMiniApp && typeof window !== 'undefined') {
-      // Check for Farcaster-specific globals
-      if (typeof (window as any).farcaster !== 'undefined') {
-        isFarcasterMiniApp = true;
-        detectedFeatures.push('farcaster-global');
-      }
-      
-      // Check user agent for Farcaster indicators
-      if (userAgent.includes('farcaster') || userAgent.includes('warpcast')) {
-        isFarcasterMiniApp = true;
-        detectedFeatures.push('farcaster-useragent');
-      }
-    }
-
-    // Check for Base Mini App environment (only if not Farcaster)
-    let isBaseMiniApp = false;
-    if (!isFarcasterMiniApp && typeof window !== 'undefined') {
-      // Check for Base-specific globals
-      if (typeof (window as any).base !== 'undefined' || 
-          typeof (window as any).baseApp !== 'undefined') {
-        isBaseMiniApp = true;
-        detectedFeatures.push('base-global');
-      }
-      
-      // Check for Base Account provider
-      if (typeof (window as any).ethereum?.isBase === true ||
-          typeof (window as any).ethereum?.isCoinbaseWallet === true) {
-        isBaseMiniApp = true;
-        detectedFeatures.push('base-ethereum-provider');
-      }
-      
-      // Check user agent for Base indicators
-      if (userAgent.includes('base') || 
-          userAgent.includes('coinbase') || 
-          userAgent.includes('cbwallet')) {
-        isBaseMiniApp = true;
-        detectedFeatures.push('base-useragent');
-      }
-    }
-
-    // Determine environment
-    let environment: 'farcaster' | 'base' | 'external';
-    if (isFarcasterMiniApp) {
-      environment = 'farcaster';
-    } else if (isBaseMiniApp) {
-      environment = 'base';
-    } else {
-      environment = 'external';
-    }
-
-    this.environmentInfo = {
-      isFarcasterMiniApp,
-      isBaseMiniApp,
-      isExternalBrowser: !isFarcasterMiniApp && !isBaseMiniApp,
-      environment,
-      userAgent,
-      detectedFeatures
-    };
-
-    console.log('🔍 Environment Detection Results:', this.environmentInfo);
-    return this.environmentInfo;
   }
 
   /**
-   * Get cached environment info
+   * Check if we're in Base App browser
    */
-  getEnvironmentInfo(): EnvironmentInfo | null {
-    return this.environmentInfo;
+  private isBaseAppBrowser(): boolean {
+    if (typeof window === 'undefined') return false;
+
+    const userAgent = navigator.userAgent.toLowerCase();
+    
+    // Check for Base App user agent patterns
+    const baseAppPatterns = [
+      'baseapp',
+      'base-app',
+      'base mobile',
+      'baseapp/',
+      'base/'
+    ];
+
+    const hasBaseAppPattern = baseAppPatterns.some(pattern => 
+      userAgent.includes(pattern)
+    );
+
+    // Check for Base-specific window properties
+    const hasBaseProperties = !!(window as any).ethereum && 
+      (window as any).ethereum.isBase;
+
+    return hasBaseAppPattern || hasBaseProperties;
   }
 
   /**
-   * Reset detection (useful for testing)
+   * Check if we're in Farcaster Mini App (synchronous)
    */
-  reset(): void {
-    this.environmentInfo = null;
+  isFarcasterMiniApp(): boolean {
+    if (typeof window === 'undefined') return false;
+
+    const userAgent = navigator.userAgent.toLowerCase();
+    
+    // Check for Farcaster Mini App user agent patterns
+    const farcasterPatterns = [
+      'farcaster',
+      'warpcast',
+      'farcaster-miniapp',
+      'farcaster/',
+      'warpcast/'
+    ];
+
+    return farcasterPatterns.some(pattern => 
+      userAgent.includes(pattern)
+    );
+  }
+
+  /**
+   * Check if we're in Base App browser (synchronous)
+   */
+  isBaseApp(): boolean {
+    return this.isBaseAppBrowser();
+  }
+
+  /**
+   * Get the appropriate wallet connector priority for the current environment
+   */
+  async getConnectorPriority(): Promise<string[]> {
+    const environment = await this.detectEnvironment();
+    
+    switch (environment) {
+      case 'farcaster':
+        return ['farcasterMiniApp', 'injected', 'walletConnect', 'metaMask'];
+      case 'base':
+        return ['baseAccount', 'injected', 'walletConnect', 'metaMask'];
+      case 'external':
+      default:
+        return ['baseAccount', 'metaMask', 'injected', 'walletConnect'];
+    }
+  }
+
+  /**
+   * Get the appropriate authentication service for the current environment
+   */
+  async getAuthService(): Promise<'farcaster' | 'base'> {
+    const environment = await this.detectEnvironment();
+    
+    switch (environment) {
+      case 'farcaster':
+        return 'farcaster';
+      case 'base':
+      case 'external':
+      default:
+        return 'base';
+    }
+  }
+
+  /**
+   * Get the appropriate payment service for the current environment
+   */
+  async getPaymentService(): Promise<'farcaster' | 'base'> {
+    const environment = await this.detectEnvironment();
+    
+    switch (environment) {
+      case 'farcaster':
+        return 'farcaster';
+      case 'base':
+      case 'external':
+      default:
+        return 'base';
+    }
   }
 }
 

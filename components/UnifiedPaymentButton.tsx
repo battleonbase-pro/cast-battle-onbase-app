@@ -1,56 +1,79 @@
 "use client";
-import { useState, useEffect } from 'react';
-import { BasePayButton } from './BasePayButton';
+import React, { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
-import { environmentDetector } from '../lib/utils/environment-detector';
 import { paymentService } from '../lib/services/payment-service';
-import { useBaseAccountCapabilities } from '../lib/services/base-account-capabilities-service';
+import { environmentDetector } from '../lib/utils/environment-detector';
 
 interface UnifiedPaymentButtonProps {
-  onClick: () => Promise<void>;
+  onClick: () => void;
   disabled?: boolean;
   loading?: boolean;
   colorScheme?: 'light' | 'dark';
+  amount?: string;
+  recipientAddress?: string;
   children: React.ReactNode;
-  amount?: string; // Payment amount in USDC
-  recipientAddress?: string; // Payment recipient address
 }
 
-export function UnifiedPaymentButton({
+export const UnifiedPaymentButton: React.FC<UnifiedPaymentButtonProps> = ({
   onClick,
   disabled = false,
   loading = false,
-  colorScheme = 'light',
-  children,
-  amount = '1.00', // Default 1 USDC
-  recipientAddress = '0x6D00f9F5C6a57B46bFa26E032D60B525A1DAe271' // Default recipient
-}: UnifiedPaymentButtonProps) {
-  const [isDetecting, setIsDetecting] = useState<boolean>(true);
+  colorScheme: _colorScheme = 'light',
+  amount = '1.00',
+  recipientAddress = '0x6D00f9F5C6a57B46bFa26E032D60B525A1DAe271',
+  children
+}) => {
   const [environment, setEnvironment] = useState<'farcaster' | 'base' | 'external'>('external');
-  const { address } = useAccount();
-  
-  // Use Base Account capabilities hook
-  const { capabilities } = useBaseAccountCapabilities(address);
+  const [capabilities, setCapabilities] = useState<{
+    gasFree: boolean;
+    supported: boolean;
+    method: string;
+  }>({
+    gasFree: false,
+    supported: false,
+    method: 'Unknown'
+  });
+  const [isDetecting, setIsDetecting] = useState(true);
+  const { } = useAccount();
 
-  // Detect environment using improved detection
+  // Detect environment and capabilities
   useEffect(() => {
     const detectEnvironment = async () => {
       try {
-        const envInfo = await environmentDetector.detectEnvironment();
-        setEnvironment(envInfo.environment);
-        console.log('🔍 Payment button environment detected:', envInfo.environment);
+        setIsDetecting(true);
+        
+        const detectedEnvironment = await environmentDetector.detectEnvironment();
+        setEnvironment(detectedEnvironment);
+        
+        const paymentCapabilities = await paymentService.getPaymentCapabilities();
+        setCapabilities(paymentCapabilities);
+        
+        console.log('🌐 Payment environment:', detectedEnvironment);
+        console.log('💰 Payment capabilities:', paymentCapabilities);
+        
       } catch (error) {
-        console.error('❌ Environment detection failed:', error);
+        console.error('❌ Error detecting payment environment:', error);
         setEnvironment('external');
+        setCapabilities({
+          gasFree: false,
+          supported: false,
+          method: 'Unknown'
+        });
       } finally {
         setIsDetecting(false);
       }
     };
+
     detectEnvironment();
   }, []);
 
-  // Handle payment processing
+  // Handle payment
   const handlePayment = async () => {
+    if (!capabilities.supported) {
+      console.error('❌ Payment not supported in current environment');
+      return;
+    }
+
     try {
       console.log('💰 Processing payment...');
       
@@ -66,81 +89,131 @@ export function UnifiedPaymentButton({
       });
 
       if (result.success) {
-        console.log('✅ Payment successful, calling onClick...');
-        // Call the original onClick handler with the transaction ID
-        await onClick();
+        console.log('✅ Payment successful');
+        // Call the original onClick handler after successful payment
+        onClick();
       } else {
-        throw new Error(result.error || 'Payment failed');
+        console.error('❌ Payment failed:', result.error);
       }
+
     } catch (error) {
-      console.error('❌ Payment processing failed:', error);
-      throw error;
+      console.error('❌ Payment processing error:', error);
     }
   };
 
-  // Show loading state while detecting environment
-  if (isDetecting) {
-    return (
-      <BasePayButton
-        onClick={() => {}}
-        disabled={true}
-        loading={true}
-        colorScheme={colorScheme}
-      >
-        Loading...
-      </BasePayButton>
-    );
-  }
+  const isDisabled = disabled || loading || !capabilities.supported || isDetecting;
 
-  // In Farcaster Mini App - use Farcaster native payment
+  // Render appropriate button based on environment
   if (environment === 'farcaster') {
     return (
       <button
         type="button"
         onClick={handlePayment}
-        disabled={disabled || loading}
+        disabled={isDisabled}
+        className="unified-payment-button farcaster-pay"
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '8px',
-          padding: '12px 16px',
-          backgroundColor: colorScheme === 'light' ? '#ffffff' : '#8B5CF6',
+          gap: '10px',
+          padding: '14px 20px',
+          backgroundColor: '#8B5CF6',
           border: 'none',
-          borderRadius: '8px',
-          cursor: disabled || loading ? 'not-allowed' : 'pointer',
+          borderRadius: '12px',
+          cursor: isDisabled ? 'not-allowed' : 'pointer',
           fontFamily: 'system-ui, -apple-system, sans-serif',
-          fontSize: '14px',
-          fontWeight: '500',
-          color: colorScheme === 'light' ? '#000000' : '#ffffff',
-          minWidth: '180px',
-          height: '44px',
-          opacity: disabled || loading ? 0.6 : 1
+          fontSize: '16px',
+          fontWeight: '600',
+          color: '#ffffff',
+          minWidth: '200px',
+          height: '52px',
+          opacity: isDisabled ? 0.6 : 1,
+          transition: 'all 0.2s ease',
+          boxShadow: '0 2px 8px rgba(139, 92, 246, 0.3)',
         }}
       >
-        <div style={{
-          width: '16px',
-          height: '16px',
-          backgroundColor: colorScheme === 'light' ? '#8B5CF6' : '#FFFFFF',
-          borderRadius: '2px',
-          flexShrink: 0
-        }} />
-        <span>
-          {loading ? 'Processing...' : children}
-        </span>
+        {loading ? (
+          <div style={{
+            width: '20px',
+            height: '20px',
+            border: '2px solid #ffffff',
+            borderTop: '2px solid transparent',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }} />
+        ) : (
+          <>
+            <span>🔗</span>
+            <span>{children}</span>
+          </>
+        )}
+        {capabilities.gasFree && (
+          <span style={{ fontSize: '12px', opacity: 0.8 }}>
+            Gas-Free
+          </span>
+        )}
       </button>
     );
   }
 
-  // In Base app or external browser - use Base Pay
+  // Base App or External Browser - use Base Pay
   return (
-    <BasePayButton
+    <button
+      type="button"
       onClick={handlePayment}
-      disabled={disabled}
-      loading={loading}
-      colorScheme={colorScheme}
+      disabled={isDisabled}
+      className="unified-payment-button base-pay"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '10px',
+        padding: '14px 20px',
+        backgroundColor: '#0052FF',
+        border: 'none',
+        borderRadius: '12px',
+        cursor: isDisabled ? 'not-allowed' : 'pointer',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        fontSize: '16px',
+        fontWeight: '600',
+        color: '#ffffff',
+        minWidth: '200px',
+        height: '52px',
+        opacity: isDisabled ? 0.6 : 1,
+        transition: 'all 0.2s ease',
+        boxShadow: '0 2px 8px rgba(0, 82, 255, 0.3)',
+      }}
     >
-      {capabilities.paymasterService && environment === 'base' ? `${children} (Gas-Free)` : children}
-    </BasePayButton>
+      {loading ? (
+        <div style={{
+          width: '20px',
+          height: '20px',
+          border: '2px solid #ffffff',
+          borderTop: '2px solid transparent',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }} />
+      ) : (
+        <>
+          <span>🔵</span>
+          <span>{children}</span>
+        </>
+      )}
+      {capabilities.gasFree && (
+        <span style={{ fontSize: '12px', opacity: 0.8 }}>
+          Gas-Free
+        </span>
+      )}
+    </button>
   );
-}
+};
+
+// Add CSS for spinner animation
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+document.head.appendChild(style);

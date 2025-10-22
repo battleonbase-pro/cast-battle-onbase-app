@@ -29,64 +29,46 @@ export class BaseAccountAuthService {
 
   private async initialize() {
     try {
-      if (typeof window !== 'undefined') {
-        this.sdk = createBaseAccountSDK({
-          appName: 'NewsCast Debate'
-        });
-        this.provider = (this.sdk as any).getProvider();
-        this.isInitialized = true;
-        console.log('✅ Base Account Auth Service initialized');
-      }
+      // Initialize Base Account SDK
+      this.sdk = await createBaseAccountSDK();
+      console.log('✅ Base Account SDK initialized');
+      
+      // Get provider from SDK
+      this.provider = (this.sdk as any).provider;
+      console.log('✅ Base Account provider obtained');
+      
+      this.isInitialized = true;
     } catch (error) {
-      console.log('⚠️ Base Account Auth Service not available:', error);
+      console.error('❌ Failed to initialize Base Account SDK:', error);
       this.isInitialized = false;
     }
   }
 
   /**
-   * Check if Base Account SDK is available
+   * Check if Base Account is available
    */
   isAvailable(): boolean {
-    return this.isInitialized && this.provider !== null;
+    return this.isInitialized && !!this.provider;
   }
 
   /**
-   * Check if user is currently authenticated
+   * Check if user is authenticated
    */
   isAuthenticated(): boolean {
-    return this.user !== null && this.user.isAuthenticated;
+    return !!this.user?.isAuthenticated;
   }
 
   /**
-   * Get current user data
+   * Get current user
    */
-  getCurrentUser(): BaseAccountUser | null {
+  getUser(): BaseAccountUser | null {
     return this.user;
   }
 
   /**
-   * Detect if we're running in Base app's integrated browser
+   * Sign in with Base Account using the simple, working approach
    */
-  private isBaseAppBrowser(): boolean {
-    if (typeof window === 'undefined') return false;
-    
-    const userAgent = navigator.userAgent.toLowerCase();
-    
-    // Check for Base app specific indicators
-    return (
-      userAgent.includes('base') ||
-      userAgent.includes('coinbase') ||
-      userAgent.includes('cbwallet') ||
-      // Check for Base-specific globals
-      typeof (window as any).base !== 'undefined' ||
-      typeof (window as any).baseApp !== 'undefined' ||
-      // Check for Base Account connector
-      typeof (window as any).ethereum?.isBase === true ||
-      // Check for Coinbase Wallet
-      typeof (window as any).ethereum?.isCoinbaseWallet === true
-    );
-  }
-  async signInWithBase(nonceOverride?: string): Promise<AuthResult> {
+  async signInWithBase(): Promise<AuthResult> {
     if (!this.isAvailable()) {
       return {
         success: false,
@@ -96,18 +78,14 @@ export class BaseAccountAuthService {
 
     try {
       console.log('🔐 Starting Base Account authentication...');
-      console.log('🌐 Browser environment:', this.isBaseAppBrowser() ? 'Base App Browser' : 'External Browser');
       
-      // 1. Get a fresh nonce (use override if provided)
-      let nonce = nonceOverride;
-      if (!nonce) {
-        const nonceResponse = await fetch('/api/auth/nonce');
-        if (!nonceResponse.ok) {
-          throw new Error('Failed to generate nonce');
-        }
-        const data = await nonceResponse.json();
-        nonce = data.nonce;
+      // 1. Get a fresh nonce
+      const nonceResponse = await fetch('/api/auth/nonce');
+      if (!nonceResponse.ok) {
+        throw new Error('Failed to generate nonce');
       }
+      const data = await nonceResponse.json();
+      const nonce = data.nonce;
       console.log('🔑 Using nonce:', nonce);
 
       // Resolve chainId (Base Mainnet or Base Sepolia) per docs
@@ -126,29 +104,20 @@ export class BaseAccountAuthService {
         console.log('⚠️ Chain switch failed or already on Base:', error.message);
       }
 
-      let address: string;
-      let message: string;
-      let signature: string;
+      // 3. Get accounts using eth_requestAccounts
+      const accounts = await (this.provider as any).request({
+        method: 'eth_requestAccounts'
+      });
+      
+      const address = accounts[0];
+      console.log('✅ Connected to address:', address);
 
-      // 3. For Base app browser, use optimized flow
-      if (this.isBaseAppBrowser()) {
-        console.log('🔵 Base app browser detected - using optimized flow');
-        
-        try {
-          // First try to get accounts
-          const accounts = await (this.provider as any).request({
-            method: 'eth_requestAccounts'
-          });
-          
-          address = accounts[0];
-          console.log('✅ Connected to address in Base app:', address);
-
-          // Create SIWE message manually
-          const domain = window.location.host;
-          const uri = window.location.origin;
-          const currentTime = Math.floor(Date.now() / 1000);
-          
-          message = `${domain} wants you to sign in with your Ethereum account:
+      // 4. Create SIWE message manually
+      const domain = window.location.host;
+      const uri = window.location.origin;
+      const currentTime = Math.floor(Date.now() / 1000);
+      
+      const message = `${domain} wants you to sign in with your Ethereum account:
 ${address}
 
 Welcome to NewsCast Debate!
@@ -163,147 +132,19 @@ Chain ID: ${parseInt(chainIdHex, 16)}
 Nonce: ${nonce}
 Issued At: ${new Date(currentTime * 1000).toISOString()}`;
 
-          console.log('📝 Generated SIWE message for Base app:', message);
+      console.log('📝 Generated SIWE message:', message);
 
-          // Sign the message
-          signature = await (this.provider as any).request({
-            method: 'personal_sign',
-            params: [message, address]
-          });
+      // 5. Sign the message using personal_sign
+      const signature = await (this.provider as any).request({
+        method: 'personal_sign',
+        params: [message, address]
+      });
 
-          console.log('✅ personal_sign successful in Base app');
-          console.log('📝 Generated signature:', signature);
+      console.log('✅ personal_sign successful');
+      console.log('📝 Generated signature:', signature);
 
-        } catch (baseAppError: unknown) {
-          const error = baseAppError as Error;
-          console.error('❌ Base app authentication failed:', error);
-          console.error('❌ Error details:', {
-            message: error.message,
-            name: error.name,
-            stack: error.stack,
-            userAgent: navigator.userAgent,
-            ethereum: typeof (window as any).ethereum,
-            provider: !!this.provider
-          });
-          
-          // Try alternative approach for Base app
-          try {
-            console.log('🔄 Trying alternative Base app authentication...');
-            
-            // Try wallet_connect with simpler params
-            const { accounts } = await (this.provider as any).request({
-              method: 'wallet_connect',
-              params: [{
-                version: '1',
-                capabilities: {
-                  signInWithEthereum: { 
-                    nonce: nonce!
-                  }
-                }
-              }]
-            });
-
-            address = accounts[0].address;
-            message = accounts[0].capabilities.signInWithEthereum.message;
-            signature = accounts[0].capabilities.signInWithEthereum.signature;
-            
-            console.log('✅ Alternative Base app authentication successful');
-            console.log('📝 Received SIWE data:', { address, message, signature });
-
-          } catch (altError: unknown) {
-            const altErr = altError as Error;
-            console.error('❌ Alternative Base app authentication also failed:', altErr);
-            throw new Error(`Base app authentication failed: ${error.message}. Alternative method also failed: ${altErr.message}`);
-          }
-        }
-      } else {
-        // 4. For external browsers, try wallet_connect first (Base Account SDK method)
-        try {
-          console.log('🔄 Attempting wallet_connect method...');
-          const { accounts } = await (this.provider as any).request({
-            method: 'wallet_connect',
-            params: [{
-              version: '1',
-              capabilities: {
-                signInWithEthereum: { 
-                  nonce: nonce!, 
-                  chainId: chainIdHex
-                }
-              }
-            }]
-          });
-
-          address = accounts[0].address;
-          message = accounts[0].capabilities.signInWithEthereum.message;
-          signature = accounts[0].capabilities.signInWithEthereum.signature;
-          
-          console.log('✅ wallet_connect method successful');
-          console.log('📝 Received SIWE data:', { address, message, signature });
-
-        } catch (walletConnectError: unknown) {
-          const error = walletConnectError as Error & { code?: string };
-          console.log('⚠️ wallet_connect failed:', error.message);
-          
-          // Check if it's method_not_supported error
-          if (error.message?.includes('method_not_supported') || 
-              error.code === 'METHOD_NOT_SUPPORTED') {
-            
-            console.log('🔄 Falling back to eth_requestAccounts + personal_sign...');
-            
-            // Fallback: Use eth_requestAccounts and personal_sign
-            const accounts = await (this.provider as any).request({
-              method: 'eth_requestAccounts'
-            });
-            
-            address = accounts[0];
-            console.log('✅ Connected to address:', address);
-
-            // Create SIWE message manually
-            const domain = window.location.host;
-            const uri = window.location.origin;
-            const currentTime = Math.floor(Date.now() / 1000);
-            
-            message = `${domain} wants you to sign in with your Ethereum account:
-${address}
-
-Welcome to NewsCast Debate!
-
-This request will not trigger a blockchain transaction or cost any gas fees.
-
-Your authentication status will reset after 24 hours.
-
-URI: ${uri}
-Version: 1
-Chain ID: ${parseInt(chainIdHex, 16)}
-Nonce: ${nonce}
-Issued At: ${new Date(currentTime * 1000).toISOString()}`;
-
-            console.log('📝 Generated SIWE message:', message);
-
-            // Sign the message
-            signature = await (this.provider as any).request({
-              method: 'personal_sign',
-              params: [message, address]
-            });
-
-            console.log('✅ personal_sign successful');
-            console.log('📝 Generated signature:', signature);
-
-          } else {
-            // Re-throw if it's not a method_not_supported error
-            throw error;
-          }
-        }
-      }
-
-      // 4. Verify with backend
+      // 6. Verify with backend
       console.log('🔍 Verifying signature with backend...');
-      console.log('📝 Address:', address);
-      console.log('📝 Message:', message);
-      console.log('📝 Signature length:', signature.length);
-      console.log('📝 Signature preview (first 100):', signature.substring(0, 100) + '...');
-      console.log('📝 Signature preview (last 100):', '...' + signature.substring(signature.length - 100));
-      console.log('📝 Full signature:', signature);
       
       const response = await fetch('/api/auth/verify', {
         method: 'POST',
@@ -319,7 +160,7 @@ Issued At: ${new Date(currentTime * 1000).toISOString()}`;
       const verificationResult = await response.json();
       console.log('✅ Backend verification successful:', verificationResult);
 
-      // 5. Create user session
+      // 7. Create user session
       this.user = {
         address: address,
         isAuthenticated: true
@@ -344,108 +185,53 @@ Issued At: ${new Date(currentTime * 1000).toISOString()}`;
   }
 
   /**
-   * Build SIWE message for fallback authentication
-   */
-  private buildSIWEMessage(nonce: string, issuedAt: number): string {
-    return `Welcome to NewsCast Debate!
-
-This request will not trigger a blockchain transaction or cost any gas fees.
-
-Your authentication status will reset after 24 hours.
-
-Wallet address:
-Nonce: ${nonce}
-Issued At: ${new Date(issuedAt * 1000).toISOString()}`;
-  }
-
-  /**
    * Sign out
    */
-  async signOut(): Promise<void> {
+  signOut(): void {
     this.user = null;
-    console.log('✅ Signed out from Base Account');
+    console.log('👋 User signed out');
   }
 
   /**
-   * Make a USDC payment using Base Account
+   * Join debate with payment
    */
-  async payUSDC(recipient: string, amount: string): Promise<PaymentResult> {
-    if (!this.isAvailable()) {
+  async joinDebateWithPayment(debateId: number, entryFee: string): Promise<PaymentResult> {
+    if (!this.isAuthenticated()) {
       return {
         success: false,
-        error: 'Base Account SDK not available'
+        error: 'User not authenticated'
       };
     }
 
     try {
-      console.log(`💰 Making USDC payment: ${amount} USDC to ${recipient}`);
+      console.log(`💰 Joining debate ${debateId} with entry fee ${entryFee} USDC`);
       
-      // Use the Base Account SDK for payments
-      const result = await (this.sdk as any).pay({
-        to: recipient as `0x${string}`,
-        amount: amount,
-        testnet: process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_NETWORK === 'testnet'
+      // Use Base Pay SDK for payment
+      const basePaySDK = (this.sdk as any).pay;
+      
+      if (!basePaySDK) {
+        throw new Error('Base Pay SDK not available');
+      }
+
+      const result = await basePaySDK.send({
+        to: '0x6D00f9F5C6a57B46bFa26E032D60B525A1DAe271', // Recipient address
+        value: entryFee,
+        currency: 'USDC'
       });
 
-      console.log('✅ USDC payment successful:', result);
+      console.log('✅ Payment successful:', result);
       
       return {
         success: true,
-        transactionHash: result.id
+        transactionHash: result.transactionHash
       };
+
     } catch (error: unknown) {
       const err = error as Error;
-      console.error('❌ USDC payment failed:', err);
-      
+      console.error('❌ Payment failed:', err);
       return {
         success: false,
         error: err.message || 'Payment failed'
-      };
-    }
-  }
-
-  /**
-   * Join debate with USDC payment
-   */
-  async joinDebateWithPayment(debateId: number, entryFee: string): Promise<PaymentResult> {
-    if (!this.isAvailable()) {
-      return {
-        success: false,
-        error: 'Base Account SDK not available'
-      };
-    }
-
-    try {
-      // Get contract address from environment
-      const contractAddress = process.env.NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS;
-      if (!contractAddress) {
-        return {
-          success: false,
-          error: 'Contract address not configured'
-        };
-      }
-
-      console.log(`🎯 Joining debate ${debateId} with ${entryFee} USDC payment`);
-      
-      const result = await (this.sdk as any).pay({
-        to: contractAddress as `0x${string}`,
-        amount: entryFee,
-        testnet: process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_NETWORK === 'testnet'
-      });
-
-      console.log('✅ Debate payment successful:', result);
-      
-      return {
-        success: true,
-        transactionHash: result.id
-      };
-    } catch (error: unknown) {
-      const err = error as Error;
-      console.error('❌ Debate payment failed:', err);
-      
-      return {
-        success: false,
-        error: err.message || 'Debate payment failed'
       };
     }
   }
@@ -504,16 +290,14 @@ Issued At: ${new Date(issuedAt * 1000).toISOString()}`;
     }
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-      const response = await fetch(`${backendUrl}/api/user/points`);
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch user points');
-      }
-
+      const response = await fetch(`/api/user/points?address=${this.user!.address}`);
       const data = await response.json();
-      return { points: data.points || 0 };
-
+      
+      if (data.success) {
+        return { points: data.points };
+      } else {
+        throw new Error(data.error || 'Failed to fetch points');
+      }
     } catch (error: unknown) {
       const err = error as Error;
       console.error('❌ Failed to fetch user points:', err);
@@ -525,7 +309,7 @@ Issued At: ${new Date(issuedAt * 1000).toISOString()}`;
   }
 
   /**
-   * Share battle and earn points
+   * Share battle on social media
    */
   async shareBattle(battleId: string, platform: 'x' | 'linkedin'): Promise<{ success: boolean; points?: number; error?: string }> {
     if (!this.isAuthenticated()) {
@@ -536,30 +320,26 @@ Issued At: ${new Date(issuedAt * 1000).toISOString()}`;
     }
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-      const response = await fetch(`${backendUrl}/api/share/reward`, {
+      const response = await fetch('/api/battle/share', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           battleId,
-          platform
+          platform,
+          userAddress: this.user!.address
         })
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to share battle');
-      }
-
       const data = await response.json();
-      console.log('✅ Successfully shared battle and earned points');
       
-      return { 
-        success: true, 
-        points: data.pointsEarned || 0 
-      };
+      if (data.success) {
+        return {
+          success: true,
+          points: data.points
+        };
+      } else {
+        throw new Error(data.error || 'Failed to share battle');
+      }
 
     } catch (error: unknown) {
       const err = error as Error;
