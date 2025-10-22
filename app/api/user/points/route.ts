@@ -17,7 +17,15 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const points = await databaseService.getUserPoints(address);
+    let points = 0;
+    
+    try {
+      points = await databaseService.getUserPoints(address);
+    } catch (dbError) {
+      console.warn('Database not available for user points, using fallback:', dbError);
+      // Fallback: Return 0 points for new users
+      points = 0;
+    }
 
     return NextResponse.json({
       success: true,

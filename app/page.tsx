@@ -1,11 +1,10 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { sdk } from '@farcaster/miniapp-sdk';
-import OnchainKitAuth from '../components/OnchainKitAuth';
-import { OnchainKitPaymentButton } from '../components/OnchainKitPaymentButton';
+import UnifiedAuth from '../components/UnifiedAuth';
+import UnifiedPaymentButton from '../components/UnifiedPaymentButton';
 import LikeButton from '../components/LikeButton';
-import { useAccount } from '@coinbase/onchainkit';
-import { useAccount as useWagmiAccount } from 'wagmi';
+import { useAccount as useWagmiAccount, useDisconnect } from 'wagmi';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -156,8 +155,9 @@ export default function Home() {
   // Cast submission state
   const [submittingCast, setSubmittingCast] = useState(false);
   const [castContent, setCastContent] = useState('');
-  // Use OnchainKit account hook
+  // Use wagmi account hook
   const { address, isConnected } = useWagmiAccount();
+  const { disconnect } = useDisconnect();
   
   // Form interaction state
   const [showForm, setShowForm] = useState(false);
@@ -212,22 +212,7 @@ export default function Home() {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Base Account authentication initialization
-  useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        if (baseAccountAuthService.isAvailable()) {
-          console.log('✅ Base Account SDK is available');
-        } else {
-          console.log('⚠️ Base Account SDK not available');
-        }
-      } catch (error) {
-        console.error('❌ Base Account authentication error:', error);
-      }
-    };
-
-    initializeAuth();
-  }, []);
+  // Authentication is now handled by UnifiedAuth component
 
   // Countdown timer effect - updates every second locally, syncs with server every 5 seconds
   useEffect(() => {
@@ -905,11 +890,31 @@ export default function Home() {
 
   const handleSignOut = async () => {
     try {
-      await baseAccountAuthService.signOut();
+      console.log('🔐 Manual logout triggered');
+      
+      // Disconnect the wallet first
+      if (isConnected) {
+        console.log('🔌 Disconnecting wallet...');
+        disconnect();
+      }
+      
+      // Clear all user-related state
       setIsAuthenticated(false);
       setBaseAccountUser(null);
-      setActiveTab('debate'); // Reset to debate tab on logout
-      console.log('✅ Signed out successfully');
+      setActiveTab('debate');
+      
+      // Clear user-specific data
+      setHasSubmittedCast(false);
+      setUserPoints(0);
+      setCastContent('');
+      setSelectedSide(null);
+      setShowForm(false);
+      setPaymentStatus('idle');
+      setPaymentError(null);
+      setPaymentTransactionId(null);
+      setSubmittingCast(false);
+      
+      console.log('✅ Signed out successfully - wallet disconnected and all state cleared');
     } catch (error: any) {
       console.error('❌ Sign out error:', error);
       setError(error.message);
@@ -919,35 +924,46 @@ export default function Home() {
   return (
     <div className={styles.container}>
       {/* Authentication Landing Page */}
-      {!baseAccountUser ? (
-        <section className={styles.authSection}>
-          <OnchainKitAuth
-            onAuthSuccess={(user) => {
-              if (user) {
-                console.log('🔐 Auth success callback - user:', user.address);
-                console.log('🔐 Current hasSubmittedCast state:', hasSubmittedCast);
-                console.log('🔐 User object:', user);
-                setBaseAccountUser(user);
-                setIsAuthenticated(true);
-                setActiveTab('debate'); // Reset to debate tab on login
-                console.log('✅ OnchainKit authentication successful');
-                
-                // Fetch user points immediately after authentication
-                console.log('🔍 Fetching points immediately after auth...');
-                fetchUserPoints(user.address);
-              } else {
-                setBaseAccountUser(null);
-                setIsAuthenticated(false);
-                setActiveTab('debate'); // Reset to debate tab on sign out
-                console.log('✅ OnchainKit sign out successful');
-              }
-            }}
-            onAuthError={(error) => {
-              console.error('❌ OnchainKit authentication error:', error);
-              // Error is now handled within the BaseAccountAuth component
-            }}
-          />
-        </section>
+              {!baseAccountUser ? (
+                <section className={styles.authSection}>
+                  <UnifiedAuth
+                    onAuthSuccess={(user) => {
+                      if (user) {
+                        console.log('🔐 Auth success callback - user:', user.address);
+                        setBaseAccountUser(user);
+                        setIsAuthenticated(true);
+                        setActiveTab('debate');
+                        console.log('✅ Unified authentication successful');
+                        
+                        // Fetch user points immediately after authentication
+                        fetchUserPoints(user.address);
+                      } else {
+                        // User signed out - clear all state
+                        console.log('🔐 User signed out - clearing all state');
+                        setBaseAccountUser(null);
+                        setIsAuthenticated(false);
+                        setActiveTab('debate');
+                        
+                        // Clear all user-specific data
+                        setHasSubmittedCast(false);
+                        setUserPoints(0);
+                        setCastContent('');
+                        setSelectedSide(null);
+                        setShowForm(false);
+                        setPaymentStatus('idle');
+                        setPaymentError(null);
+                        setPaymentTransactionId(null);
+                        setSubmittingCast(false);
+                        
+                        console.log('✅ Unified sign out successful - all state cleared');
+                      }
+                    }}
+                    onAuthError={(error) => {
+                      console.error('❌ Unified authentication error:', error);
+                      // Error is now handled within the UnifiedAuth component
+                    }}
+                  />
+                </section>
       ) : (
         /* Main App Content - Only visible when authenticated */
         <section className={styles.appSection}>
@@ -1275,10 +1291,11 @@ export default function Home() {
                             </div>
                             
                             {/* Single Payment Button with Dynamic States */}
-                            <OnchainKitPaymentButton
+                            <UnifiedPaymentButton
                               onClick={submitCastAfterPayment}
                               disabled={submittingCast || castContent.trim().length < 10 || castContent.trim().length > 140}
                               loading={submittingCast}
+                              colorScheme="light"
                               amount="1.00"
                               recipientAddress="0x6D00f9F5C6a57B46bFa26E032D60B525A1DAe271"
                             >
@@ -1286,7 +1303,7 @@ export default function Home() {
                                 ? (paymentStatus === 'processing' ? 'Processing Payment...' : 'Submitting...')
                                 : 'Pay & Submit'
                               }
-                            </OnchainKitPaymentButton>
+                            </UnifiedPaymentButton>
                             
                             {/* Single Status Display - Only for errors */}
                             {paymentStatus === 'failed' && (

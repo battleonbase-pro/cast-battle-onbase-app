@@ -1,10 +1,10 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
 import { sdk } from '@farcaster/miniapp-sdk';
-import { useAccount as useWagmiAccount, useDisconnect } from 'wagmi';
-import styles from './BaseAccountAuth.module.css';
+import Image from 'next/image';
+import styles from './FarcasterAuth.module.css';
 
-interface BaseAccountAuthProps {
+interface FarcasterAuthProps {
   onAuthSuccess: (user: { address: string; isAuthenticated: boolean; environment: string } | null) => void;
   onAuthError: (error: string) => void;
 }
@@ -19,71 +19,67 @@ interface BattlePreview {
   status: string;
 }
 
-export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAccountAuthProps) {
+export default function FarcasterAuth({ onAuthSuccess, onAuthError }: FarcasterAuthProps) {
   const [battlePreview, setBattlePreview] = useState<BattlePreview | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
-  const [isMiniApp, setIsMiniApp] = useState<boolean>(false);
   const [isSigningIn, setIsSigningIn] = useState<boolean>(false);
-  
-  const { address, isConnected } = useWagmiAccount();
-  const { disconnect } = useDisconnect();
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [userAddress, setUserAddress] = useState<string | null>(null);
 
-  const handleAutoAuth = useCallback(async () => {
-    if (!address) return;
-
+  // Handle Farcaster native wallet connection
+  const handleFarcasterConnect = useCallback(async () => {
     try {
       setIsSigningIn(true);
       setError(null);
+
+      // Check if we're in a Farcaster Mini App
+      const inMiniApp = await sdk.isInMiniApp();
+      if (!inMiniApp) {
+        throw new Error('Not in Farcaster Mini App environment');
+      }
+
+      // Call ready to hide splash screen
+      await sdk.actions.ready();
+
+      // Connect to Farcaster's native Ethereum wallet
+      const ethProvider = await sdk.wallet.ethProvider();
+      if (!ethProvider) {
+        throw new Error('Failed to get Farcaster Ethereum provider');
+      }
+
+      // Request accounts from Farcaster wallet
+      const accounts = await ethProvider.request({ method: 'eth_requestAccounts' });
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No accounts returned from Farcaster wallet');
+      }
+
+      const address = accounts[0];
+      setUserAddress(address);
+      setIsConnected(true);
 
       // Create user object
       const user = {
         address: address,
         isAuthenticated: true,
-        environment: isMiniApp ? 'farcaster' : 'base'
+        environment: 'farcaster'
       };
 
-      console.log('✅ Auto-authentication successful:', user);
+      console.log('✅ Farcaster authentication successful:', user);
       onAuthSuccess(user);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
+      const errorMessage = error instanceof Error ? error.message : 'Farcaster authentication failed';
       setError(errorMessage);
       onAuthError(errorMessage);
+      console.error('❌ Farcaster authentication error:', error);
     } finally {
       setIsSigningIn(false);
     }
-  }, [address, isMiniApp, onAuthSuccess, onAuthError]);
-
-  // Detect Farcaster Mini App environment
-  useEffect(() => {
-    const detectMiniApp = async () => {
-      try {
-        const inMiniApp = await sdk.isInMiniApp();
-        setIsMiniApp(inMiniApp);
-        
-        if (inMiniApp) {
-          // Call ready to hide splash screen
-          await sdk.actions.ready();
-        }
-      } catch {
-        console.log('Not in Farcaster Mini App environment');
-        setIsMiniApp(false);
-      }
-    };
-
-    detectMiniApp();
-  }, []);
-
-  // Auto-authenticate when wallet is connected
-  useEffect(() => {
-    if (isConnected && address) {
-      console.log('🔐 Wallet connected, auto-authenticating...');
-      handleAutoAuth();
-    }
-  }, [isConnected, address, handleAutoAuth]);
+  }, [onAuthSuccess, onAuthError]);
 
   const handleSignOut = () => {
-    disconnect();
+    setIsConnected(false);
+    setUserAddress(null);
     onAuthSuccess(null);
   };
 
@@ -148,7 +144,6 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-
   return (
     <div className={styles.authContainer}>
       <div className={styles.authContent}>
@@ -162,7 +157,7 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
             AI-Powered News Debates
           </h2>
           <p className={styles.brandDescription}>
-            Connect with Base Account to participate in intelligent debates about trending news topics.
+            Connect with your Farcaster wallet to participate in intelligent debates about trending news topics.
           </p>
         </div>
 
@@ -177,7 +172,12 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
             <div className={styles.previewContent}>
               {battlePreview.imageUrl && (
                 <div className={styles.previewImage}>
-                  <img src={battlePreview.imageUrl} alt="Debate topic" />
+                  <Image 
+                    src={battlePreview.imageUrl} 
+                    alt="Debate topic" 
+                    width={300}
+                    height={200}
+                  />
                 </div>
               )}
               
@@ -209,15 +209,15 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
 
         {/* Authentication Section */}
         <div className={styles.authSection}>
-          {isConnected && address ? (
+          {isConnected && userAddress ? (
             // User is connected - show user info
             <div className={styles.authDescription}>
               <div className={styles.userInfo}>
                 <div className={styles.userName}>
-                  🔗 {address.slice(0, 6)}...{address.slice(-4)}
+                  🔗 {userAddress.slice(0, 6)}...{userAddress.slice(-4)}
                 </div>
                 <div className={styles.userHandle}>
-                  {isMiniApp ? 'Farcaster Mini App' : 'Base App'}
+                  Farcaster Wallet Connected
                 </div>
               </div>
               <button
@@ -229,35 +229,18 @@ export default function BaseAccountAuth({ onAuthSuccess, onAuthError }: BaseAcco
               </button>
             </div>
           ) : (
-            // User needs to connect - use simple button that triggers wallet connection
+            // User needs to connect - use Farcaster native connection
             <div>
               <button
-                onClick={() => {
-                  // Trigger wallet connection by requesting accounts
-                  if (typeof window !== 'undefined' && (window as unknown as { ethereum?: { request: (args: { method: string }) => Promise<string[]> } }).ethereum) {
-                    const ethereum = (window as unknown as { ethereum: { request: (args: { method: string }) => Promise<string[]> } }).ethereum;
-                    ethereum.request({ method: 'eth_requestAccounts' })
-                      .then((accounts: string[]) => {
-                        if (accounts.length > 0) {
-                          console.log('✅ Wallet connected:', accounts[0]);
-                        }
-                      })
-                      .catch((error: Error) => {
-                        console.error('❌ Wallet connection failed:', error);
-                        setError('Failed to connect wallet. Please try again.');
-                      });
-                  } else {
-                    setError('No wallet found. Please install a compatible wallet.');
-                  }
-                }}
+                onClick={handleFarcasterConnect}
                 disabled={isSigningIn}
                 className={styles.signInButton}
               >
-                {isSigningIn ? 'Connecting...' : 'Sign In with Base'}
+                {isSigningIn ? 'Connecting...' : 'Connect Farcaster Wallet'}
               </button>
               {isSigningIn && (
                 <div className={styles.authDescription} style={{ marginTop: 8 }}>
-                  Signing in…
+                  Connecting to Farcaster wallet…
                 </div>
               )}
             </div>
