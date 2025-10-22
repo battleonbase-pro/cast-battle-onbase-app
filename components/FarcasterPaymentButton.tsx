@@ -39,7 +39,7 @@ export default function FarcasterPaymentButton({
       }
 
       // Get Farcaster's native Ethereum provider
-      const ethProvider = await sdk.wallet.ethProvider();
+      const ethProvider = await sdk.wallet.getEthereumProvider();
       if (!ethProvider) {
         throw new Error('Failed to get Farcaster Ethereum provider');
       }

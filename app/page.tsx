@@ -1329,10 +1329,15 @@ export default function Home() {
                         {hasSubmittedCast ? (
                           <div className={styles.alreadySubmitted}>
                             <div className={styles.submittedIcon}>✅</div>
-                            <h3 className={styles.submittedTitle}>Argument Submitted</h3>
+                            <h3 className={styles.submittedTitle}>Thank You for Participating!</h3>
                             <p className={styles.submittedMessage}>
-                              Thank you for participating in this debate! Your argument has been submitted successfully.
+                              Your argument has been submitted successfully. Good luck winning the pot! 🍀
                             </p>
+                            <div className={styles.submittedFooter}>
+                              <p className={styles.submittedNote}>
+                                You can view your transaction and track the debate progress below.
+                              </p>
+                            </div>
                           </div>
                         ) : (
                           <>

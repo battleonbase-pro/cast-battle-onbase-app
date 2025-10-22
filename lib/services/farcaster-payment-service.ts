@@ -63,11 +63,11 @@ export class FarcasterPaymentService {
   async getEthereumProvider(): Promise<any> {
     await this.initializeSDK();
     
-    if (!this.sdk.wallet?.ethProvider) {
+    if (!this.sdk.wallet?.getEthereumProvider) {
       throw new Error('Farcaster Ethereum provider not available');
     }
     
-    return this.sdk.wallet.ethProvider;
+    return await this.sdk.wallet.getEthereumProvider();
   }
 
   /**

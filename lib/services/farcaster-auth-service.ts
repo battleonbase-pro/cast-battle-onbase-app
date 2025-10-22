@@ -169,7 +169,7 @@ export class FarcasterAuthService {
       }
 
       // Get Ethereum provider from Farcaster SDK
-      const provider = this.sdk.wallet.ethProvider;
+      const provider = await this.sdk.wallet.getEthereumProvider();
       
       if (!provider) {
         throw new Error('Farcaster Ethereum provider not available');
