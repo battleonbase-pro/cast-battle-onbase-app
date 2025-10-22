@@ -1,6 +1,6 @@
 "use client";
 import { useState } from 'react';
-import { TransactionButton } from '@coinbase/onchainkit/transaction';
+import { Transaction, TransactionButton } from '@coinbase/onchainkit/transaction';
 import { parseUnits } from 'viem';
 import styles from './BasePaymentButton.module.css';
 
@@ -39,20 +39,23 @@ export default function BasePaymentButton({
 
   return (
     <div className={styles.paymentButtonContainer}>
-      <TransactionButton
-        onSuccess={handleTransactionSuccess}
-        onError={handleTransactionError}
-        disabled={disabled || loading || isProcessing}
-        className={styles.transactionButton}
-        transaction={{
+      <Transaction
+        calls={[{
           to: USDC_CONTRACT_ADDRESS,
           data: `0xa9059cbb${recipientAddress.slice(2).padStart(64, '0')}${parseUnits(amount, 6).toString(16).padStart(64, '0')}`,
           value: '0',
-        }}
+        }]}
         chainId={84532} // Base Sepolia
+        onSuccess={handleTransactionSuccess}
+        onError={handleTransactionError}
       >
-        {loading || isProcessing ? 'Processing Payment...' : children}
-      </TransactionButton>
+        <TransactionButton
+          disabled={disabled || loading || isProcessing}
+          className={styles.transactionButton}
+        >
+          {loading || isProcessing ? 'Processing Payment...' : children}
+        </TransactionButton>
+      </Transaction>
     </div>
   );
 }

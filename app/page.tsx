@@ -184,7 +184,6 @@ export default function Home() {
     console.log('🎯 Current state - baseAccountUser:', baseAccountUser?.address);
     
     setSelectedSide(side);
-    setCastSide(side);
     setShowForm(true);
     
     console.log('🎯 After setting - showForm should be true');
@@ -414,7 +413,7 @@ export default function Home() {
         body: JSON.stringify({
           userAddress: userAddress,
           content: castContent.trim(),
-          side: castSide,
+          side: selectedSide,
           transactionId: null // Payment was already processed
         })
       });
@@ -463,7 +462,7 @@ export default function Home() {
         body: JSON.stringify({
           userAddress: userAddress,
           content: castContent.trim(),
-          side: castSide,
+          side: selectedSide,
           transactionId: null // No payment initially
         })
       });
@@ -534,7 +533,7 @@ export default function Home() {
                 body: JSON.stringify({
                   userAddress: userAddress,
                   content: castContent.trim(),
-                  side: castSide,
+                  side: selectedSide,
                   transactionId: payment.id
                 })
               });
@@ -565,7 +564,7 @@ export default function Home() {
                 
                 // Update sentiment data
                 const support = casts.filter(cast => cast.side === 'SUPPORT').length + 1; // +1 for new cast
-                const oppose = casts.filter(cast => cast.side === 'OPPOSE').length + (castSide === 'OPPOSE' ? 1 : 0);
+                const oppose = casts.filter(cast => cast.side === 'OPPOSE').length + (selectedSide === 'OPPOSE' ? 1 : 0);
                 const total = support + oppose;
                 
                 if (total > 0) {
@@ -632,7 +631,7 @@ export default function Home() {
           
           // Update sentiment data
           const support = casts.filter(cast => cast.side === 'SUPPORT').length + 1; // +1 for new cast
-          const oppose = casts.filter(cast => cast.side === 'OPPOSE').length + (castSide === 'OPPOSE' ? 1 : 0);
+          const oppose = casts.filter(cast => cast.side === 'OPPOSE').length + (selectedSide === 'OPPOSE' ? 1 : 0);
           const total = support + oppose;
           
           if (total > 0) {
@@ -736,7 +735,7 @@ export default function Home() {
             await fetchCasts();
             await fetchBattleHistory();
             if (baseAccountUser?.address) {
-              await fetchUserPoints(getUserAddress(baseAccountUser)!);
+              await fetchUserPoints(baseAccountUser?.address!);
             }
             // Sync battle timing on mobile every 30 seconds
             if (currentBattle?.endTime) {
@@ -1261,7 +1260,6 @@ export default function Home() {
             {/* Tab Content */}
             {activeTab === 'debate' && (
               <div className={styles.tabContent}>
-                {console.log('🔍 Rendering debate tab - showForm:', showForm, 'hasSubmittedCast:', hasSubmittedCast)}
                 {!showForm ? (
               <div className={styles.debatePoints}>
                     {/* Cards container */}
@@ -1356,7 +1354,6 @@ export default function Home() {
                               onClick={submitCastAfterPayment}
                               disabled={submittingCast || castContent.trim().length < 10 || castContent.trim().length > 140}
                               loading={submittingCast}
-                              colorScheme="light"
                               amount="1.00"
                               recipientAddress="0x6D00f9F5C6a57B46bFa26E032D60B525A1DAe271"
                             >
