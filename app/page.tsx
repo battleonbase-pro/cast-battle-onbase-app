@@ -1,27 +1,11 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { sdk } from '@farcaster/miniapp-sdk';
-import BaseAccountAuth from '../components/BaseAccountAuth';
-import { BasePayButton } from '../components/BasePayButton';
-import { UnifiedPaymentButton } from '../components/UnifiedPaymentButton';
-import { paymentService } from '../lib/services/payment-service';
+import OnchainKitAuth from '../components/OnchainKitAuth';
+import { OnchainKitPaymentButton } from '../components/OnchainKitPaymentButton';
 import LikeButton from '../components/LikeButton';
-import { baseAccountAuthService, BaseAccountUser } from '../lib/services/base-account-auth-service';
-import { FarcasterUser } from '../lib/services/farcaster-auth-service';
-
-// Union type for both user types
-type AppUser = BaseAccountUser | FarcasterUser;
-
-// Helper function to get user address from either user type
-const getUserAddress = (user: AppUser | null): string | null => {
-  if (!user) return null;
-  return user.address;
-};
-
-// Helper function to check if user is Farcaster user
-const isFarcasterUser = (user: AppUser | null): user is FarcasterUser => {
-  return user !== null && 'fid' in user;
-};
+import { useAccount } from '@coinbase/onchainkit';
+import { useAccount as useWagmiAccount } from 'wagmi';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -122,7 +106,7 @@ interface BattleHistory {
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [baseAccountUser, setBaseAccountUser] = useState<AppUser | null>(null);
+  const [baseAccountUser, setBaseAccountUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentBattle, setCurrentBattle] = useState<Battle | null>(null);
@@ -172,7 +156,8 @@ export default function Home() {
   // Cast submission state
   const [submittingCast, setSubmittingCast] = useState(false);
   const [castContent, setCastContent] = useState('');
-  const [castSide, setCastSide] = useState<'SUPPORT' | 'OPPOSE'>('SUPPORT');
+  // Use OnchainKit account hook
+  const { address, isConnected } = useWagmiAccount();
   
   // Form interaction state
   const [showForm, setShowForm] = useState(false);
@@ -280,7 +265,7 @@ export default function Home() {
             // Check if user has already submitted a cast for this battle FIRST
             let userHasSubmitted = false;
             if (baseAccountUser && data.battle.casts) {
-              const userAddress = getUserAddress(baseAccountUser);
+              const userAddress = baseAccountUser?.address;
               userHasSubmitted = data.battle.casts.some((cast: any) => 
                 cast.user?.address?.toLowerCase() === userAddress?.toLowerCase()
               );
@@ -350,7 +335,7 @@ export default function Home() {
 
       // Check if user has submitted and is a participant
       if (baseAccountUser) {
-        const userAddress = getUserAddress(baseAccountUser);
+        const userAddress = baseAccountUser?.address;
         const userCast = castsList.find((cast: Cast) => 
           cast.user?.address && userAddress && 
           cast.user.address.toLowerCase() === userAddress.toLowerCase()
@@ -414,7 +399,7 @@ export default function Home() {
 
   // Submit cast after payment is completed
   const submitCastAfterPayment = async () => {
-    const userAddress = getUserAddress(baseAccountUser);
+    const userAddress = baseAccountUser?.address;
     if (!userAddress || !castContent.trim()) return;
 
     try {
@@ -461,7 +446,7 @@ export default function Home() {
 
   // Submit cast with Base Pay SDK integration
   const submitCast = async () => {
-    const userAddress = getUserAddress(baseAccountUser);
+    const userAddress = baseAccountUser?.address;
     if (!userAddress || !castContent.trim()) return;
 
     let castSubmitted = false; // Flag to track if cast was submitted successfully
@@ -714,7 +699,7 @@ export default function Home() {
 
   // Fetch user points when authenticated
   useEffect(() => {
-    const userAddress = getUserAddress(baseAccountUser);
+    const userAddress = baseAccountUser?.address;
     if (userAddress) {
       fetchUserPoints(userAddress);
     }
@@ -767,7 +752,7 @@ export default function Home() {
         fetchCasts();
         fetchBattleHistory();
         if (baseAccountUser?.address) {
-          fetchUserPoints(getUserAddress(baseAccountUser)!);
+          fetchUserPoints(baseAccountUser?.address!);
         }
         
       } else {
@@ -839,7 +824,7 @@ export default function Home() {
               await fetchCasts();
               await fetchBattleHistory();
               if (baseAccountUser?.address) {
-                await fetchUserPoints(getUserAddress(baseAccountUser)!);
+                await fetchUserPoints(baseAccountUser?.address!);
               }
             } catch (error) {
               console.error('Polling error:', error);
@@ -936,29 +921,29 @@ export default function Home() {
       {/* Authentication Landing Page */}
       {!baseAccountUser ? (
         <section className={styles.authSection}>
-          <BaseAccountAuth
+          <OnchainKitAuth
             onAuthSuccess={(user) => {
               if (user) {
-                console.log('🔐 Auth success callback - user:', getUserAddress(user));
+                console.log('🔐 Auth success callback - user:', user.address);
                 console.log('🔐 Current hasSubmittedCast state:', hasSubmittedCast);
                 console.log('🔐 User object:', user);
                 setBaseAccountUser(user);
                 setIsAuthenticated(true);
                 setActiveTab('debate'); // Reset to debate tab on login
-                console.log('✅ Base Account authentication successful');
+                console.log('✅ OnchainKit authentication successful');
                 
                 // Fetch user points immediately after authentication
                 console.log('🔍 Fetching points immediately after auth...');
-                fetchUserPoints(getUserAddress(user)!);
+                fetchUserPoints(user.address);
               } else {
                 setBaseAccountUser(null);
                 setIsAuthenticated(false);
                 setActiveTab('debate'); // Reset to debate tab on sign out
-                console.log('✅ Base Account sign out successful');
+                console.log('✅ OnchainKit sign out successful');
               }
             }}
             onAuthError={(error) => {
-              console.error('❌ Base Account authentication error:', error);
+              console.error('❌ OnchainKit authentication error:', error);
               // Error is now handled within the BaseAccountAuth component
             }}
           />
@@ -983,7 +968,7 @@ export default function Home() {
                 <div className={styles.userInfo}>
                   <span className={styles.userAddress}>
                     <div className="flex items-center gap-2">
-                      <span>{getUserAddress(baseAccountUser)?.slice(0, 6)}...{getUserAddress(baseAccountUser)?.slice(-4)}</span>
+                      <span>{baseAccountUser?.address?.slice(0, 6)}...{baseAccountUser?.address?.slice(-4)}</span>
                     </div>
                   </span>
                   <span className={styles.userPoints}>
@@ -1290,11 +1275,10 @@ export default function Home() {
                             </div>
                             
                             {/* Single Payment Button with Dynamic States */}
-                            <UnifiedPaymentButton
+                            <OnchainKitPaymentButton
                               onClick={submitCastAfterPayment}
                               disabled={submittingCast || castContent.trim().length < 10 || castContent.trim().length > 140}
                               loading={submittingCast}
-                              colorScheme="light"
                               amount="1.00"
                               recipientAddress="0x6D00f9F5C6a57B46bFa26E032D60B525A1DAe271"
                             >
@@ -1302,7 +1286,7 @@ export default function Home() {
                                 ? (paymentStatus === 'processing' ? 'Processing Payment...' : 'Submitting...')
                                 : 'Pay & Submit'
                               }
-                            </UnifiedPaymentButton>
+                            </OnchainKitPaymentButton>
                             
                             {/* Single Status Display - Only for errors */}
                             {paymentStatus === 'failed' && (
@@ -1346,7 +1330,7 @@ export default function Home() {
                         <div className={styles.argumentActions}>
                           <LikeButton
                             castId={cast.id}
-                            userAddress={getUserAddress(baseAccountUser)}
+                            userAddress={baseAccountUser?.address}
                             onLikeChange={(likeCount, userLiked) => {
                               console.log(`Cast ${cast.id} like count: ${likeCount}, user liked: ${userLiked}`);
                             }}

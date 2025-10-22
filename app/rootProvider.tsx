@@ -1,32 +1,35 @@
-"use client";
-import { ReactNode, useEffect, useState } from "react";
-import { WagmiProvider } from 'wagmi';
-import { config } from '@/lib/wagmi-config';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { sdk } from '@farcaster/miniapp-sdk';
+'use client';
+import { ReactNode } from 'react';
+import { base, baseSepolia } from 'viem/chains';
+import { OnchainKitProvider } from '@coinbase/onchainkit';
+import '@coinbase/onchainkit/styles.css';
 
 export function RootProvider({ children }: { children: ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient());
-  const [isMiniApp, setIsMiniApp] = useState<boolean>(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const inMiniApp = await sdk.isInMiniApp();
-        if (!cancelled) setIsMiniApp(inMiniApp);
-      } catch {
-        if (!cancelled) setIsMiniApp(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+  // Use Base Sepolia for testnet, Base for mainnet
+  const isTestnet = process.env.NEXT_PUBLIC_NETWORK === 'testnet' || process.env.NODE_ENV === 'development';
+  const chain = isTestnet ? baseSepolia : base;
 
   return (
-    <WagmiProvider config={config} reconnectOnMount autoConnect>
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    </WagmiProvider>
+    <OnchainKitProvider
+      apiKey={process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY}
+      chain={chain}
+      config={{
+        appearance: {
+          mode: 'auto',
+          theme: 'default',
+        },
+        wallet: {
+          display: 'modal',
+          preference: 'all',
+        },
+        analytics: true,
+      }}
+      miniKit={{
+        enabled: true,
+        autoConnect: true,
+      }}
+    >
+      {children}
+    </OnchainKitProvider>
   );
 }
