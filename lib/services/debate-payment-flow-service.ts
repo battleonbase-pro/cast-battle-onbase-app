@@ -1,4 +1,3 @@
-import { usdcPaymentService, PaymentResult } from './usdc-payment-service';
 import { paymentVerificationService } from './payment-verification-service';
 
 export interface DebatePaymentFlow {
@@ -194,32 +193,14 @@ export class DebatePaymentFlowService {
           };
         }
       } else {
-        // This is a Base Pay transaction ID
-        console.log(`💰 Checking Base Pay payment status: ${transactionId}`);
-        const paymentStatus = await usdcPaymentService.checkPaymentStatus(transactionId);
-        
-        if (paymentStatus.status === 'completed') {
-          console.log(`✅ Base Pay payment completed: ${transactionId}`);
-          return {
-            success: true,
-            transactionId,
-            verificationStatus: 'verified'
-          };
-        } else if (paymentStatus.status === 'failed') {
-          return {
-            success: false,
-            transactionId,
-            error: 'Payment failed',
-            verificationStatus: 'failed'
-          };
-        } else {
-          return {
-            success: false,
-            transactionId,
-            error: 'Payment still pending',
-            verificationStatus: 'pending'
-          };
-        }
+        // Unknown transaction ID format
+        console.log(`⚠️ Unknown transaction ID format: ${transactionId}`);
+        return {
+          success: false,
+          transactionId,
+          error: 'Invalid transaction ID format',
+          verificationStatus: 'failed'
+        };
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

@@ -74,8 +74,8 @@ export default function BasePaymentButton({
     setIsProcessing(false);
   };
 
-  // USDC payment for debate participation
-  const usdcAmount = parseUnits('1', 6); // 1 USDC (USDC has 6 decimals)
+  // USDC payment for debate participation - use the amount prop
+  const usdcAmount = parseUnits(amount, 6); // Use the amount prop (USDC has 6 decimals)
   // Try the official Base Sepolia USDC contract
   const usdcContractAddress = process.env.NEXT_PUBLIC_USDC_ADDRESS!; // USDC on Base Sepolia
   
@@ -88,10 +88,10 @@ export default function BasePaymentButton({
   useEffect(() => {
     console.log('🔧 Base Sepolia USDC Payment Configuration:');
     console.log('  - Network: Base Sepolia (Testnet)');
-    console.log('  - Payment: 1 USDC Transfer');
+    console.log('  - Payment: USDC Transfer');
     console.log('  - USDC Contract:', usdcContractAddress);
     console.log('  - Recipient (DebatePool):', recipientAddress);
-    console.log('  - Amount: 1 USDC');
+    console.log('  - Amount:', amount, 'USDC');
     console.log('  - Chain ID:', 84532);
     console.log('  - Wallet Connected:', isConnected);
     console.log('  - Wallet Address:', address);
@@ -139,7 +139,7 @@ export default function BasePaymentButton({
           className={styles.transactionButton}
         >
           {loading || isProcessing 
-            ? 'Processing 1 USDC Payment...' 
+            ? `Processing ${amount} USDC Payment...` 
             : children
           }
         </TransactionButton>
