@@ -107,7 +107,6 @@ export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [baseAccountUser, setBaseAccountUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [isMiniApp, setIsMiniApp] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [paymentSuccessCastFailed, setPaymentSuccessCastFailed] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
@@ -220,21 +219,6 @@ export default function Home() {
 
   // Authentication is now handled by UnifiedAuth component
 
-  // Detect mini app environment
-  useEffect(() => {
-    const detectMiniApp = async () => {
-      try {
-        const inMiniApp = await sdk.isInMiniApp();
-        setIsMiniApp(inMiniApp);
-        console.log('🔍 Mini App Detection:', inMiniApp);
-      } catch (error) {
-        console.error('❌ Failed to detect mini app:', error);
-        setIsMiniApp(false);
-      }
-    };
-
-    detectMiniApp();
-  }, []);
 
   // Countdown timer effect - updates every second locally, syncs with server every 5 seconds
   useEffect(() => {
@@ -1295,18 +1279,6 @@ export default function Home() {
         </div>
       </header>
 
-          {/* Debug Mini App Status */}
-          <div style={{ 
-            background: '#f0f0f0', 
-            padding: '8px 16px', 
-            margin: '0', 
-            fontSize: '12px', 
-            color: '#666',
-            borderBottom: '1px solid #ddd',
-            textAlign: 'center'
-          }}>
-            🔍 Debug: isMiniApp = {isMiniApp === null ? 'Loading...' : isMiniApp ? 'true' : 'false'}
-          </div>
 
           {/* Help Modal */}
           {showHelp && (

@@ -1,4 +1,5 @@
 import { createClient } from '@farcaster/quick-auth';
+import { sdk } from '@farcaster/miniapp-sdk';
 
 export interface FarcasterUser {
   fid: number;
@@ -46,7 +47,7 @@ export class FarcasterAuthService {
 
     try {
       // Initialize Farcaster SDK
-      this.sdk = await import('@farcaster/miniapp-sdk').then(m => m.sdk);
+      this.sdk = sdk;
       console.log('✅ Farcaster SDK initialized');
       this.isInitialized = true;
     } catch (error) {

@@ -4,6 +4,7 @@
  */
 
 import { parseUnits } from 'viem';
+import { sdk } from '@farcaster/miniapp-sdk';
 
 export interface FarcasterPaymentResult {
   success: boolean;
@@ -20,7 +21,7 @@ export interface FarcasterPaymentOptions {
 
 export class FarcasterPaymentService {
   private static instance: FarcasterPaymentService;
-  private sdk: any = null;
+  private sdk: typeof sdk | null = null;
 
   static getInstance(): FarcasterPaymentService {
     if (!FarcasterPaymentService.instance) {
@@ -36,7 +37,6 @@ export class FarcasterPaymentService {
     if (this.sdk) return;
     
     try {
-      const { sdk } = await import('@farcaster/miniapp-sdk');
       this.sdk = sdk;
       console.log('✅ Farcaster SDK initialized');
     } catch (error) {
@@ -60,7 +60,7 @@ export class FarcasterPaymentService {
   /**
    * Get the Ethereum provider from Farcaster SDK
    */
-  async getEthereumProvider(): Promise<any> {
+  async getEthereumProvider(): Promise<unknown> {
     await this.initializeSDK();
     
     if (!this.sdk.wallet?.getEthereumProvider) {
@@ -138,6 +138,7 @@ export class FarcasterPaymentService {
           }
         } catch (receiptError) {
           console.log(`🔍 Transaction confirmation check ${attempts}/${maxAttempts}...`);
+          console.log('Receipt error:', receiptError);
           if (attempts >= maxAttempts) {
             throw new Error('Transaction confirmation timeout');
           }

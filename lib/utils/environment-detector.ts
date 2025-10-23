@@ -1,6 +1,9 @@
 /**
  * Environment detection utility for distinguishing between different app environments
  */
+
+import { sdk } from '@farcaster/miniapp-sdk';
+
 export class EnvironmentDetector {
   private static instance: EnvironmentDetector;
   private sdk: any = null;
@@ -26,7 +29,7 @@ export class EnvironmentDetector {
 
     try {
       // Try to initialize Farcaster SDK
-      this.sdk = await import('@farcaster/miniapp-sdk').then(m => m.sdk);
+      this.sdk = sdk;
       this.isInitialized = true;
       console.log('✅ Environment detector initialized');
     } catch (error) {
