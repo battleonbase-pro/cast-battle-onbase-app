@@ -104,8 +104,8 @@
 }
 
 .previewImageElement {
-  width: 120px;
-  height: 80px;
+  width: 240px;
+  height: 160px;
   object-fit: cover;
   border-radius: 6px;
 }
@@ -293,8 +293,8 @@
   }
   
   .previewImageElement {
-    width: 100px;
-    height: 70px;
+    width: 200px;
+    height: 140px;
   }
   
   .previewText {
