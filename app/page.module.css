@@ -561,16 +561,17 @@
 
 .topicImage {
   float: left;
-  width: 200px;
-  height: 150px;
+  width: 120px;
+  height: 90px;
   object-fit: cover;
   object-position: center;
-  border-radius: 8px;
-  margin-right: 20px;
-  margin-bottom: 10px;
-  margin-top: 8px; /* Add top margin to align with text */
+  border-radius: 6px;
+  margin-right: 15px;
+  margin-bottom: 8px;
+  margin-top: 4px;
   background: #f8fafc;
-  clear: left; /* Ensure image starts on a new line */
+  clear: left;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .topicDescription {
@@ -1775,14 +1776,15 @@
   }
   
   .topicImage {
-    width: 100%;
-    height: 200px;
-    margin-right: 0;
-    margin-bottom: 12px;
-    object-fit: contain; /* Keep contain to maintain aspect ratio */
-    object-position: center; /* Center the image within the container */
-    /* Ensure the image doesn't stretch by maintaining aspect ratio */
-    aspect-ratio: auto; /* Let the image maintain its natural aspect ratio */
+    width: 100px;
+    height: 75px;
+    margin-right: 12px;
+    margin-bottom: 8px;
+    margin-top: 4px;
+    object-fit: cover;
+    object-position: center;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
   
   .topicMeta {
