@@ -3,17 +3,15 @@ import { useState, useEffect } from 'react';
 import { sdk } from '@farcaster/miniapp-sdk';
 
 export interface EnvironmentInfo {
-  isFarcasterMiniApp: boolean;
-  isBaseApp: boolean;
+  isMiniApp: boolean;
   isExternalBrowser: boolean;
-  environment: 'farcaster' | 'base' | 'external';
+  environment: 'miniapp' | 'external';
   isLoading: boolean;
 }
 
 export function useEnvironmentDetection(): EnvironmentInfo {
   const [environmentInfo, setEnvironmentInfo] = useState<EnvironmentInfo>({
-    isFarcasterMiniApp: false,
-    isBaseApp: false,
+    isMiniApp: false,
     isExternalBrowser: false,
     environment: 'external',
     isLoading: true
@@ -22,36 +20,17 @@ export function useEnvironmentDetection(): EnvironmentInfo {
   useEffect(() => {
     const detectEnvironment = async () => {
       try {
-        console.log('🔍 Starting environment detection...');
+        console.log('🔍 Starting unified environment detection...');
         
-        // Use the most reliable method: Farcaster SDK
+        // Use Farcaster SDK to detect any Mini App environment (Farcaster + Base Mini Apps)
         const inMiniApp = await sdk.isInMiniApp();
         
         if (inMiniApp) {
-          console.log('🎯 Detected Farcaster Mini App environment');
+          console.log('🎯 Detected Mini App environment (Farcaster or Base Mini App)');
           setEnvironmentInfo({
-            isFarcasterMiniApp: true,
-            isBaseApp: false,
+            isMiniApp: true,
             isExternalBrowser: false,
-            environment: 'farcaster',
-            isLoading: false
-          });
-          return;
-        }
-
-        // Check if we're in Base app (Base app browser)
-        const userAgent = navigator.userAgent.toLowerCase();
-        const isBaseApp = userAgent.includes('base') || 
-                         userAgent.includes('coinbase') ||
-                         window.location.hostname.includes('base');
-        
-        if (isBaseApp) {
-          console.log('🏦 Detected Base app environment');
-          setEnvironmentInfo({
-            isFarcasterMiniApp: false,
-            isBaseApp: true,
-            isExternalBrowser: false,
-            environment: 'base',
+            environment: 'miniapp',
             isLoading: false
           });
           return;
@@ -60,8 +39,7 @@ export function useEnvironmentDetection(): EnvironmentInfo {
         // Default to external browser
         console.log('🌐 Detected external browser environment');
         setEnvironmentInfo({
-          isFarcasterMiniApp: false,
-          isBaseApp: false,
+          isMiniApp: false,
           isExternalBrowser: true,
           environment: 'external',
           isLoading: false
@@ -69,8 +47,7 @@ export function useEnvironmentDetection(): EnvironmentInfo {
       } catch (error) {
         console.log('⚠️ Environment detection failed, defaulting to external:', error);
         setEnvironmentInfo({
-          isFarcasterMiniApp: false,
-          isBaseApp: false,
+          isMiniApp: false,
           isExternalBrowser: true,
           environment: 'external',
           isLoading: false

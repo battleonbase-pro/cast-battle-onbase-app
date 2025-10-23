@@ -44,7 +44,7 @@ export default function UnifiedAuth({ onAuthSuccess, onAuthError }: UnifiedAuthP
           borderBottom: '1px solid #ddd',
           textAlign: 'center'
         }}>
-          🔍 Debug: isMiniApp = {isMiniApp === null ? 'Loading...' : isMiniApp ? 'true' : 'false'}
+          🔍 Debug: Environment = {environmentInfo.isLoading ? 'Loading...' : environmentInfo.environment} | isMiniApp = {isMiniApp === null ? 'Loading...' : isMiniApp ? 'true' : 'false'}
         </div>
         
         <div style={{ 
@@ -66,7 +66,8 @@ export default function UnifiedAuth({ onAuthSuccess, onAuthError }: UnifiedAuthP
   // Render appropriate authentication component based on environment
   const renderAuthComponent = () => {
     switch (environmentInfo.environment) {
-      case 'farcaster':
+      case 'miniapp':
+        // Both Farcaster and Base Mini Apps use FarcasterAuth
         return (
           <FarcasterAuth 
             onAuthSuccess={onAuthSuccess} 
@@ -74,9 +75,9 @@ export default function UnifiedAuth({ onAuthSuccess, onAuthError }: UnifiedAuthP
           />
         );
       
-      case 'base':
       case 'external':
       default:
+        // External browsers use BaseAccountAuth
         return (
           <BaseAccountAuth 
             onAuthSuccess={onAuthSuccess} 
@@ -98,7 +99,7 @@ export default function UnifiedAuth({ onAuthSuccess, onAuthError }: UnifiedAuthP
         borderBottom: '1px solid #ddd',
         textAlign: 'center'
       }}>
-        🔍 Debug: isMiniApp = {isMiniApp === null ? 'Loading...' : isMiniApp ? 'true' : 'false'}
+        🔍 Debug: Environment = {environmentInfo.isLoading ? 'Loading...' : environmentInfo.environment} | isMiniApp = {isMiniApp === null ? 'Loading...' : isMiniApp ? 'true' : 'false'}
       </div>
       
       {renderAuthComponent()}

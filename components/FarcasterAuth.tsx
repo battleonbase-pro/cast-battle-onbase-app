@@ -43,9 +43,34 @@ export default function FarcasterAuth({ onAuthSuccess, onAuthError }: FarcasterA
       await sdk.actions.ready();
 
       // Connect to Farcaster's native Ethereum wallet
-      const ethProvider = await sdk.wallet.ethProvider();
+      console.log('🔍 SDK wallet object:', sdk.wallet);
+      console.log('🔍 Available wallet methods:', Object.keys(sdk.wallet || {}));
+      
+      let ethProvider;
+      try {
+        // Try the primary method
+        ethProvider = await sdk.wallet.getEthereumProvider();
+        console.log('🔍 Ethereum provider (getEthereumProvider):', ethProvider);
+      } catch (error) {
+        console.log('⚠️ getEthereumProvider failed, trying ethProvider property:', error);
+        try {
+          // Try accessing ethProvider as a property (not a function)
+          ethProvider = sdk.wallet.ethProvider;
+          console.log('🔍 Ethereum provider (ethProvider property):', ethProvider);
+        } catch (fallbackError) {
+          console.log('❌ Both methods failed:', fallbackError);
+          throw new Error('Failed to get Farcaster Ethereum provider from both methods');
+        }
+      }
+      
+      console.log('🔍 Provider type:', typeof ethProvider);
+      
       if (!ethProvider) {
         throw new Error('Failed to get Farcaster Ethereum provider');
+      }
+      
+      if (typeof ethProvider.request !== 'function') {
+        throw new Error('Ethereum provider does not have request method');
       }
 
       // Request accounts from Farcaster wallet

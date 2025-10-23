@@ -40,23 +40,17 @@ export class EnvironmentDetector {
 
   /**
    * Detect the current environment
-   * @returns 'farcaster' | 'base' | 'external'
+   * @returns 'miniapp' | 'external'
    */
-  async detectEnvironment(): Promise<'farcaster' | 'base' | 'external'> {
+  async detectEnvironment(): Promise<'miniapp' | 'external'> {
     try {
-      // First check if we're in Farcaster Mini App
+      // Check if we're in any Mini App environment (Farcaster or Base Mini Apps)
       if (this.isInitialized && this.sdk) {
-        const isInFarcaster = await this.sdk.isInMiniApp();
-        if (isInFarcaster) {
-          console.log('🔍 Environment detected: Farcaster Mini App');
-          return 'farcaster';
+        const isInMiniApp = await this.sdk.isInMiniApp();
+        if (isInMiniApp) {
+          console.log('🔍 Environment detected: Mini App (Farcaster or Base)');
+          return 'miniapp';
         }
-      }
-
-      // Check if we're in Base App browser
-      if (this.isBaseAppBrowser()) {
-        console.log('🔍 Environment detected: Base App Browser');
-        return 'base';
       }
 
       // Default to external browser
@@ -133,10 +127,8 @@ export class EnvironmentDetector {
     const environment = await this.detectEnvironment();
     
     switch (environment) {
-      case 'farcaster':
+      case 'miniapp':
         return ['farcasterMiniApp', 'injected', 'walletConnect', 'metaMask'];
-      case 'base':
-        return ['baseAccount', 'injected', 'walletConnect', 'metaMask'];
       case 'external':
       default:
         return ['baseAccount', 'metaMask', 'injected', 'walletConnect'];
@@ -150,9 +142,8 @@ export class EnvironmentDetector {
     const environment = await this.detectEnvironment();
     
     switch (environment) {
-      case 'farcaster':
+      case 'miniapp':
         return 'farcaster';
-      case 'base':
       case 'external':
       default:
         return 'base';
@@ -166,9 +157,8 @@ export class EnvironmentDetector {
     const environment = await this.detectEnvironment();
     
     switch (environment) {
-      case 'farcaster':
+      case 'miniapp':
         return 'farcaster';
-      case 'base':
       case 'external':
       default:
         return 'base';
