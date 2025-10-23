@@ -200,8 +200,9 @@ export default function FarcasterAuth({ onAuthSuccess, onAuthError }: FarcasterA
                   <Image 
                     src={battlePreview.imageUrl} 
                     alt="Debate topic" 
-                    width={300}
-                    height={200}
+                    width={150}
+                    height={100}
+                    className={styles.previewImageElement}
                   />
                 </div>
               )}

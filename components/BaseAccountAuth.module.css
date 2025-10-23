@@ -96,8 +96,18 @@
 
 .previewImage {
   flex-shrink: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
+  float: left;
+  margin-right: 15px;
+  margin-bottom: 10px;
+}
+
+.previewImageElement {
+  width: 120px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 6px;
 }
 
 .previewText {
@@ -273,6 +283,18 @@
   .previewContent {
     flex-direction: column;
     text-align: center;
+  }
+  
+  .previewImage {
+    float: none;
+    margin-right: 0;
+    margin-bottom: 12px;
+    align-self: center;
+  }
+  
+  .previewImageElement {
+    width: 100px;
+    height: 70px;
   }
   
   .previewText {

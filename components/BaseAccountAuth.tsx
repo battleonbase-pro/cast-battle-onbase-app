@@ -349,8 +349,9 @@ Issued At: ${new Date(currentTime * 1000).toISOString()}`;
                   <Image
                     src={battlePreview.imageUrl} 
                     alt="Debate topic" 
-                    width={300}
-                    height={200}
+                    width={150}
+                    height={100}
+                    className={styles.previewImageElement}
                   />
                 </div>
               )}
