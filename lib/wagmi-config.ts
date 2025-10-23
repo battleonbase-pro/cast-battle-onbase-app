@@ -4,16 +4,6 @@ import { injected, metaMask, walletConnect, baseAccount } from 'wagmi/connectors
 import { farcasterMiniApp as miniAppConnector } from '@farcaster/miniapp-wagmi-connector'
 import { sdk } from '@farcaster/miniapp-sdk'
 
-// Custom Phantom connector for better detection
-const phantomConnector = injected({
-  target: () => ({
-    id: 'phantom',
-    name: 'Phantom',
-    provider: typeof window !== 'undefined' ? window.phantom?.ethereum : undefined,
-  }),
-  // Ensure it's not confused with WalletConnect
-  type: 'injected',
-})
 
 // Get WalletConnect project ID, only include WalletConnect if valid ID is provided
 const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
@@ -38,56 +28,21 @@ if (process.env.NODE_ENV === 'development') {
   console.log('Current URL for metadata:', currentUrl);
 }
 
-// Function to detect if we're in a Farcaster Mini App
-function isFarcasterMiniApp(): boolean {
-  try {
-    if (typeof window === 'undefined') return false;
-    // Synchronous check - we'll handle async detection in components
-    return typeof (window as any).farcaster !== 'undefined' || 
-           navigator.userAgent.toLowerCase().includes('farcaster') ||
-           navigator.userAgent.toLowerCase().includes('warpcast');
-  } catch {
-    return false;
-  }
-}
-
-// Build connectors array based on environment detection
-const inFarcasterMiniApp = isFarcasterMiniApp();
-let connectors;
-
-if (inFarcasterMiniApp) {
-  // In Farcaster Mini App - prioritize Farcaster connector
-  console.log('🔗 Detected Farcaster Mini App - prioritizing Farcaster connector');
-  connectors = [
-    miniAppConnector(), // Farcaster connector first
-    baseAccount({
-      appName: 'NewsCast Debate',
-    }),
-    metaMask({
-      dappMetadata: {
-        name: 'NewsCast Debate',
-        url: currentUrl,
-      },
-    }),
-    phantomConnector,
-  ];
-} else {
-  // In Base app or external browser - prioritize Base Account
-  console.log('🔵 Detected Base app or external browser - prioritizing Base Account connector');
-  connectors = [
-    baseAccount({
-      appName: 'NewsCast Debate',
-    }),
-    miniAppConnector(), // Farcaster connector as fallback
-    metaMask({
-      dappMetadata: {
-        name: 'NewsCast Debate',
-        url: currentUrl,
-      },
-    }),
-    phantomConnector,
-  ];
-}
+// Build connectors array - we'll detect environment asynchronously in components
+// For now, prioritize Base Account as default, components will handle Farcaster detection
+console.log('🔗 Initializing connectors - environment detection will be handled asynchronously');
+const connectors = [
+  baseAccount({
+    appName: 'NewsCast Debate',
+  }),
+  miniAppConnector(), // Farcaster connector as fallback
+  metaMask({
+    dappMetadata: {
+      name: 'NewsCast Debate',
+      url: currentUrl,
+    },
+  }),
+];
 if (hasValidWalletConnectId) {
   connectors.push(
     walletConnect({

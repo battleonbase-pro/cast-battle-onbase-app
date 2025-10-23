@@ -1,5 +1,4 @@
 "use client";
-import { useState, useEffect } from 'react';
 import BaseAccountAuth from './BaseAccountAuth';
 import FarcasterAuth from './FarcasterAuth';
 import { useEnvironmentDetection } from '../hooks/useEnvironmentDetection';
@@ -11,17 +10,9 @@ interface UnifiedAuthProps {
 
 export default function UnifiedAuth({ onAuthSuccess, onAuthError }: UnifiedAuthProps) {
   const environmentInfo = useEnvironmentDetection();
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Set loading to false once environment is detected
-  useEffect(() => {
-    if (environmentInfo.environment) {
-      setIsLoading(false);
-    }
-  }, [environmentInfo.environment]);
 
   // Show loading while detecting environment
-  if (isLoading) {
+  if (environmentInfo.isLoading) {
     return (
       <div style={{ 
         display: 'flex', 

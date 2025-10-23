@@ -7,6 +7,7 @@ export interface EnvironmentInfo {
   isBaseApp: boolean;
   isExternalBrowser: boolean;
   environment: 'farcaster' | 'base' | 'external';
+  isLoading: boolean;
 }
 
 export function useEnvironmentDetection(): EnvironmentInfo {
@@ -14,13 +15,16 @@ export function useEnvironmentDetection(): EnvironmentInfo {
     isFarcasterMiniApp: false,
     isBaseApp: false,
     isExternalBrowser: false,
-    environment: 'external'
+    environment: 'external',
+    isLoading: true
   });
 
   useEffect(() => {
     const detectEnvironment = async () => {
       try {
-        // Check if we're in a Farcaster Mini App
+        console.log('🔍 Starting environment detection...');
+        
+        // Use the most reliable method: Farcaster SDK
         const inMiniApp = await sdk.isInMiniApp();
         
         if (inMiniApp) {
@@ -29,7 +33,8 @@ export function useEnvironmentDetection(): EnvironmentInfo {
             isFarcasterMiniApp: true,
             isBaseApp: false,
             isExternalBrowser: false,
-            environment: 'farcaster'
+            environment: 'farcaster',
+            isLoading: false
           });
           return;
         }
@@ -46,7 +51,8 @@ export function useEnvironmentDetection(): EnvironmentInfo {
             isFarcasterMiniApp: false,
             isBaseApp: true,
             isExternalBrowser: false,
-            environment: 'base'
+            environment: 'base',
+            isLoading: false
           });
           return;
         }
@@ -57,7 +63,8 @@ export function useEnvironmentDetection(): EnvironmentInfo {
           isFarcasterMiniApp: false,
           isBaseApp: false,
           isExternalBrowser: true,
-          environment: 'external'
+          environment: 'external',
+          isLoading: false
         });
       } catch (error) {
         console.log('⚠️ Environment detection failed, defaulting to external:', error);
@@ -65,7 +72,8 @@ export function useEnvironmentDetection(): EnvironmentInfo {
           isFarcasterMiniApp: false,
           isBaseApp: false,
           isExternalBrowser: true,
-          environment: 'external'
+          environment: 'external',
+          isLoading: false
         });
       }
     };

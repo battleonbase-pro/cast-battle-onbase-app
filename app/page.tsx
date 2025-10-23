@@ -519,7 +519,7 @@ export default function Home() {
   };
 
   // Handle payment success - called by BasePaymentButton (x402 protocol)
-  const handlePaymentSuccess = (transactionId?: string) => {
+  const handlePaymentSuccess = async (transactionId?: string) => {
     console.log('💰 Payment completed successfully');
     console.log('📝 Transaction ID:', transactionId);
     setPaymentCompleted(true);
@@ -530,8 +530,8 @@ export default function Home() {
     setCastContent('');
     
     // Automatically submit cast after payment success with X-PAYMENT header
-    setTimeout(() => {
-      submitCastAfterPayment(transactionId);
+    setTimeout(async () => {
+      await submitCastAfterPayment(transactionId);
     }, 1000);
   };
 
@@ -1586,7 +1586,11 @@ export default function Home() {
                             
                             {/* Single Payment Button with Dynamic States */}
                             <UnifiedPaymentButton
-                              onClick={handlePaymentFlow} // Check payment requirement first (x402 protocol)
+                              onClick={() => {
+                                // Direct payment trigger - the x402 protocol will handle payment requirement check
+                                console.log('💰 Payment button clicked - triggering payment directly');
+                                setPaymentStatus('processing');
+                              }}
                               onSuccess={handlePaymentSuccess}
                               disabled={(() => {
                                 const isDisabled = submittingCast || castContent.trim().length < 10 || castContent.trim().length > 140 || paymentSuccessCastFailed || paymentCompleted;

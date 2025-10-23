@@ -24,6 +24,22 @@ export default function UnifiedPaymentButton({
 }: UnifiedPaymentButtonProps) {
   const environmentInfo = useEnvironmentDetection();
 
+  // Show loading state while detecting environment
+  if (environmentInfo.isLoading) {
+    return (
+      <div style={{ 
+        padding: '12px 24px', 
+        backgroundColor: '#f3f4f6', 
+        borderRadius: '8px',
+        textAlign: 'center',
+        color: '#6b7280',
+        fontSize: '14px'
+      }}>
+        🔍 Detecting environment...
+      </div>
+    );
+  }
+
   // Render appropriate payment component based on environment
   switch (environmentInfo.environment) {
     case 'farcaster':
