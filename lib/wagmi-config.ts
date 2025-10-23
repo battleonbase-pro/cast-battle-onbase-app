@@ -69,16 +69,24 @@ console.log('🔗 Wagmi Configuration:', {
   network: process.env.NEXT_PUBLIC_NETWORK
 });
 
-export const config = createConfig({
-  chains: [baseSepolia, base, mainnet],
-  transports: {
-    [baseSepolia.id]: http(),
-    [base.id]: http(),
-    [mainnet.id]: http(),
-  },
-  connectors,
-  ssr: true,
-  autoConnect: true,
-  // Set default chain for development/testnet
-  ...(isTestnet && { defaultChain: baseSepolia }),
-})
+// Create config as singleton to prevent multiple WalletConnect initializations
+let wagmiConfig: ReturnType<typeof createConfig> | null = null;
+
+export const config = (() => {
+  if (!wagmiConfig) {
+    wagmiConfig = createConfig({
+      chains: [baseSepolia, base, mainnet],
+      transports: {
+        [baseSepolia.id]: http(),
+        [base.id]: http(),
+        [mainnet.id]: http(),
+      },
+      connectors,
+      ssr: true,
+      autoConnect: true,
+      // Set default chain for development/testnet
+      ...(isTestnet && { defaultChain: baseSepolia }),
+    });
+  }
+  return wagmiConfig;
+})();

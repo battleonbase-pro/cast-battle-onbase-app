@@ -6,7 +6,15 @@ import { OnchainKitProvider } from '@coinbase/onchainkit';
 import '@coinbase/onchainkit/styles.css';
 import { config } from '@/lib/wagmi-config';
 
-const queryClient = new QueryClient();
+// Create QueryClient outside component to prevent recreation on every render
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 10, // 10 minutes
+    },
+  },
+});
 
 export function RootProvider({ children }: { children: ReactNode }) {
   return (
