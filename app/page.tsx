@@ -107,6 +107,7 @@ export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [baseAccountUser, setBaseAccountUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isMiniApp, setIsMiniApp] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [paymentSuccessCastFailed, setPaymentSuccessCastFailed] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
@@ -218,6 +219,22 @@ export default function Home() {
   };
 
   // Authentication is now handled by UnifiedAuth component
+
+  // Detect mini app environment
+  useEffect(() => {
+    const detectMiniApp = async () => {
+      try {
+        const inMiniApp = await sdk.isInMiniApp();
+        setIsMiniApp(inMiniApp);
+        console.log('🔍 Mini App Detection:', inMiniApp);
+      } catch (error) {
+        console.error('❌ Failed to detect mini app:', error);
+        setIsMiniApp(false);
+      }
+    };
+
+    detectMiniApp();
+  }, []);
 
   // Countdown timer effect - updates every second locally, syncs with server every 5 seconds
   useEffect(() => {
@@ -515,6 +532,16 @@ export default function Home() {
       console.error('❌ Payment flow failed:', error);
       setError('Failed to process payment. Please try again.');
       setPaymentStatus('failed');
+    }
+  };
+
+  // Generate Base explorer URL for transaction
+  const getBaseExplorerUrl = (transactionHash: string) => {
+    const isTestnet = process.env.NEXT_PUBLIC_NETWORK === 'testnet' || process.env.NODE_ENV === 'development';
+    if (isTestnet) {
+      return `https://sepolia.basescan.org/tx/${transactionHash}`;
+    } else {
+      return `https://basescan.org/tx/${transactionHash}`;
     }
   };
 
@@ -1268,6 +1295,19 @@ export default function Home() {
         </div>
       </header>
 
+          {/* Debug Mini App Status */}
+          <div style={{ 
+            background: '#f0f0f0', 
+            padding: '8px 16px', 
+            margin: '0', 
+            fontSize: '12px', 
+            color: '#666',
+            borderBottom: '1px solid #ddd',
+            textAlign: 'center'
+          }}>
+            🔍 Debug: isMiniApp = {isMiniApp === null ? 'Loading...' : isMiniApp ? 'true' : 'false'}
+          </div>
+
           {/* Help Modal */}
           {showHelp && (
             <div className={styles.helpModal}>
@@ -1557,12 +1597,10 @@ export default function Home() {
                             <h3 className={styles.submittedTitle}>🎉 Thank You for Participating!</h3>
                             <p className={styles.submittedMessage}>
                               🎉 Thank you for participating in NewsCast Debate! Your 1 USDC payment has been processed successfully and your argument has been submitted! Good luck with your debate - may the best debater win! 🏆
+                              {paymentTransactionId && (
+                                <> You can view your <a href={getBaseExplorerUrl(paymentTransactionId)} target="_blank" rel="noopener noreferrer" style={{ color: '#0052ff', textDecoration: 'underline', fontWeight: 'bold' }}>transaction</a> on Base explorer.</>
+                              )}
                             </p>
-                            <div className={styles.submittedFooter}>
-                              <p className={styles.submittedNote}>
-                                You can view your transaction and track the debate progress below.
-                              </p>
-                            </div>
                           </div>
                         ) : (
                           <>
