@@ -261,7 +261,7 @@ export default function FarcasterAuth({ onAuthSuccess, onAuthError }: FarcasterA
                 disabled={isSigningIn}
                 className={styles.signInButton}
               >
-                {isSigningIn ? 'Connecting...' : 'Connect Farcaster Wallet'}
+                {isSigningIn ? 'Connecting...' : 'Connect Wallet'}
               </button>
               {isSigningIn && (
                 <div className={styles.authDescription} style={{ marginTop: 8 }}>

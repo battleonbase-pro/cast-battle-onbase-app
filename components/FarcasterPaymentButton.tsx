@@ -6,6 +6,7 @@ import styles from './FarcasterPaymentButton.module.css';
 
 interface FarcasterPaymentButtonProps {
   onClick: () => void;
+  onSuccess?: (transactionId?: string) => void;
   disabled?: boolean;
   loading?: boolean;
   children: React.ReactNode;
@@ -15,6 +16,7 @@ interface FarcasterPaymentButtonProps {
 
 export default function FarcasterPaymentButton({
   onClick,
+  onSuccess,
   disabled = false,
   loading = false,
   children,
@@ -70,13 +72,14 @@ export default function FarcasterPaymentButton({
       }
 
       // Prepare USDC transfer transaction
-      const transferData = `0xa9059cbb${recipientAddress.slice(2).padStart(64, '0')}${parseUnits(amount, 6).toString(16).padStart(64, '0')}`;
+      const usdcAmount = parseUnits(amount, 6); // USDC has 6 decimals
+      const transferData = `0xa9059cbb${recipientAddress.slice(2).padStart(64, '0')}${usdcAmount.toString(16).padStart(64, '0')}`;
 
       const transactionParams = {
         to: USDC_CONTRACT_ADDRESS,
         data: transferData,
         value: '0x0',
-        gas: '0x5208', // 21000 gas limit
+        gas: '0x7530', // 30000 gas limit for ERC20 transfer
       };
 
       console.log('🚀 Initiating Farcaster payment transaction:', transactionParams);
@@ -105,6 +108,10 @@ export default function FarcasterPaymentButton({
 
       if (receipt && receipt.status === '0x1') {
         console.log('✅ Farcaster payment transaction confirmed:', receipt);
+        // Call onSuccess with transaction hash
+        if (onSuccess) {
+          onSuccess(txHash);
+        }
         onClick(); // Call the original onClick handler
       } else {
         throw new Error('Transaction failed or timed out');
