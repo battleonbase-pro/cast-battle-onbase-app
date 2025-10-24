@@ -1505,6 +1505,18 @@ export default function Home() {
               <div>Context Available: {context ? '✅' : '❌'}</div>
               <div>Context Type: {typeof context}</div>
               <div>MiniKit Ready: {isMiniAppReady ? '✅' : '❌'}</div>
+              <div style={{ marginTop: '8px', borderTop: '1px solid #333', paddingTop: '8px' }}>
+                <div><strong>Context.Client JSON:</strong></div>
+                <div style={{ fontSize: '10px', wordBreak: 'break-all', maxHeight: '100px', overflow: 'auto' }}>
+                  {context?.client ? JSON.stringify(context.client, null, 2) : 'No client context'}
+                </div>
+              </div>
+              <div style={{ marginTop: '8px', borderTop: '1px solid #333', paddingTop: '8px' }}>
+                <div><strong>Full Context JSON:</strong></div>
+                <div style={{ fontSize: '10px', wordBreak: 'break-all', maxHeight: '150px', overflow: 'auto' }}>
+                  {context ? JSON.stringify(context, null, 2) : 'No context'}
+                </div>
+              </div>
               <div>Launch: {String(launchLocation || 'Unknown')}</div>
               <div>Added: {hasAddedApp ? '✅' : '❌'}</div>
               <div>Frame Ready: {isMiniAppReady ? '✅' : '❌'}</div>
