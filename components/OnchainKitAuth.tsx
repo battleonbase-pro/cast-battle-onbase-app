@@ -25,7 +25,7 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
   const [battlePreview, setBattlePreview] = useState<BattlePreview | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
-  const [showDebug, setShowDebug] = useState<boolean>(true); // Add debug state
+  const [showDebug, setShowDebug] = useState<boolean>(false); // Debug disabled by default
   
   // Use OnchainKit's useMiniKit hook for Base App Mini App
   const { context, isMiniAppReady } = useMiniKit();

@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { sdk } from '@farcaster/miniapp-sdk';
 import { useMiniKit } from '@coinbase/onchainkit/minikit';
+import { useEnvironmentDetection } from '../hooks/useEnvironmentDetection';
 import UnifiedAuth from '../components/UnifiedAuth';
 import UnifiedPaymentButton from '../components/UnifiedPaymentButton';
 import LikeButton from '../components/LikeButton';
@@ -106,6 +107,7 @@ interface BattleHistory {
 
 export default function Home() {
   const { context, setMiniAppReady, isMiniAppReady } = useMiniKit();
+  const environmentInfo = useEnvironmentDetection(); // Use proper environment detection hook
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [baseAccountUser, setBaseAccountUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -114,7 +116,7 @@ export default function Home() {
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [currentBattle, setCurrentBattle] = useState<Battle | null>(null);
   const [battleLoading, setBattleLoading] = useState(false);
-  const [showContextDebug, setShowContextDebug] = useState(true);
+  const [showContextDebug, setShowContextDebug] = useState(false); // Debug disabled by default
   
   // Tab and UI state
   const [activeTab, setActiveTab] = useState<'debate' | 'arguments' | 'history' | 'leaderboard'>('debate');
@@ -210,13 +212,7 @@ export default function Home() {
   const [sseConnection, setSseConnection] = useState<EventSource | null>(null);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
 
-  // Enhanced environment detection using MiniKit context
-  const isBaseApp = context?.client?.clientFid === 309857;
-  const isFarcaster = context?.client?.clientFid === 9152; // Updated with actual Farcaster ClientFID
-  const isMiniApp = isBaseApp || isFarcaster;
-  const userFid = context?.user?.fid;
-  const launchLocation = context?.location;
-  const hasAddedApp = context?.client?.added;
+  // Environment detection is now handled by useEnvironmentDetection hook
   
   // Debug clientFid availability
   const clientFid = context?.client?.clientFid;
@@ -1366,18 +1362,19 @@ export default function Home() {
                           console.log('🔗 Connecting to wagmi for payment transactions...');
                           console.log('🔍 Enhanced environment detection:', {
                             userEnvironment: user.environment,
-                            isBaseApp,
-                            isFarcaster,
-                            isMiniApp,
+                            isBaseApp: environmentInfo.isBaseApp,
+                            isFarcaster: environmentInfo.isFarcaster,
+                            isMiniApp: environmentInfo.isMiniApp,
+                            environment: environmentInfo.environment,
                             clientFid: context?.client?.clientFid
                           });
                           
                           // Choose the right connector based on enhanced environment detection
                           let connector;
-                          if (isFarcaster || user.environment === 'farcaster') {
+                          if (environmentInfo.isFarcaster || user.environment === 'farcaster') {
                             connector = connectors.find(c => c.id === 'farcasterMiniApp');
                             console.log('🔍 Using Farcaster Mini App connector (enhanced detection)');
-                          } else if (isBaseApp || user.environment === 'base') {
+                          } else if (environmentInfo.isBaseApp || user.environment === 'base') {
                             connector = connectors.find(c => c.id === 'baseAccount');
                             console.log('🔍 Using Base Account connector (enhanced detection)');
                           } else {
@@ -1432,16 +1429,7 @@ export default function Home() {
                       console.error('❌ Unified authentication error:', error);
                       // Error is now handled within the UnifiedAuth component
                     }}
-                    environmentInfo={{
-                      isMiniApp,
-                      isExternalBrowser: !isMiniApp,
-                      isFarcaster,
-                      isBaseApp,
-                      environment: isBaseApp ? 'base' : isFarcaster ? 'farcaster' : 'external',
-                      isLoading: false,
-                      userFid: userFid?.toString(),
-                      clientFid: clientFid?.toString()
-                    }}
+                    environmentInfo={environmentInfo}
                   />
                 </section>
       ) : (
