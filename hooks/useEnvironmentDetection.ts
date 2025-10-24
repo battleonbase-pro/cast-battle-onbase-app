@@ -42,11 +42,16 @@ export function useEnvironmentDetection(): EnvironmentInfo {
             environment: 'external',
             isLoading: false
           });
-        }, 3000); // 3 second timeout
+        }, 10000); // 10 second timeout - increased for Base App Mini App
         
         // Wait for MiniKit context to be available
-        if (!isMiniAppReady || !context) {
-          console.log('⏳ Waiting for MiniKit context...');
+        // Check for context availability rather than just isMiniAppReady
+        if (!context || !context.client) {
+          console.log('⏳ Waiting for MiniKit context...', {
+            hasContext: !!context,
+            hasClient: !!context?.client,
+            isMiniAppReady
+          });
           return;
         }
 

@@ -29,7 +29,10 @@ export function RootProvider({ children }: { children: ReactNode }) {
     miniKitEnabled: true,
     autoConnect: true,
     nodeEnv: process.env.NODE_ENV,
-    allEnvKeys: Object.keys(process.env).filter(key => key.startsWith('NEXT_PUBLIC_'))
+    allEnvKeys: Object.keys(process.env).filter(key => key.startsWith('NEXT_PUBLIC_')),
+    // Additional debugging for client-side environment
+    isClient: typeof window !== 'undefined',
+    windowLocation: typeof window !== 'undefined' ? window.location.href : 'server'
   });
 
   return (
