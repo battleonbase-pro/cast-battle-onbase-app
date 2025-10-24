@@ -17,6 +17,14 @@ const queryClient = new QueryClient({
 });
 
 export function RootProvider({ children }: { children: ReactNode }) {
+  console.log('🔧 RootProvider initialization:', {
+    hasApiKey: !!process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY,
+    apiKeyLength: process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY?.length,
+    chain: config.chains[0]?.name,
+    chainId: config.chains[0]?.id,
+    miniKitEnabled: true
+  });
+
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>

@@ -226,6 +226,7 @@ export default function Home() {
     console.log('🔍 Context Debug (Main Page):', {
       hasContext: !!context,
       contextType: typeof context,
+      contextValue: context,
       hasClient: !!context?.client,
       clientFid: context?.client?.clientFid,
       clientFidType: typeof context?.client?.clientFid,
