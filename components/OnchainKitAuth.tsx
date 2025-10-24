@@ -44,15 +44,14 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
   // Add timeout to prevent infinite loading
   useEffect(() => {
     const timeout = setTimeout(() => {
-      if (!isAuthenticated && isMiniAppReady && context?.client?.clientFid === 309857) {
+      if (!isAuthenticated && isMiniAppReady && context?.client?.clientFid === 309857 && context?.user?.fid) {
         console.log('⏰ OnchainKitAuth timeout - forcing authentication for Base App');
-        // Force authentication if we're in Base App but haven't authenticated yet
-        const identifier = context.user?.fid?.toString() || context.client?.clientFid?.toString() || 'base-user';
-        setUserAddress(identifier);
+        // Force authentication if we're in Base App with userFid but haven't authenticated yet
+        setUserAddress(context.user.fid.toString());
         setIsAuthenticated(true);
 
         const authUser = {
-          address: identifier,
+          address: context.user.fid.toString(),
           isAuthenticated: true,
           environment: 'base'
         };
@@ -88,19 +87,19 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
 
   // Handle authentication success
   useEffect(() => {
-    if (isMiniAppReady && context?.client?.clientFid === 309857) {
+    if (isMiniAppReady && context?.client?.clientFid === 309857 && context?.user?.fid) {
       console.log('✅ OnchainKit authentication detected for Base App:', { 
-        fid: context.user?.fid, 
+        fid: context.user.fid, 
         clientFid: context.client?.clientFid 
       });
       
-      // For Base App Mini App, use clientFid as identifier if userFid is not available
-      const identifier = context.user?.fid?.toString() || context.client?.clientFid?.toString() || 'base-user';
-      setUserAddress(identifier);
+      // For Base App Mini App, user should connect their Base web wallet for payments
+      // We authenticate them with their Farcaster FID but they need to connect wallet separately
+      setUserAddress(context.user.fid.toString());
       setIsAuthenticated(true);
 
       const authUser = {
-        address: identifier, // Using FID or ClientFID as address identifier
+        address: context.user.fid.toString(), // Using FID as identifier
         isAuthenticated: true,
         environment: 'base' // Indicate Base App environment
       };
@@ -186,6 +185,9 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
           <div className={styles.connectedInfo}>
             <p>✅ Authenticated as FID: {userAddress}</p>
             <p>You are ready to participate!</p>
+            <p style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
+              💡 You'll connect your Base wallet when making payments
+            </p>
           </div>
         )}
       </div>
