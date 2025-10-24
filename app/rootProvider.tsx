@@ -17,9 +17,13 @@ const queryClient = new QueryClient({
   },
 });
 
-export function RootProvider({ children }: { children: ReactNode }) {
-  // Debug environment variable loading
-  const apiKey = process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY;
+interface RootProviderProps {
+  children: ReactNode;
+  apiKey: string;
+}
+
+export function RootProvider({ children, apiKey }: RootProviderProps) {
+  // Clean approach: API key is passed as a prop from server component
   console.log('🔧 RootProvider initialization:', {
     hasApiKey: !!apiKey,
     apiKeyLength: apiKey?.length,
@@ -29,17 +33,18 @@ export function RootProvider({ children }: { children: ReactNode }) {
     miniKitEnabled: true,
     autoConnect: true,
     nodeEnv: process.env.NODE_ENV,
-    allEnvKeys: Object.keys(process.env).filter(key => key.startsWith('NEXT_PUBLIC_')),
     // Additional debugging for client-side environment
     isClient: typeof window !== 'undefined',
-    windowLocation: typeof window !== 'undefined' ? window.location.href : 'server'
+    windowLocation: typeof window !== 'undefined' ? window.location.href : 'server',
+    // Check if we're in a Mini App environment
+    userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'server'
   });
 
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <OnchainKitProvider
-          apiKey={process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY}
+          apiKey={apiKey}
           chain={base}
           config={{
             appearance: {

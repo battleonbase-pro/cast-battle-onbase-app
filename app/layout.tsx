@@ -73,6 +73,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Clean approach: Get API key from server-side environment
+  const apiKey = process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY || '';
+  
   return (
     <html lang="en">
       <head>
@@ -113,7 +116,7 @@ export default function RootLayout({
             })
           }}
         />
-        <RootProvider>
+        <RootProvider apiKey={apiKey}>
           <SafeArea>
             {children}
           </SafeArea>
