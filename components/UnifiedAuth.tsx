@@ -1,15 +1,15 @@
 "use client";
 import BaseAccountAuth from './BaseAccountAuth';
 import FarcasterAuth from './FarcasterAuth';
-import { useEnvironmentDetection } from '../hooks/useEnvironmentDetection';
+import { EnvironmentInfo } from '../hooks/useEnvironmentDetection';
 
 interface UnifiedAuthProps {
   onAuthSuccess: (user: { address: string; isAuthenticated: boolean; environment: string } | null) => void;
   onAuthError: (error: string) => void;
+  environmentInfo: EnvironmentInfo;
 }
 
-export default function UnifiedAuth({ onAuthSuccess, onAuthError }: UnifiedAuthProps) {
-  const environmentInfo = useEnvironmentDetection();
+export default function UnifiedAuth({ onAuthSuccess, onAuthError, environmentInfo }: UnifiedAuthProps) {
 
   // Show loading while detecting environment
   if (environmentInfo.isLoading) {

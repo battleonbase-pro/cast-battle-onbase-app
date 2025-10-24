@@ -1432,6 +1432,16 @@ export default function Home() {
                       console.error('❌ Unified authentication error:', error);
                       // Error is now handled within the UnifiedAuth component
                     }}
+                    environmentInfo={{
+                      isMiniApp,
+                      isExternalBrowser: !isMiniApp,
+                      isFarcaster,
+                      isBaseApp,
+                      environment: isBaseApp ? 'base' : isFarcaster ? 'farcaster' : 'external',
+                      isLoading: false,
+                      userFid: userFid?.toString(),
+                      clientFid: clientFid?.toString()
+                    }}
                   />
                 </section>
       ) : (
