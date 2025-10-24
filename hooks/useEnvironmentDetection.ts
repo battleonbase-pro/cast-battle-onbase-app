@@ -25,15 +25,33 @@ export function useEnvironmentDetection(): EnvironmentInfo {
   });
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
     const detectEnvironment = async () => {
       try {
         console.log('🔍 Starting enhanced environment detection...');
+        
+        // Set a timeout to prevent infinite loading
+        timeoutId = setTimeout(() => {
+          console.log('⏰ Environment detection timeout, defaulting to external browser');
+          setEnvironmentInfo({
+            isMiniApp: false,
+            isExternalBrowser: true,
+            isFarcaster: false,
+            isBaseApp: false,
+            environment: 'external',
+            isLoading: false
+          });
+        }, 3000); // 3 second timeout
         
         // Wait for MiniKit context to be available
         if (!isFrameReady || !context) {
           console.log('⏳ Waiting for MiniKit context...');
           return;
         }
+
+        // Clear timeout since we got context
+        clearTimeout(timeoutId);
 
         // Use MiniKit context for precise detection
         const isBaseApp = context.client?.clientFid === 309857;
@@ -101,6 +119,13 @@ export function useEnvironmentDetection(): EnvironmentInfo {
     };
 
     detectEnvironment();
+    
+    // Cleanup timeout on unmount
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [context, isFrameReady]);
 
   return environmentInfo;
