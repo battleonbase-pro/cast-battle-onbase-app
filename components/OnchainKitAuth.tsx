@@ -25,6 +25,7 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
   const [error, setError] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [userAddress, setUserAddress] = useState<string | null>(null);
+  const [showDebug, setShowDebug] = useState<boolean>(true); // Add debug state
   
   // Use OnchainKit's useMiniKit hook for Base App Mini App
   const { context, isMiniAppReady } = useMiniKit();
@@ -37,21 +38,28 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
       clientFid: context?.client?.clientFid,
       userFid: context?.user?.fid,
       isBaseApp: context?.client?.clientFid === 309857,
-      contextKeys: context ? Object.keys(context) : []
+      contextKeys: context ? Object.keys(context) : [],
+      fullContext: context,
+      authenticationCondition: isMiniAppReady && context?.client?.clientFid === 309857 && context?.user?.fid,
+      isAuthenticated
     });
-  }, [isMiniAppReady, context]);
+  }, [isMiniAppReady, context, isAuthenticated]);
 
   // Add timeout to prevent infinite loading
   useEffect(() => {
     const timeout = setTimeout(() => {
-      if (!isAuthenticated && isMiniAppReady && context?.client?.clientFid === 309857 && context?.user?.fid) {
+      if (!isAuthenticated && isMiniAppReady && context?.client?.clientFid === 309857) {
         console.log('⏰ OnchainKitAuth timeout - forcing authentication for Base App');
-        // Force authentication if we're in Base App with userFid but haven't authenticated yet
-        setUserAddress(context.user.fid.toString());
+        console.log('🔍 Timeout context:', { userFid: context?.user?.fid, clientFid: context?.client?.clientFid });
+        
+        // Force authentication if we're in Base App but haven't authenticated yet
+        // Use clientFid as fallback if userFid is still undefined
+        const identifier = context.user?.fid?.toString() || context.client?.clientFid?.toString() || 'base-user';
+        setUserAddress(identifier);
         setIsAuthenticated(true);
 
         const authUser = {
-          address: context.user.fid.toString(),
+          address: identifier,
           isAuthenticated: true,
           environment: 'base'
         };
@@ -59,7 +67,7 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
         console.log('✅ OnchainKitAuth timeout authentication:', authUser);
         onAuthSuccess(authUser);
       }
-    }, 5000); // 5 second timeout
+    }, 8000); // Increased to 8 second timeout
 
     return () => clearTimeout(timeout);
   }, [isAuthenticated, isMiniAppReady, context, onAuthSuccess]);
@@ -148,6 +156,57 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
 
   return (
     <div className={styles.authContainer}>
+      {/* Debug Panel for Base App Mini App */}
+      {showDebug && (
+        <div style={{
+          position: 'fixed',
+          top: '10px',
+          left: '10px',
+          background: 'rgba(0,0,0,0.9)',
+          color: 'white',
+          padding: '10px',
+          fontSize: '11px',
+          zIndex: 9999,
+          borderRadius: '5px',
+          fontFamily: 'monospace',
+          maxWidth: '300px',
+          maxHeight: '200px',
+          overflow: 'auto'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <div><strong>Base App Debug</strong></div>
+            <button
+              onClick={() => setShowDebug(false)}
+              onTouchEnd={() => setShowDebug(false)}
+              style={{
+                background: '#ff4444',
+                color: 'white',
+                border: 'none',
+                borderRadius: '3px',
+                padding: '4px 8px',
+                cursor: 'pointer',
+                fontSize: '10px',
+                fontWeight: 'bold',
+                marginLeft: '10px',
+                minWidth: '20px',
+                minHeight: '20px',
+                touchAction: 'manipulation'
+              }}
+            >
+              ✕
+            </button>
+          </div>
+          <div>MiniKit Ready: {isMiniAppReady ? '✅' : '❌'}</div>
+          <div>Has Context: {context ? '✅' : '❌'}</div>
+          <div>Client FID: {context?.client?.clientFid || 'undefined'}</div>
+          <div>User FID: {context?.user?.fid || 'undefined'}</div>
+          <div>Is Base App: {context?.client?.clientFid === 309857 ? '✅' : '❌'}</div>
+          <div>Is Authenticated: {isAuthenticated ? '✅' : '❌'}</div>
+          <div>User Address: {userAddress || 'None'}</div>
+          <div>Error: {error || 'None'}</div>
+        </div>
+      )}
+      
       <div className={styles.authCard}>
         <h2 className={styles.authTitle}>Join the Debate</h2>
         {battlePreview && (

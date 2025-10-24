@@ -1596,19 +1596,23 @@ export default function Home() {
               <div><strong>Debug Panel</strong></div>
               <button
                 onClick={() => setShowContextDebug(false)}
+                onTouchEnd={() => setShowContextDebug(false)}
                 style={{
                   background: '#ff4444',
                   color: 'white',
                   border: 'none',
                   borderRadius: '3px',
-                  padding: '4px 8px',
+                  padding: '8px 12px',
                   cursor: 'pointer',
-                  fontSize: '10px',
+                  fontSize: '12px',
                   fontWeight: 'bold',
-                  marginLeft: '10px'
+                  marginLeft: '10px',
+                  minWidth: '30px',
+                  minHeight: '30px',
+                  touchAction: 'manipulation'
                 }}
               >
-                ✕
+                ✕ Close
               </button>
             </div>
             <div>Auth: {baseAccountUser ? '✅' : '❌'}</div>
