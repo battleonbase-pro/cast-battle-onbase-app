@@ -923,10 +923,9 @@ export default function Home() {
     }
   };
 
-  // Initialize MiniKit frame (OnchainKit)
+  // Initialize MiniKit frame (OnchainKit) - following official example pattern
   useEffect(() => {
     if (!isMiniAppReady) {
-      console.log('🚀 Setting MiniKit as ready...');
       setMiniAppReady();
     }
   }, [setMiniAppReady, isMiniAppReady]);
