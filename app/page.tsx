@@ -217,6 +217,11 @@ export default function Home() {
   // Debug clientFid availability
   const clientFid = context?.client?.clientFid;
   const userFid = context?.user?.fid; // Add missing userFid variable
+  const launchLocation = context?.location; // Add missing launchLocation variable
+  const hasAddedApp = context?.client?.added; // Add missing hasAddedApp variable
+  const isBaseApp = context?.client?.clientFid === 309857; // Add missing isBaseApp variable
+  const isFarcaster = context?.client?.clientFid === 9152; // Add missing isFarcaster variable
+  const isMiniApp = isBaseApp || isFarcaster; // Add missing isMiniApp variable
   const hasClientContext = !!context?.client;
   
   // Enhanced debugging for context availability

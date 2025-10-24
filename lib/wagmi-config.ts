@@ -43,33 +43,29 @@ export const config = (() => {
     
     // Add external wallet connectors for external browsers only
     // This prevents eip6963RequestProvider errors in Mini App environments
-    try {
-      // Check if we're in a Mini App environment by looking for Mini App specific globals
-      const isInMiniApp = typeof window !== 'undefined' && 
-        (window.location.href.includes('miniapp') || 
-         window.location.href.includes('farcaster') ||
-         window.parent !== window);
-      
-      if (!isInMiniApp) {
-        connectors.push(
-          metaMask({
-            dappMetadata: {
-              name: 'NewsCast Debate',
-              url: currentUrl,
-            },
-          })
-        );
+    // For Mini Apps, we only use baseAccount and miniAppConnector
+    // External wallets are only added for external browser environments
+    if (typeof window !== 'undefined') {
+      try {
+        // More robust Mini App detection
+        const isInMiniApp = window.location.href.includes('miniapp') || 
+                           window.location.href.includes('farcaster') ||
+                           window.parent !== window ||
+                           window.location.href.includes('base.app');
+        
+        if (!isInMiniApp) {
+          connectors.push(
+            metaMask({
+              dappMetadata: {
+                name: 'NewsCast Debate',
+                url: currentUrl,
+              },
+            })
+          );
+        }
+      } catch (error) {
+        console.warn('Could not detect Mini App environment, skipping MetaMask connector:', error);
       }
-    } catch (error) {
-      // If we can't detect environment, include MetaMask as fallback
-      connectors.push(
-        metaMask({
-          dappMetadata: {
-            name: 'NewsCast Debate',
-            url: currentUrl,
-          },
-        })
-      );
     }
     if (hasValidWalletConnectId) {
       connectors.push(

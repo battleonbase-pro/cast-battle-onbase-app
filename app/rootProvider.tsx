@@ -18,13 +18,18 @@ const queryClient = new QueryClient({
 });
 
 export function RootProvider({ children }: { children: ReactNode }) {
+  // Debug environment variable loading
+  const apiKey = process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY;
   console.log('🔧 RootProvider initialization:', {
-    hasApiKey: !!process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY,
-    apiKeyLength: process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY?.length,
+    hasApiKey: !!apiKey,
+    apiKeyLength: apiKey?.length,
+    apiKeyPreview: apiKey ? `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}` : 'undefined',
     chain: base.name,
     chainId: base.id,
     miniKitEnabled: true,
-    autoConnect: true
+    autoConnect: true,
+    nodeEnv: process.env.NODE_ENV,
+    allEnvKeys: Object.keys(process.env).filter(key => key.startsWith('NEXT_PUBLIC_'))
   });
 
   return (
