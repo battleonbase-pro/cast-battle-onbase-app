@@ -1,6 +1,7 @@
 "use client";
 import BaseAccountAuth from './BaseAccountAuth';
 import FarcasterAuth from './FarcasterAuth';
+import OnchainKitAuth from './OnchainKitAuth';
 import { EnvironmentInfo } from '../hooks/useEnvironmentDetection';
 
 interface UnifiedAuthProps {
@@ -59,9 +60,9 @@ export default function UnifiedAuth({ onAuthSuccess, onAuthError, environmentInf
         );
       
       case 'base':
-        // Base App Mini App environment - use BaseAccountAuth
+        // Base App Mini App environment - use OnchainKit authentication
         return (
-          <BaseAccountAuth 
+          <OnchainKitAuth 
             onAuthSuccess={onAuthSuccess} 
             onAuthError={onAuthError} 
           />
