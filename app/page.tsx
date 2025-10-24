@@ -220,6 +220,21 @@ export default function Home() {
   // Debug clientFid availability
   const clientFid = context?.client?.clientFid;
   const hasClientContext = !!context?.client;
+  
+  // Enhanced debugging for context availability
+  useEffect(() => {
+    console.log('🔍 Context Debug (Main Page):', {
+      hasContext: !!context,
+      contextType: typeof context,
+      hasClient: !!context?.client,
+      clientFid: context?.client?.clientFid,
+      clientFidType: typeof context?.client?.clientFid,
+      hasUser: !!context?.user,
+      userFid: context?.user?.fid,
+      isMiniAppReady,
+      timestamp: new Date().toISOString()
+    });
+  }, [context, isMiniAppReady]);
 
 
   // Format time in HH:MM:SS format (retro digital style)
@@ -910,9 +925,21 @@ export default function Home() {
   // Initialize MiniKit frame (OnchainKit)
   useEffect(() => {
     if (!isMiniAppReady) {
+      console.log('🚀 Setting MiniKit as ready...');
       setMiniAppReady();
     }
   }, [setMiniAppReady, isMiniAppReady]);
+  
+  // Monitor context changes
+  useEffect(() => {
+    console.log('📊 Context Change Monitor:', {
+      hasContext: !!context,
+      contextKeys: context ? Object.keys(context) : [],
+      clientKeys: context?.client ? Object.keys(context.client) : [],
+      userKeys: context?.user ? Object.keys(context.user) : [],
+      timestamp: new Date().toISOString()
+    });
+  }, [context]);
 
   // Analytics tracking using MiniKit context
   useEffect(() => {
@@ -1475,6 +1502,9 @@ export default function Home() {
               <div>Client FID: {clientFid || 'None'}</div>
               <div>Has Client Context: {hasClientContext ? '✅' : '❌'}</div>
               <div>Client FID Type: {typeof clientFid}</div>
+              <div>Context Available: {context ? '✅' : '❌'}</div>
+              <div>Context Type: {typeof context}</div>
+              <div>MiniKit Ready: {isMiniAppReady ? '✅' : '❌'}</div>
               <div>Launch: {String(launchLocation || 'Unknown')}</div>
               <div>Added: {hasAddedApp ? '✅' : '❌'}</div>
               <div>Frame Ready: {isMiniAppReady ? '✅' : '❌'}</div>
