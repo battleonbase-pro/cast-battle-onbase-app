@@ -250,6 +250,28 @@ export default function Home() {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Fetch user points
+  const fetchUserPoints = useCallback(async (address: string) => {
+    try {
+      console.log('🔍 Fetching points for address:', address);
+      const response = await fetch(`/api/user/points?address=${encodeURIComponent(address)}`);
+      const data = await response.json();
+      
+      console.log('📊 Points API response:', data);
+      
+      if (data.success) {
+        setUserPoints(data.points || 0);
+        console.log('✅ User points fetched:', data.points);
+      } else {
+        console.error('❌ Failed to fetch user points:', data.error);
+        setUserPoints(0);
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch user points:', error);
+      setUserPoints(0);
+    }
+  }, []);
+
   // Authentication success callback - wrapped in useCallback to prevent unnecessary re-renders
   const handleAuthSuccess = useCallback(async (user: { address: string; isAuthenticated: boolean; environment: string } | null) => {
     if (user) {
@@ -499,28 +521,6 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Failed to fetch leaderboard:', error);
-    }
-  }, []);
-
-  // Fetch user points
-  const fetchUserPoints = useCallback(async (address: string) => {
-    try {
-      console.log('🔍 Fetching points for address:', address);
-      const response = await fetch(`/api/user/points?address=${encodeURIComponent(address)}`);
-      const data = await response.json();
-      
-      console.log('📊 Points API response:', data);
-      
-      if (data.success) {
-        setUserPoints(data.points || 0);
-        console.log('✅ User points fetched:', data.points);
-      } else {
-        console.error('❌ Failed to fetch user points:', data.error);
-        setUserPoints(0);
-      }
-    } catch (error) {
-      console.error('❌ Failed to fetch user points:', error);
-      setUserPoints(0);
     }
   }, []);
 
