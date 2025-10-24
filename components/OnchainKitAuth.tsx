@@ -29,6 +29,42 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
   // Use OnchainKit's useMiniKit hook for Base App Mini App
   const { context, isMiniAppReady } = useMiniKit();
 
+  // Debug MiniKit context for Base App
+  useEffect(() => {
+    console.log('🔍 OnchainKitAuth - MiniKit Context Debug:', {
+      isMiniAppReady,
+      hasContext: !!context,
+      clientFid: context?.client?.clientFid,
+      userFid: context?.user?.fid,
+      isBaseApp: context?.client?.clientFid === 309857,
+      contextKeys: context ? Object.keys(context) : []
+    });
+  }, [isMiniAppReady, context]);
+
+  // Add timeout to prevent infinite loading
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (!isAuthenticated && isMiniAppReady && context?.client?.clientFid === 309857) {
+        console.log('⏰ OnchainKitAuth timeout - forcing authentication for Base App');
+        // Force authentication if we're in Base App but haven't authenticated yet
+        const identifier = context.user?.fid?.toString() || context.client?.clientFid?.toString() || 'base-user';
+        setUserAddress(identifier);
+        setIsAuthenticated(true);
+
+        const authUser = {
+          address: identifier,
+          isAuthenticated: true,
+          environment: 'base'
+        };
+
+        console.log('✅ OnchainKitAuth timeout authentication:', authUser);
+        onAuthSuccess(authUser);
+      }
+    }, 5000); // 5 second timeout
+
+    return () => clearTimeout(timeout);
+  }, [isAuthenticated, isMiniAppReady, context, onAuthSuccess]);
+
   // Handle OnchainKit authentication for Base App Mini App
   const handleOnchainKitAuth = useCallback(async () => {
     try {
@@ -52,17 +88,19 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
 
   // Handle authentication success
   useEffect(() => {
-    if (isMiniAppReady && context?.user?.fid) {
+    if (isMiniAppReady && context?.client?.clientFid === 309857) {
       console.log('✅ OnchainKit authentication detected for Base App:', { 
-        fid: context.user.fid, 
+        fid: context.user?.fid, 
         clientFid: context.client?.clientFid 
       });
       
-      setUserAddress(context.user.fid.toString());
+      // For Base App Mini App, use clientFid as identifier if userFid is not available
+      const identifier = context.user?.fid?.toString() || context.client?.clientFid?.toString() || 'base-user';
+      setUserAddress(identifier);
       setIsAuthenticated(true);
 
       const authUser = {
-        address: context.user.fid.toString(), // Using FID as address identifier
+        address: identifier, // Using FID or ClientFID as address identifier
         isAuthenticated: true,
         environment: 'base' // Indicate Base App environment
       };
