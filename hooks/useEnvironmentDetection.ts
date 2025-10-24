@@ -55,7 +55,7 @@ export function useEnvironmentDetection(): EnvironmentInfo {
 
         // Use MiniKit context for precise detection
         const isBaseApp = context.client?.clientFid === 309857;
-        const isFarcaster = context.client?.clientFid === 1;
+        const isFarcaster = context.client?.clientFid === 9152; // Updated with actual Farcaster ClientFID
         const isMiniApp = isBaseApp || isFarcaster;
 
         console.log('🎯 MiniKit context detection:', {

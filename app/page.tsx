@@ -212,7 +212,7 @@ export default function Home() {
 
   // Enhanced environment detection using MiniKit context
   const isBaseApp = context?.client?.clientFid === 309857;
-  const isFarcaster = context?.client?.clientFid === 1;
+  const isFarcaster = context?.client?.clientFid === 9152; // Updated with actual Farcaster ClientFID
   const isMiniApp = isBaseApp || isFarcaster;
   const userFid = context?.user?.fid;
   const launchLocation = context?.location;
@@ -1309,9 +1309,10 @@ export default function Home() {
                 <li>Context Type: {typeof context}</li>
                 <li>Has Client: {context?.client ? '✅ Yes' : '❌ No'}</li>
                 <li>Has User: {context?.user ? '✅ Yes' : '❌ No'}</li>
-                <li>Client FID: {context?.client?.clientFid || 'undefined'}</li>
+                <li>Client FID: {context?.client?.clientFid || 'undefined'} (Expected: Base=309857, Farcaster=9152)</li>
                 <li>User FID: {context?.user?.fid || 'undefined'}</li>
                 <li>MiniKit Ready: {isMiniAppReady ? '✅ Yes' : '❌ No'}</li>
+                <li>Environment: {isBaseApp ? 'Base App' : isFarcaster ? 'Farcaster' : 'External Browser'}</li>
               </ul>
             </div>
             
