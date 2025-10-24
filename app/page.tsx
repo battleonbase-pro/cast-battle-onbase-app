@@ -105,7 +105,7 @@ interface BattleHistory {
 }
 
 export default function Home() {
-  const { context, setFrameReady, isFrameReady } = useMiniKit();
+  const { context, setMiniAppReady, isMiniAppReady } = useMiniKit();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [baseAccountUser, setBaseAccountUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -905,10 +905,10 @@ export default function Home() {
 
   // Initialize MiniKit frame (OnchainKit)
   useEffect(() => {
-    if (!isFrameReady) {
-      setFrameReady();
+    if (!isMiniAppReady) {
+      setMiniAppReady();
     }
-  }, [setFrameReady, isFrameReady]);
+  }, [setMiniAppReady, isMiniAppReady]);
 
   // Analytics tracking using MiniKit context
   useEffect(() => {
@@ -1455,7 +1455,7 @@ export default function Home() {
               <div>User FID: {userFid || 'None'}</div>
               <div>Launch: {String(launchLocation || 'Unknown')}</div>
               <div>Added: {hasAddedApp ? '✅' : '❌'}</div>
-              <div>Frame Ready: {isFrameReady ? '✅' : '❌'}</div>
+              <div>Frame Ready: {isMiniAppReady ? '✅' : '❌'}</div>
             </div>
             <button 
               onClick={() => {

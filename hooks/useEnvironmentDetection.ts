@@ -14,7 +14,7 @@ export interface EnvironmentInfo {
 }
 
 export function useEnvironmentDetection(): EnvironmentInfo {
-  const { context, isFrameReady } = useMiniKit();
+  const { context, isMiniAppReady } = useMiniKit();
   const [environmentInfo, setEnvironmentInfo] = useState<EnvironmentInfo>({
     isMiniApp: false,
     isExternalBrowser: true,
@@ -45,7 +45,7 @@ export function useEnvironmentDetection(): EnvironmentInfo {
         }, 3000); // 3 second timeout
         
         // Wait for MiniKit context to be available
-        if (!isFrameReady || !context) {
+        if (!isMiniAppReady || !context) {
           console.log('⏳ Waiting for MiniKit context...');
           return;
         }
@@ -126,7 +126,7 @@ export function useEnvironmentDetection(): EnvironmentInfo {
         clearTimeout(timeoutId);
       }
     };
-  }, [context, isFrameReady]);
+  }, [context, isMiniAppReady]);
 
   return environmentInfo;
 }
