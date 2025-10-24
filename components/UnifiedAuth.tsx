@@ -48,9 +48,18 @@ export default function UnifiedAuth({ onAuthSuccess, onAuthError }: UnifiedAuthP
   const renderAuthComponent = () => {
     switch (environmentInfo.environment) {
       case 'farcaster':
-        // Mini App environment - use FarcasterAuth
+        // Farcaster Mini App environment - use FarcasterAuth
         return (
           <FarcasterAuth 
+            onAuthSuccess={onAuthSuccess} 
+            onAuthError={onAuthError} 
+          />
+        );
+      
+      case 'base':
+        // Base App Mini App environment - use BaseAccountAuth
+        return (
+          <BaseAccountAuth 
             onAuthSuccess={onAuthSuccess} 
             onAuthError={onAuthError} 
           />
@@ -82,7 +91,7 @@ export default function UnifiedAuth({ onAuthSuccess, onAuthError }: UnifiedAuthP
       }}>
         🔍 Debug: Environment = {environmentInfo.environment} | 
         {environmentInfo.isMiniApp && (
-          <> Mini App = Yes | Farcaster = {environmentInfo.isFarcaster ? 'Yes' : 'No'}</>
+          <> Mini App = Yes | Farcaster = {environmentInfo.isFarcaster ? 'Yes' : 'No'} | Base App = {environmentInfo.isBaseApp ? 'Yes' : 'No'}</>
         )}
       </div>
       

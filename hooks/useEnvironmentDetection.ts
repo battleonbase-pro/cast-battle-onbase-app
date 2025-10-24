@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { sdk } from '@farcaster/miniapp-sdk';
+import { useMiniKit } from '@coinbase/onchainkit/minikit';
 
 export interface EnvironmentInfo {
   isMiniApp: boolean;
@@ -14,6 +14,7 @@ export interface EnvironmentInfo {
 }
 
 export function useEnvironmentDetection(): EnvironmentInfo {
+  const { context, isFrameReady } = useMiniKit();
   const [environmentInfo, setEnvironmentInfo] = useState<EnvironmentInfo>({
     isMiniApp: false,
     isExternalBrowser: true,
@@ -26,29 +27,57 @@ export function useEnvironmentDetection(): EnvironmentInfo {
   useEffect(() => {
     const detectEnvironment = async () => {
       try {
-        console.log('🔍 Starting environment detection with Farcaster SDK...');
+        console.log('🔍 Starting enhanced environment detection...');
         
-        // Use Farcaster SDK to detect any Mini App environment (Farcaster + Base Mini Apps)
-        const inMiniApp = await sdk.isInMiniApp();
-        
-        if (inMiniApp) {
-          console.log('🎯 Detected Mini App environment (Farcaster or Base Mini App)');
-          
-          // For now, we'll treat all Mini Apps as Farcaster since we can't distinguish
-          // between Farcaster and Base Mini Apps with the current SDK
-          setEnvironmentInfo({
-            isMiniApp: true,
-            isExternalBrowser: false,
-            isFarcaster: true, // Default to Farcaster for Mini Apps
-            isBaseApp: false,
-            environment: 'farcaster',
-            isLoading: false
-          });
-          
-          console.log('✅ Environment detected: Mini App (treated as Farcaster)');
+        // Wait for MiniKit context to be available
+        if (!isFrameReady || !context) {
+          console.log('⏳ Waiting for MiniKit context...');
+          return;
+        }
+
+        // Use MiniKit context for precise detection
+        const isBaseApp = context.client?.clientFid === 309857;
+        const isFarcaster = context.client?.clientFid === 1;
+        const isMiniApp = isBaseApp || isFarcaster;
+
+        console.log('🎯 MiniKit context detection:', {
+          clientFid: context.client?.clientFid,
+          isBaseApp,
+          isFarcaster,
+          isMiniApp,
+          userFid: context.user?.fid,
+          launchLocation: context.location
+        });
+
+        if (isMiniApp) {
+          if (isBaseApp) {
+            console.log('✅ Environment detected: Base App Mini App');
+            setEnvironmentInfo({
+              isMiniApp: true,
+              isExternalBrowser: false,
+              isFarcaster: false,
+              isBaseApp: true,
+              environment: 'base',
+              isLoading: false,
+              userFid: context.user?.fid,
+              clientFid: context.client?.clientFid?.toString()
+            });
+          } else if (isFarcaster) {
+            console.log('✅ Environment detected: Farcaster Mini App');
+            setEnvironmentInfo({
+              isMiniApp: true,
+              isExternalBrowser: false,
+              isFarcaster: true,
+              isBaseApp: false,
+              environment: 'farcaster',
+              isLoading: false,
+              userFid: context.user?.fid,
+              clientFid: context.client?.clientFid?.toString()
+            });
+          }
         } else {
-          // Not in Mini App environment
-          console.log('🌐 Detected external browser environment');
+          // Not in Mini App environment - external browser
+          console.log('🌐 Environment detected: External browser');
           setEnvironmentInfo({
             isMiniApp: false,
             isExternalBrowser: true,
@@ -72,7 +101,7 @@ export function useEnvironmentDetection(): EnvironmentInfo {
     };
 
     detectEnvironment();
-  }, []);
+  }, [context, isFrameReady]);
 
   return environmentInfo;
 }
