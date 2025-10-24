@@ -27,6 +27,67 @@ export default function FarcasterAuth({ onAuthSuccess, onAuthError }: FarcasterA
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [userAddress, setUserAddress] = useState<string | null>(null);
   
+  // Auto-detect wallet connection on component mount
+  useEffect(() => {
+    const checkWalletConnection = async () => {
+      try {
+        console.log('🔍 FarcasterAuth - Checking for existing wallet connection...');
+        
+        // Check if we're in a Farcaster Mini App
+        const inMiniApp = await sdk.isInMiniApp();
+        if (!inMiniApp) {
+          console.log('🔍 FarcasterAuth - Not in Farcaster Mini App, skipping auto-connect');
+          return;
+        }
+
+        // Call ready to hide splash screen
+        await sdk.actions.ready();
+
+        // Get Ethereum provider
+        let ethProvider;
+        try {
+          ethProvider = await sdk.wallet.getEthereumProvider();
+        } catch (error) {
+          ethProvider = sdk.wallet.ethProvider;
+        }
+        
+        if (!ethProvider || typeof ethProvider.request !== 'function') {
+          console.log('🔍 FarcasterAuth - No Ethereum provider available');
+          return;
+        }
+
+        // Check if wallet is already connected
+        try {
+          const accounts = await ethProvider.request({ method: 'eth_accounts' });
+          if (accounts && accounts.length > 0) {
+            const address = accounts[0];
+            console.log('✅ FarcasterAuth - Wallet already connected:', address);
+            
+            setUserAddress(address);
+            setIsConnected(true);
+
+            const user = {
+              address: address,
+              isAuthenticated: true,
+              environment: 'farcaster'
+            };
+
+            console.log('✅ FarcasterAuth - Auto-authentication successful:', user);
+            onAuthSuccess(user);
+          } else {
+            console.log('🔍 FarcasterAuth - No accounts found, wallet not connected');
+          }
+        } catch (error) {
+          console.log('🔍 FarcasterAuth - Error checking accounts:', error);
+        }
+      } catch (error) {
+        console.log('🔍 FarcasterAuth - Error in auto-connect check:', error);
+      }
+    };
+
+    checkWalletConnection();
+  }, [onAuthSuccess]);
+
   // Handle Farcaster authentication with simplified approach
   const handleFarcasterConnect = useCallback(async () => {
     try {

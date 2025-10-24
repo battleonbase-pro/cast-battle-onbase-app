@@ -524,6 +524,7 @@ export default function Home() {
   console.log('🔍 Main page render - baseAccountUser:', baseAccountUser);
   console.log('🔍 Main page render - isAuthenticated:', isAuthenticated);
   console.log('🔍 Main page render - environmentInfo:', environmentInfo);
+  console.log('🔍 Main page render - showing auth section:', !baseAccountUser);
 
   return (
     <div className={styles.container}>

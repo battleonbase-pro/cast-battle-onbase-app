@@ -23,6 +23,9 @@ export default function UnifiedPaymentButton({
   recipientAddress
 }: UnifiedPaymentButtonProps) {
   const environmentInfo = useEnvironmentDetection();
+  
+  // Debug logging
+  console.log('🔍 UnifiedPaymentButton - Environment info:', environmentInfo);
 
   // Show loading state while detecting environment
   if (environmentInfo.isLoading) {
@@ -42,7 +45,8 @@ export default function UnifiedPaymentButton({
 
   // Render appropriate payment component based on environment
   switch (environmentInfo.environment) {
-    case 'miniapp':
+    case 'farcaster':
+    case 'base':
       // Both Farcaster and Base Mini Apps use FarcasterPaymentButton
       return (
         <FarcasterPaymentButton
@@ -61,16 +65,16 @@ export default function UnifiedPaymentButton({
     default:
       // External browsers use BasePaymentButton
       return (
-                    <BasePaymentButton
-                      onClick={onClick}
-                      onSuccess={onSuccess}
-                      disabled={disabled}
-                      loading={loading}
-                      amount={amount}
-                      recipientAddress={recipientAddress}
-                    >
-                      {children}
-                    </BasePaymentButton>
+        <BasePaymentButton
+          onClick={onClick}
+          onSuccess={onSuccess}
+          disabled={disabled}
+          loading={loading}
+          amount={amount}
+          recipientAddress={recipientAddress}
+        >
+          {children}
+        </BasePaymentButton>
       );
   }
 }
