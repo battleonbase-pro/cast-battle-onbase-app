@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { sdk } from '@farcaster/miniapp-sdk';
 import Image from 'next/image';
-import styles from './FarcasterAuth.module.css';
+import styles from './BaseAccountAuth.module.css';
 
 interface FarcasterAuthProps {
   onAuthSuccess: (user: { address: string; isAuthenticated: boolean; environment: string } | null) => void;
@@ -130,110 +130,165 @@ export default function FarcasterAuth({ onAuthSuccess, onAuthError }: FarcasterA
 
   if (isConnected && userAddress) {
     return (
-      <div className={styles.container}>
-        <div className={styles.successMessage}>
-          <h2>✅ Connected to Farcaster!</h2>
-          <p>Welcome to NewsCast Debate</p>
-          <div className={styles.userInfo}>
-            <p><strong>FID:</strong> {userAddress}</p>
+      <div className={styles.authContainer}>
+        <div className={styles.authContent}>
+          {/* Branding Section */}
+          <div className={styles.brandingSection}>
+            <h1 className={styles.brandTitle}>
+              <span className={styles.baseText}>Base</span>
+              <span className={styles.debateText}>Debate</span>
+            </h1>
+            <p className={styles.brandSubtitle}>AI-Powered News Debates</p>
+            <p className={styles.brandDescription}>
+              Join engaging debates on trending news topics. Earn points, compete with others, and win rewards.
+            </p>
           </div>
-        </div>
-        
-        {battlePreview && (
-          <div className={styles.battlePreview}>
-            <h3>Current Debate</h3>
-            <div className={styles.previewContent}>
-              <div className={styles.previewImage}>
-                <Image
-                  src={battlePreview.imageUrl || '/placeholder-debate.jpg'} 
-                  alt="Debate topic" 
-                  width={300}
-                  height={200}
-                  className={styles.previewImageElement}
-                />
+
+          {/* Battle Preview */}
+          {battlePreview && (
+            <div className={styles.battlePreview}>
+              <div className={styles.previewHeader}>
+                <span className={styles.liveIndicator}>LIVE</span>
+                <span className={styles.previewTitle}>Current Debate</span>
               </div>
-              <div className={styles.previewText}>
-                <h4 className={styles.previewTopic}>{battlePreview.title}</h4>
-                <p className={styles.previewDescription}>{battlePreview.description}</p>
+              <div className={styles.previewContent}>
+                <div className={styles.previewImage}>
+                  <Image
+                    src={battlePreview.imageUrl || '/default-debate.png'}
+                    alt="Debate topic"
+                    width={240}
+                    height={160}
+                    className={styles.previewImageElement}
+                  />
+                </div>
+                <div className={styles.previewText}>
+                  <p className={styles.previewTopic}>{battlePreview.title}</p>
+                  <p className={styles.previewDescription}>{battlePreview.description}</p>
+                </div>
                 <div className={styles.previewStats}>
-                  <span>👥 {battlePreview.participants} participants</span>
-                  <span>⏰ {formatTimeRemaining(timeRemaining)} remaining</span>
+                  <div className={styles.stat}>
+                    <span className={styles.statIcon}>👥</span>
+                    <span className={styles.statValue}>{battlePreview.participants}</span>
+                    <span className={styles.statLabel}>Participants</span>
+                  </div>
+                  <div className={styles.stat}>
+                    <span className={styles.statIcon}>⏰</span>
+                    <span className={styles.statValue}>{formatTimeRemaining(timeRemaining)}</span>
+                    <span className={styles.statLabel}>Remaining</span>
+                  </div>
+                </div>
+                <div className={styles.previewFooter}>
+                  <p className={styles.joinPrompt}>Join the debate and share your perspective!</p>
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Connected Info */}
+          <div className={styles.connectedInfo}>
+            <div className={styles.connectedIcon}>✅</div>
+            <div className={styles.connectedText}>
+              <div className={styles.connectedTitle}>Connected to Farcaster!</div>
+              <div className={styles.connectedAddress}>FID: {userAddress}</div>
+            </div>
           </div>
-        )}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <h1>🎯 NewsCast Debate</h1>
-        <p>Join the conversation on trending topics</p>
-      </div>
+    <div className={styles.authContainer}>
+      <div className={styles.authContent}>
+        {/* Branding Section */}
+        <div className={styles.brandingSection}>
+          <h1 className={styles.brandTitle}>
+            <span className={styles.baseText}>Base</span>
+            <span className={styles.debateText}>Debate</span>
+          </h1>
+          <p className={styles.brandSubtitle}>AI-Powered News Debates</p>
+          <p className={styles.brandDescription}>
+            Join engaging debates on trending news topics. Earn points, compete with others, and win rewards.
+          </p>
+        </div>
 
-      {battlePreview && (
-        <div className={styles.battlePreview}>
-          <h3>Current Debate</h3>
-          <div className={styles.previewContent}>
-            <div className={styles.previewImage}>
-              <Image
-                src={battlePreview.imageUrl || '/placeholder-debate.jpg'} 
-                alt="Debate topic" 
-                width={300}
-                height={200}
-                className={styles.previewImageElement}
-              />
+        {/* Battle Preview */}
+        {battlePreview && (
+          <div className={styles.battlePreview}>
+            <div className={styles.previewHeader}>
+              <span className={styles.liveIndicator}>LIVE</span>
+              <span className={styles.previewTitle}>Current Debate</span>
             </div>
-            <div className={styles.previewText}>
-              <h4 className={styles.previewTopic}>{battlePreview.title}</h4>
-              <p className={styles.previewDescription}>{battlePreview.description}</p>
+            <div className={styles.previewContent}>
+              <div className={styles.previewImage}>
+                <Image
+                  src={battlePreview.imageUrl || '/default-debate.png'}
+                  alt="Debate topic"
+                  width={240}
+                  height={160}
+                  className={styles.previewImageElement}
+                />
+              </div>
+              <div className={styles.previewText}>
+                <p className={styles.previewTopic}>{battlePreview.title}</p>
+                <p className={styles.previewDescription}>{battlePreview.description}</p>
+              </div>
               <div className={styles.previewStats}>
-                <span>👥 {battlePreview.participants} participants</span>
-                <span>⏰ {formatTimeRemaining(timeRemaining)} remaining</span>
+                <div className={styles.stat}>
+                  <span className={styles.statIcon}>👥</span>
+                  <span className={styles.statValue}>{battlePreview.participants}</span>
+                  <span className={styles.statLabel}>Participants</span>
+                </div>
+                <div className={styles.stat}>
+                  <span className={styles.statIcon}>⏰</span>
+                  <span className={styles.statValue}>{formatTimeRemaining(timeRemaining)}</span>
+                  <span className={styles.statLabel}>Remaining</span>
+                </div>
+              </div>
+              <div className={styles.previewFooter}>
+                <p className={styles.joinPrompt}>Join the debate and share your perspective!</p>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <div className={styles.authSection}>
-        <h2>Connect Your Farcaster Wallet</h2>
-        <p>Sign in to participate in debates and earn rewards</p>
-        
+        {/* Error Display */}
         {error && (
-          <div className={styles.errorMessage}>
-            <p>❌ {error}</p>
+          <div className={styles.errorContainer}>
+            <div className={styles.errorMessage}>
+              <span className={styles.errorIcon}>⚠️</span>
+              <span className={styles.errorText}>{error}</span>
+            </div>
+            <button 
+              className={styles.dismissButton}
+              onClick={() => setError(null)}
+            >
+              Dismiss
+            </button>
           </div>
         )}
 
-        <button
-          onClick={handleFarcasterConnect}
-          disabled={isSigningIn}
-          className={styles.connectButton}
-        >
-          {isSigningIn ? (
-            <>
-              <span className={styles.spinner}></span>
-              Authenticating...
-            </>
-          ) : (
-            <>
-              🔗 Connect Farcaster Wallet
-            </>
-          )}
-        </button>
-
-        <div className={styles.infoBox}>
-          <h4>🔒 Secure Authentication</h4>
-          <ul>
-            <li>✅ Uses OnchainKit's official authentication</li>
-            <li>✅ No private keys stored</li>
-            <li>✅ Cryptographically verified</li>
-            <li>✅ Works seamlessly in Farcaster Mini App</li>
-          </ul>
+        {/* Authentication Section */}
+        <div className={styles.authSection}>
+          <p className={styles.authDescription}>
+            Connect your Farcaster wallet to participate in debates and earn rewards.
+          </p>
+          <button
+            onClick={handleFarcasterConnect}
+            disabled={isSigningIn}
+            className={styles.signInButton}
+          >
+            {isSigningIn ? (
+              <>
+                <span className={styles.spinner}></span>
+                Authenticating...
+              </>
+            ) : (
+              <>
+                🔗 Connect Farcaster Wallet
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>

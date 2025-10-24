@@ -355,8 +355,20 @@
   transition: all 0.2s ease;
 }
 
-.backButton:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
-  color: #374151;
+/* Spinner for loading states */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s ease-in-out infinite;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

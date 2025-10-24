@@ -5,7 +5,7 @@ import { ConnectWallet, Wallet } from '@coinbase/onchainkit/wallet';
 import { useAccount } from 'wagmi';
 import { sdk } from '@farcaster/miniapp-sdk';
 import Image from 'next/image';
-import styles from './OnchainKitAuth.module.css';
+import styles from './BaseAccountAuth.module.css';
 
 interface OnchainKitAuthProps {
   onAuthSuccess: (user: { address: string; isAuthenticated: boolean; environment: string } | null) => void;
@@ -125,100 +125,98 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
 
   return (
     <div className={styles.authContainer}>
-      {/* Debug Panel for Base App Mini App */}
-      {showDebug && (
-        <div style={{
-          position: 'fixed',
-          top: '10px',
-          left: '10px',
-          background: 'rgba(0,0,0,0.9)',
-          color: 'white',
-          padding: '10px',
-          fontSize: '11px',
-          zIndex: 9999,
-          borderRadius: '5px',
-          fontFamily: 'monospace',
-          maxWidth: '300px',
-          maxHeight: '200px',
-          overflow: 'auto'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <div><strong>Base App Debug</strong></div>
-            <button
-              onClick={() => setShowDebug(false)}
-              onTouchEnd={() => setShowDebug(false)}
-              style={{
-                background: '#ff4444',
-                color: 'white',
-                border: 'none',
-                borderRadius: '3px',
-                padding: '4px 8px',
-                cursor: 'pointer',
-                fontSize: '10px',
-                fontWeight: 'bold',
-                marginLeft: '10px',
-                minWidth: '20px',
-                minHeight: '20px',
-                touchAction: 'manipulation'
-              }}
+      <div className={styles.authContent}>
+        {/* Branding Section */}
+        <div className={styles.brandingSection}>
+          <h1 className={styles.brandTitle}>
+            <span className={styles.baseText}>Base</span>
+            <span className={styles.debateText}>Debate</span>
+          </h1>
+          <p className={styles.brandSubtitle}>AI-Powered News Debates</p>
+          <p className={styles.brandDescription}>
+            Join engaging debates on trending news topics. Earn points, compete with others, and win rewards.
+          </p>
+        </div>
+
+        {/* Battle Preview */}
+        {battlePreview && (
+          <div className={styles.battlePreview}>
+            <div className={styles.previewHeader}>
+              <span className={styles.liveIndicator}>LIVE</span>
+              <span className={styles.previewTitle}>Current Debate</span>
+            </div>
+            <div className={styles.previewContent}>
+              <div className={styles.previewImage}>
+                <Image
+                  src={battlePreview.imageUrl || '/default-debate.png'}
+                  alt="Debate topic"
+                  width={240}
+                  height={160}
+                  className={styles.previewImageElement}
+                />
+              </div>
+              <div className={styles.previewText}>
+                <p className={styles.previewTopic}>{battlePreview.title}</p>
+                <p className={styles.previewDescription}>{battlePreview.description}</p>
+              </div>
+              <div className={styles.previewStats}>
+                <div className={styles.stat}>
+                  <span className={styles.statIcon}>👥</span>
+                  <span className={styles.statValue}>{battlePreview.participants}</span>
+                  <span className={styles.statLabel}>Participants</span>
+                </div>
+                <div className={styles.stat}>
+                  <span className={styles.statIcon}>⏰</span>
+                  <span className={styles.statValue}>{formatTime(timeRemaining > 0 ? timeRemaining : 0)}</span>
+                  <span className={styles.statLabel}>Remaining</span>
+                </div>
+              </div>
+              <div className={styles.previewFooter}>
+                <p className={styles.joinPrompt}>Join the debate and share your perspective!</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Error Display */}
+        {error && (
+          <div className={styles.errorContainer}>
+            <div className={styles.errorMessage}>
+              <span className={styles.errorIcon}>⚠️</span>
+              <span className={styles.errorText}>{error}</span>
+            </div>
+            <button 
+              className={styles.dismissButton}
+              onClick={() => setError(null)}
             >
-              ✕
+              Dismiss
             </button>
           </div>
-          <div>MiniKit Ready: {isMiniAppReady ? '✅' : '❌'}</div>
-          <div>Has Context: {context ? '✅' : '❌'}</div>
-          <div>Client FID: {context?.client?.clientFid || 'undefined'}</div>
-          <div>User FID: {context?.user?.fid || 'undefined'}</div>
-          <div>Is Base App: {context?.client?.clientFid === 309857 ? '✅' : '❌'}</div>
-          <div>Is Authenticated: {isConnected ? '✅' : '❌'}</div>
-          <div>User Address: {userAddress || 'None'}</div>
-          <div>Error: {error || 'None'}</div>
-        </div>
-      )}
-      
-      <div className={styles.authCard}>
-        <h2 className={styles.authTitle}>Join the Debate</h2>
-        {battlePreview && (
-          <div className={styles.previewContent}>
-            <div className={styles.previewImage}>
-              <Image
-                src={battlePreview.imageUrl || '/default-debate.png'}
-                alt="Debate topic"
-                width={240}
-                height={160}
-                className={styles.previewImageElement}
-              />
-            </div>
-            <div className={styles.previewText}>
-              <p className={styles.previewTopic}>{battlePreview.title}</p>
-              <p className={styles.previewDescription}>{battlePreview.description}</p>
-              <p className={styles.timeRemaining}>
-                Time Remaining: {formatTime(timeRemaining > 0 ? timeRemaining : 0)}
+        )}
+
+        {/* Authentication Section */}
+        <div className={styles.authSection}>
+          {!isConnected ? (
+            <div className={styles.walletSection}>
+              <p className={styles.authDescription}>
+                Connect your Base wallet to participate in debates and earn rewards.
               </p>
+              <Wallet>
+                <ConnectWallet />
+              </Wallet>
             </div>
-          </div>
-        )}
-
-        {error && <p className={styles.errorText}>{error}</p>}
-
-        {!isConnected ? (
-          <div className={styles.walletSection}>
-            <p className={styles.walletPrompt}>
-              Connect your Base wallet to participate in debates
-            </p>
-            <Wallet>
-              <ConnectWallet />
-            </Wallet>
-          </div>
-        ) : (
-          <div className={styles.connectedInfo}>
-            <p>✅ Connected: {address?.substring(0, 6)}...{address?.substring(address.length - 4)}</p>
-            <p>You are ready to participate!</p>
-            <p style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
-              💡 Your wallet is connected and ready for payments
-            </p>
-          </div>
-        )}
+          ) : (
+            <div className={styles.connectedInfo}>
+              <div className={styles.connectedIcon}>✅</div>
+              <div className={styles.connectedText}>
+                <div className={styles.connectedTitle}>Wallet Connected</div>
+                <div className={styles.connectedAddress}>
+                  {address?.substring(0, 6)}...{address?.substring(address.length - 4)}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
