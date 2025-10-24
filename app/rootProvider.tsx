@@ -23,7 +23,6 @@ interface RootProviderProps {
 }
 
 export function RootProvider({ children, apiKey }: RootProviderProps) {
-  // Clean approach: API key is passed as a prop from server component
   console.log('🔧 RootProvider initialization:', {
     hasApiKey: !!apiKey,
     apiKeyLength: apiKey?.length,
@@ -32,12 +31,7 @@ export function RootProvider({ children, apiKey }: RootProviderProps) {
     chainId: base.id,
     miniKitEnabled: true,
     autoConnect: true,
-    nodeEnv: process.env.NODE_ENV,
-    // Additional debugging for client-side environment
-    isClient: typeof window !== 'undefined',
-    windowLocation: typeof window !== 'undefined' ? window.location.href : 'server',
-    // Check if we're in a Mini App environment
-    userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'server'
+    nodeEnv: process.env.NODE_ENV
   });
 
   return (

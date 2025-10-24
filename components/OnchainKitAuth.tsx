@@ -26,28 +26,12 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
   const [battlePreview, setBattlePreview] = useState<BattlePreview | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
-  const [showDebug, setShowDebug] = useState<boolean>(false); // Debug disabled by default
   
   // Use OnchainKit's useMiniKit hook for Base App Mini App
   const { context, isMiniAppReady } = useMiniKit();
   
   // Use wagmi's useAccount to check wallet connection (official pattern)
   const { isConnected, address } = useAccount();
-
-  // Debug MiniKit context for Base App
-  useEffect(() => {
-    console.log('🔍 OnchainKitAuth - MiniKit Context Debug:', {
-      isMiniAppReady,
-      hasContext: !!context,
-      clientFid: context?.client?.clientFid,
-      userFid: context?.user?.fid,
-      isBaseApp: context?.client?.clientFid === 309857,
-      contextKeys: context ? Object.keys(context) : [],
-      fullContext: context,
-      authenticationCondition: isMiniAppReady && context?.client?.clientFid === 309857 && context?.user?.fid,
-      isAuthenticated: isConnected // Use isConnected for authentication status
-    });
-  }, [isMiniAppReady, context, isConnected]);
 
   // Initialize Farcaster SDK for Base App Mini App
   useEffect(() => {
@@ -96,12 +80,6 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
           const data = await response.json();
           if (data.success && data.battle) {
             setBattlePreview(data.battle);
-            console.log('📊 OnchainKitAuth - Battle preview loaded:', {
-              title: data.battle.title,
-              description: data.battle.description,
-              participants: data.battle.participants,
-              endTime: data.battle.endTime
-            });
             
             // Calculate time remaining in seconds from endTime
             if (data.battle.endTime) {
@@ -110,11 +88,6 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
               const remainingMs = Math.max(0, endTime - now);
               const remainingSeconds = Math.floor(remainingMs / 1000);
               setTimeRemaining(remainingSeconds);
-              console.log('🕐 OnchainKitAuth - Time remaining calculated:', {
-                endTime: data.battle.endTime,
-                remainingMs,
-                remainingSeconds
-              });
             } else {
               setTimeRemaining(0);
             }

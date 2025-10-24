@@ -16,21 +16,6 @@ export default function UnifiedAuth({ onAuthSuccess, onAuthError, environmentInf
   if (environmentInfo.isLoading) {
     return (
       <div>
-        {/* Debug Environment Status */}
-        <div style={{ 
-          background: '#f0f0f0', 
-          padding: '8px 16px', 
-          margin: '0', 
-          fontSize: '12px', 
-          color: '#666',
-          borderBottom: '1px solid #ddd',
-          textAlign: 'center'
-        }}>
-          🔍 Debug: Environment = {environmentInfo.isLoading ? 'Loading...' : environmentInfo.environment} | 
-          ClientFID = {environmentInfo.clientFid || 'undefined'} | 
-          UserFID = {environmentInfo.userFid || 'undefined'}
-        </div>
-        
         <div style={{ 
           display: 'flex', 
           justifyContent: 'center', 
