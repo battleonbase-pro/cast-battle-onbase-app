@@ -181,7 +181,12 @@ export default function Home() {
 
   // Handle authentication success
   const handleAuthSuccess = useCallback(async (user: { address: string; environment: string; isAuthenticated: boolean } | null) => {
-    if (!user) return;
+    console.log('🔐 handleAuthSuccess called with user:', user);
+    
+    if (!user) {
+      console.log('❌ handleAuthSuccess: No user provided');
+      return;
+    }
     
     console.log('🔐 Auth success callback - user:', user.address);
     console.log('🔐 Auth success callback - environment:', user.environment);
@@ -514,6 +519,11 @@ export default function Home() {
       return () => clearInterval(timer);
     }
   }, [timeRemaining]);
+
+  // Debug logging for authentication state
+  console.log('🔍 Main page render - baseAccountUser:', baseAccountUser);
+  console.log('🔍 Main page render - isAuthenticated:', isAuthenticated);
+  console.log('🔍 Main page render - environmentInfo:', environmentInfo);
 
   return (
     <div className={styles.container}>

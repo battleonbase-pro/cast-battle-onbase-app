@@ -51,6 +51,14 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
 
   // Handle authentication success based on wallet connection (official pattern)
   useEffect(() => {
+    console.log('🔍 OnchainKitAuth - Auth check:', { 
+      isConnected, 
+      address, 
+      isMiniAppReady, 
+      clientFid: context?.client?.clientFid,
+      hasContext: !!context
+    });
+    
     if (isConnected && address && isMiniAppReady && context?.client?.clientFid === 309857) {
       console.log('✅ OnchainKitAuth - Wallet connected in Base App:', { 
         address,
@@ -67,7 +75,11 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
 
       console.log('✅ OnchainKitAuth authentication successful:', authUser);
       console.log('🚀 OnchainKitAuth - Calling onAuthSuccess to proceed to debate page...');
-      onAuthSuccess(authUser);
+      
+      // Add a small delay to ensure state is properly set
+      setTimeout(() => {
+        onAuthSuccess(authUser);
+      }, 100);
     }
   }, [isConnected, address, isMiniAppReady, context, onAuthSuccess]);
 
