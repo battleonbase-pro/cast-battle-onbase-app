@@ -114,6 +114,7 @@ export default function Home() {
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [currentBattle, setCurrentBattle] = useState<Battle | null>(null);
   const [battleLoading, setBattleLoading] = useState(false);
+  const [showContextDebug, setShowContextDebug] = useState(true);
   
   // Tab and UI state
   const [activeTab, setActiveTab] = useState<'debate' | 'arguments' | 'history' | 'leaderboard'>('debate');
@@ -1254,6 +1255,99 @@ export default function Home() {
 
   return (
     <div className={styles.container}>
+      {/* Context Debug Overlay */}
+      {showContextDebug && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            padding: '20px',
+            maxWidth: '90vw',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            position: 'relative'
+          }}>
+            <button
+              onClick={() => setShowContextDebug(false)}
+              style={{
+                position: 'absolute',
+                top: '10px',
+                right: '10px',
+                background: '#ff4444',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                padding: '8px 12px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 'bold'
+              }}
+            >
+              ✕ Close
+            </button>
+            
+            <h2 style={{ marginTop: '0', marginBottom: '16px', color: '#333' }}>
+              🔍 MiniKit Context Debug
+            </h2>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <h3 style={{ margin: '0 0 8px 0', color: '#666' }}>Context Status:</h3>
+              <ul style={{ margin: '0', paddingLeft: '20px' }}>
+                <li>Has Context: {context ? '✅ Yes' : '❌ No'}</li>
+                <li>Context Type: {typeof context}</li>
+                <li>Has Client: {context?.client ? '✅ Yes' : '❌ No'}</li>
+                <li>Has User: {context?.user ? '✅ Yes' : '❌ No'}</li>
+                <li>Client FID: {context?.client?.clientFid || 'undefined'}</li>
+                <li>User FID: {context?.user?.fid || 'undefined'}</li>
+                <li>MiniKit Ready: {isMiniAppReady ? '✅ Yes' : '❌ No'}</li>
+              </ul>
+            </div>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <h3 style={{ margin: '0 0 8px 0', color: '#666' }}>Full Context Object:</h3>
+              <pre style={{
+                backgroundColor: '#f5f5f5',
+                padding: '12px',
+                borderRadius: '4px',
+                fontSize: '12px',
+                overflow: 'auto',
+                maxHeight: '300px',
+                border: '1px solid #ddd'
+              }}>
+                {JSON.stringify(context, null, 2)}
+              </pre>
+            </div>
+            
+            <div>
+              <h3 style={{ margin: '0 0 8px 0', color: '#666' }}>Context.Client Object:</h3>
+              <pre style={{
+                backgroundColor: '#f0f8ff',
+                padding: '12px',
+                borderRadius: '4px',
+                fontSize: '12px',
+                overflow: 'auto',
+                maxHeight: '300px',
+                border: '1px solid #ddd'
+              }}>
+                {JSON.stringify(context?.client, null, 2)}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Authentication Landing Page */}
               {!baseAccountUser ? (
                 <section className={styles.authSection}>
