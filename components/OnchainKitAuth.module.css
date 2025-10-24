@@ -131,6 +131,21 @@
   font-weight: 500;
 }
 
+.walletSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.walletPrompt {
+  font-size: 14px;
+  color: #666;
+  text-align: center;
+  margin: 0;
+}
+
 @media (max-width: 768px) {
   .authContainer {
     padding: 15px;

@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
 import { useMiniKit } from '@coinbase/onchainkit/minikit';
+import { ConnectWallet, Wallet } from '@coinbase/onchainkit/wallet';
+import { useAccount } from 'wagmi';
 import Image from 'next/image';
 import styles from './OnchainKitAuth.module.css';
 
@@ -23,12 +25,13 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
   const [battlePreview, setBattlePreview] = useState<BattlePreview | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [userAddress, setUserAddress] = useState<string | null>(null);
   const [showDebug, setShowDebug] = useState<boolean>(true); // Add debug state
   
   // Use OnchainKit's useMiniKit hook for Base App Mini App
   const { context, isMiniAppReady } = useMiniKit();
+  
+  // Use wagmi's useAccount to check wallet connection (official pattern)
+  const { isConnected, address } = useAccount();
 
   // Debug MiniKit context for Base App
   useEffect(() => {
@@ -45,77 +48,28 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
     });
   }, [isMiniAppReady, context, isAuthenticated]);
 
-  // Add timeout to prevent infinite loading
+  // Remove manual authentication - wallet connection handles this automatically
+
+  // Handle authentication success based on wallet connection (official pattern)
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (!isAuthenticated && isMiniAppReady && context?.client?.clientFid === 309857) {
-        console.log('⏰ OnchainKitAuth timeout - forcing authentication for Base App');
-        console.log('🔍 Timeout context:', { userFid: context?.user?.fid, clientFid: context?.client?.clientFid });
-        
-        // Force authentication if we're in Base App but haven't authenticated yet
-        // Use clientFid as fallback if userFid is still undefined
-        const identifier = context.user?.fid?.toString() || context.client?.clientFid?.toString() || 'base-user';
-        setUserAddress(identifier);
-        setIsAuthenticated(true);
-
-        const authUser = {
-          address: identifier,
-          isAuthenticated: true,
-          environment: 'base'
-        };
-
-        console.log('✅ OnchainKitAuth timeout authentication:', authUser);
-        onAuthSuccess(authUser);
-      }
-    }, 8000); // Increased to 8 second timeout
-
-    return () => clearTimeout(timeout);
-  }, [isAuthenticated, isMiniAppReady, context, onAuthSuccess]);
-
-  // Handle OnchainKit authentication for Base App Mini App
-  const handleOnchainKitAuth = useCallback(async () => {
-    try {
-      setError(null);
-      console.log('🔐 Starting OnchainKit authentication for Base App Mini App...');
-      
-      // For Base App Mini App, authentication happens automatically through MiniKit context
-      // We just need to wait for the context to be ready
-      if (!isMiniAppReady || !context) {
-        throw new Error('MiniKit context not ready');
-      }
-      
-      console.log('✅ OnchainKit authentication successful for Base App Mini App');
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'OnchainKit authentication failed';
-      setError(errorMessage);
-      onAuthError(errorMessage);
-      console.error('❌ OnchainKit authentication error:', error);
-    }
-  }, [isMiniAppReady, context, onAuthError]);
-
-  // Handle authentication success
-  useEffect(() => {
-    if (isMiniAppReady && context?.client?.clientFid === 309857 && context?.user?.fid) {
-      console.log('✅ OnchainKit authentication detected for Base App:', { 
-        fid: context.user.fid, 
+    if (isConnected && address && isMiniAppReady && context?.client?.clientFid === 309857) {
+      console.log('✅ OnchainKitAuth - Wallet connected in Base App:', { 
+        address,
+        fid: context.user?.fid, 
         clientFid: context.client?.clientFid 
       });
       
-      // For Base App Mini App, user should connect their Base web wallet for payments
-      // We authenticate them with their Farcaster FID but they need to connect wallet separately
-      setUserAddress(context.user.fid.toString());
-      setIsAuthenticated(true);
-
+      // Use wallet address as the primary identifier
       const authUser = {
-        address: context.user.fid.toString(), // Using FID as identifier
+        address: address, // Use wallet address
         isAuthenticated: true,
         environment: 'base' // Indicate Base App environment
       };
 
-      console.log('✅ OnchainKit authentication successful for Base App:', authUser);
+      console.log('✅ OnchainKitAuth authentication successful:', authUser);
       onAuthSuccess(authUser);
     }
-  }, [isMiniAppReady, context, onAuthSuccess]);
+  }, [isConnected, address, isMiniAppReady, context, onAuthSuccess]);
 
   // Fetch current battle preview
   useEffect(() => {
@@ -232,20 +186,21 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
 
         {error && <p className={styles.errorText}>{error}</p>}
 
-        {!isAuthenticated ? (
-          <button
-            onClick={handleOnchainKitAuth}
-            disabled={!isMiniAppReady}
-            className={styles.signInButton}
-          >
-            {!isMiniAppReady ? 'Loading...' : 'Sign In with Base'}
-          </button>
+        {!isConnected ? (
+          <div className={styles.walletSection}>
+            <p className={styles.walletPrompt}>
+              Connect your Base wallet to participate in debates
+            </p>
+            <Wallet>
+              <ConnectWallet />
+            </Wallet>
+          </div>
         ) : (
           <div className={styles.connectedInfo}>
-            <p>✅ Authenticated as FID: {userAddress}</p>
+            <p>✅ Connected: {address?.substring(0, 6)}...{address?.substring(address.length - 4)}</p>
             <p>You are ready to participate!</p>
             <p style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
-              💡 You'll connect your Base wallet when making payments
+              💡 Your wallet is connected and ready for payments
             </p>
           </div>
         )}
