@@ -25,7 +25,9 @@ export default function UnifiedAuth({ onAuthSuccess, onAuthError }: UnifiedAuthP
           borderBottom: '1px solid #ddd',
           textAlign: 'center'
         }}>
-          🔍 Debug: Environment = {environmentInfo.isLoading ? 'Loading...' : environmentInfo.environment}
+          🔍 Debug: Environment = {environmentInfo.isLoading ? 'Loading...' : environmentInfo.environment} | 
+          ClientFID = {environmentInfo.clientFid || 'undefined'} | 
+          UserFID = {environmentInfo.userFid || 'undefined'}
         </div>
         
         <div style={{ 
@@ -90,6 +92,8 @@ export default function UnifiedAuth({ onAuthSuccess, onAuthError }: UnifiedAuthP
         textAlign: 'center'
       }}>
         🔍 Debug: Environment = {environmentInfo.environment} | 
+        ClientFID = {environmentInfo.clientFid || 'undefined'} | 
+        UserFID = {environmentInfo.userFid || 'undefined'} | 
         {environmentInfo.isMiniApp && (
           <> Mini App = Yes | Farcaster = {environmentInfo.isFarcaster ? 'Yes' : 'No'} | Base App = {environmentInfo.isBaseApp ? 'Yes' : 'No'}</>
         )}
