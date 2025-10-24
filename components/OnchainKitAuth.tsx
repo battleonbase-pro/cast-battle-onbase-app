@@ -28,16 +28,7 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
   const [showDebug, setShowDebug] = useState<boolean>(true); // Add debug state
   
   // Use OnchainKit's useMiniKit hook for Base App Mini App
-  const { context, isMiniAppReady, setMiniAppReady } = useMiniKit();
-
-  // Initialize MiniKit frame for Base App Mini App
-  useEffect(() => {
-    console.log('🔧 OnchainKitAuth - Initializing MiniKit frame for Base App');
-    if (!isMiniAppReady) {
-      console.log('🚀 Calling setMiniAppReady() for Base App');
-      setMiniAppReady();
-    }
-  }, [isMiniAppReady, setMiniAppReady]);
+  const { context, isMiniAppReady } = useMiniKit();
 
   // Debug MiniKit context for Base App
   useEffect(() => {
@@ -242,33 +233,13 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
         {error && <p className={styles.errorText}>{error}</p>}
 
         {!isAuthenticated ? (
-          <div>
-            <button
-              onClick={handleOnchainKitAuth}
-              disabled={!isMiniAppReady}
-              className={styles.signInButton}
-            >
-              {!isMiniAppReady ? 'Loading...' : 'Sign In with Base'}
-            </button>
-            {!isMiniAppReady && (
-              <button
-                onClick={() => setMiniAppReady()}
-                style={{
-                  marginTop: '10px',
-                  padding: '8px 16px',
-                  background: '#666',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  width: '100%'
-                }}
-              >
-                🔧 Force Initialize MiniKit
-              </button>
-            )}
-          </div>
+          <button
+            onClick={handleOnchainKitAuth}
+            disabled={!isMiniAppReady}
+            className={styles.signInButton}
+          >
+            {!isMiniAppReady ? 'Loading...' : 'Sign In with Base'}
+          </button>
         ) : (
           <div className={styles.connectedInfo}>
             <p>✅ Authenticated as FID: {userAddress}</p>
