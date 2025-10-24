@@ -1589,9 +1589,28 @@ export default function Home() {
             fontSize: '12px',
             zIndex: 9999,
             borderRadius: '5px',
-            fontFamily: 'monospace'
+            fontFamily: 'monospace',
+            minWidth: '200px'
           }}>
-            <div><strong>Debug Panel</strong></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <div><strong>Debug Panel</strong></div>
+              <button
+                onClick={() => setShowContextDebug(false)}
+                style={{
+                  background: '#ff4444',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '3px',
+                  padding: '4px 8px',
+                  cursor: 'pointer',
+                  fontSize: '10px',
+                  fontWeight: 'bold',
+                  marginLeft: '10px'
+                }}
+              >
+                ✕
+              </button>
+            </div>
             <div>Auth: {baseAccountUser ? '✅' : '❌'}</div>
             <div>Address: {baseAccountUser?.address?.slice(0, 8)}...</div>
             <div>ShowForm: {showForm ? '✅' : '❌'}</div>
