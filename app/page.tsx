@@ -216,6 +216,10 @@ export default function Home() {
   const userFid = context?.user?.fid;
   const launchLocation = context?.location;
   const hasAddedApp = context?.client?.added;
+  
+  // Debug clientFid availability
+  const clientFid = context?.client?.clientFid;
+  const hasClientContext = !!context?.client;
 
 
   // Format time in HH:MM:SS format (retro digital style)
@@ -912,6 +916,21 @@ export default function Home() {
 
   // Analytics tracking using MiniKit context
   useEffect(() => {
+    if (context) {
+      console.log('📊 MiniKit Context Debug:', {
+        hasContext: !!context,
+        hasClient: !!context.client,
+        clientFid: context.client?.clientFid,
+        clientFidType: typeof context.client?.clientFid,
+        hasUser: !!context.user,
+        userFid: context.user?.fid,
+        clientAdded: context.client?.added,
+        platformType: context.client?.platformType,
+        location: context.location,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
     if (context && userFid) {
       console.log('📊 MiniKit Analytics:', {
         userFid,
@@ -1453,6 +1472,9 @@ export default function Home() {
               <div>Farcaster: {isFarcaster ? '✅' : '❌'}</div>
               <div>Mini App: {isMiniApp ? '✅' : '❌'}</div>
               <div>User FID: {userFid || 'None'}</div>
+              <div>Client FID: {clientFid || 'None'}</div>
+              <div>Has Client Context: {hasClientContext ? '✅' : '❌'}</div>
+              <div>Client FID Type: {typeof clientFid}</div>
               <div>Launch: {String(launchLocation || 'Unknown')}</div>
               <div>Added: {hasAddedApp ? '✅' : '❌'}</div>
               <div>Frame Ready: {isMiniAppReady ? '✅' : '❌'}</div>
