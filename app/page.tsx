@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { sdk } from '@farcaster/miniapp-sdk';
+import { useMiniKit } from '@coinbase/onchainkit/minikit';
 import UnifiedAuth from '../components/UnifiedAuth';
 import UnifiedPaymentButton from '../components/UnifiedPaymentButton';
 import LikeButton from '../components/LikeButton';
@@ -104,6 +105,7 @@ interface BattleHistory {
 }
 
 export default function Home() {
+  const { context, setFrameReady, isFrameReady } = useMiniKit();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [baseAccountUser, setBaseAccountUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -206,6 +208,14 @@ export default function Home() {
   const [isMobile, setIsMobile] = useState(false);
   const [sseConnection, setSseConnection] = useState<EventSource | null>(null);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+
+  // Enhanced environment detection using MiniKit context
+  const isBaseApp = context?.client?.clientFid === 309857;
+  const isFarcaster = context?.client?.clientFid === 1;
+  const isMiniApp = isBaseApp || isFarcaster;
+  const userFid = context?.user?.fid;
+  const launchLocation = context?.location;
+  const hasAddedApp = context?.client?.added;
 
 
   // Format time in HH:MM:SS format (retro digital style)
@@ -893,6 +903,41 @@ export default function Home() {
     }
   };
 
+  // Initialize MiniKit frame (OnchainKit)
+  useEffect(() => {
+    if (!isFrameReady) {
+      setFrameReady();
+    }
+  }, [setFrameReady, isFrameReady]);
+
+  // Analytics tracking using MiniKit context
+  useEffect(() => {
+    if (context && userFid) {
+      console.log('📊 MiniKit Analytics:', {
+        userFid,
+        clientFid: context.client?.clientFid,
+        clientName: isBaseApp ? 'Base App' : isFarcaster ? 'Farcaster' : 'Unknown',
+        launchLocation,
+        hasAddedApp,
+        isMiniApp,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Track Mini App opened event (for analytics only - not authentication)
+      // Note: This data can be spoofed, so it's only for analytics
+      if (typeof window !== 'undefined' && (window as any).gtag) {
+        (window as any).gtag('event', 'mini_app_opened', {
+          user_fid: userFid,
+          client_fid: context.client?.clientFid,
+          launch_location: launchLocation,
+          has_added_app: hasAddedApp,
+          is_base_app: isBaseApp,
+          is_farcaster: isFarcaster
+        });
+      }
+    }
+  }, [context, userFid, launchLocation, hasAddedApp, isBaseApp, isFarcaster, isMiniApp]);
+
   // Simple Farcaster Mini App ready() call
   useEffect(() => {
     const callReady = async () => {
@@ -1178,15 +1223,31 @@ export default function Home() {
                         // Connect to wagmi for payment transactions
                         try {
                           console.log('🔗 Connecting to wagmi for payment transactions...');
+                          console.log('🔍 Enhanced environment detection:', {
+                            userEnvironment: user.environment,
+                            isBaseApp,
+                            isFarcaster,
+                            isMiniApp,
+                            clientFid: context?.client?.clientFid
+                          });
                           
-                          // Choose the right connector based on environment
+                          // Choose the right connector based on enhanced environment detection
                           let connector;
-                          if (user.environment === 'farcaster') {
+                          if (isFarcaster || user.environment === 'farcaster') {
                             connector = connectors.find(c => c.id === 'farcasterMiniApp');
-                            console.log('🔍 Using Farcaster Mini App connector');
-                          } else {
+                            console.log('🔍 Using Farcaster Mini App connector (enhanced detection)');
+                          } else if (isBaseApp || user.environment === 'base') {
                             connector = connectors.find(c => c.id === 'baseAccount');
-                            console.log('🔍 Using Base Account connector');
+                            console.log('🔍 Using Base Account connector (enhanced detection)');
+                          } else {
+                            // Fallback to user environment
+                            if (user.environment === 'farcaster') {
+                              connector = connectors.find(c => c.id === 'farcasterMiniApp');
+                              console.log('🔍 Using Farcaster Mini App connector (fallback)');
+                            } else {
+                              connector = connectors.find(c => c.id === 'baseAccount');
+                              console.log('🔍 Using Base Account connector (fallback)');
+                            }
                           }
                           
                           if (connector) {
@@ -1386,6 +1447,16 @@ export default function Home() {
             <div>HasSubmitted: {hasSubmittedCast ? '✅' : '❌'}</div>
             <div>SelectedSide: {selectedSide || 'None'}</div>
             <div>ActiveTab: {activeTab}</div>
+            <div style={{ marginTop: '8px', borderTop: '1px solid #333', paddingTop: '8px' }}>
+              <div><strong>MiniKit Context:</strong></div>
+              <div>Base App: {isBaseApp ? '✅' : '❌'}</div>
+              <div>Farcaster: {isFarcaster ? '✅' : '❌'}</div>
+              <div>Mini App: {isMiniApp ? '✅' : '❌'}</div>
+              <div>User FID: {userFid || 'None'}</div>
+              <div>Launch: {String(launchLocation || 'Unknown')}</div>
+              <div>Added: {hasAddedApp ? '✅' : '❌'}</div>
+              <div>Frame Ready: {isFrameReady ? '✅' : '❌'}</div>
+            </div>
             <button 
               onClick={() => {
                 console.log('🔧 Debug button clicked');

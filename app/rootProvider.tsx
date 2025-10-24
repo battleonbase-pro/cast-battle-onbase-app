@@ -31,6 +31,9 @@ export function RootProvider({ children }: { children: ReactNode }) {
               display: 'modal',
             },
           }}
+          miniKit={{
+            enabled: true
+          }}
         >
           {children}
         </OnchainKitProvider>
