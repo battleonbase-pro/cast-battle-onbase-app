@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useMiniKit } from '@coinbase/onchainkit/minikit';
 import { ConnectWallet, Wallet } from '@coinbase/onchainkit/wallet';
 import { useAccount } from 'wagmi';
+import { sdk } from '@farcaster/miniapp-sdk';
 import Image from 'next/image';
 import styles from './OnchainKitAuth.module.css';
 
@@ -48,7 +49,21 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
     });
   }, [isMiniAppReady, context, isAuthenticated]);
 
-  // Remove manual authentication - wallet connection handles this automatically
+  // Initialize Farcaster SDK for Base App Mini App
+  useEffect(() => {
+    const initializeSDK = async () => {
+      try {
+        console.log('🔧 OnchainKitAuth - Initializing Farcaster SDK for Base App...');
+        await sdk.actions.ready();
+        console.log('✅ OnchainKitAuth - Farcaster SDK ready');
+      } catch (error) {
+        console.error('❌ OnchainKitAuth - Failed to initialize Farcaster SDK:', error);
+        // Don't throw error, just log it - SDK might not be available in all environments
+      }
+    };
+    
+    initializeSDK();
+  }, []);
 
   // Handle authentication success based on wallet connection (official pattern)
   useEffect(() => {
