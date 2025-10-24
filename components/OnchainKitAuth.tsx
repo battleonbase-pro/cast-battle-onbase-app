@@ -45,9 +45,9 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
       contextKeys: context ? Object.keys(context) : [],
       fullContext: context,
       authenticationCondition: isMiniAppReady && context?.client?.clientFid === 309857 && context?.user?.fid,
-      isAuthenticated
+      isAuthenticated: isConnected // Use isConnected for authentication status
     });
-  }, [isMiniAppReady, context, isAuthenticated]);
+  }, [isMiniAppReady, context, isConnected]);
 
   // Initialize Farcaster SDK for Base App Mini App
   useEffect(() => {
@@ -170,7 +170,7 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
           <div>Client FID: {context?.client?.clientFid || 'undefined'}</div>
           <div>User FID: {context?.user?.fid || 'undefined'}</div>
           <div>Is Base App: {context?.client?.clientFid === 309857 ? '✅' : '❌'}</div>
-          <div>Is Authenticated: {isAuthenticated ? '✅' : '❌'}</div>
+          <div>Is Authenticated: {isConnected ? '✅' : '❌'}</div>
           <div>User Address: {userAddress || 'None'}</div>
           <div>Error: {error || 'None'}</div>
         </div>
