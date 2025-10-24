@@ -89,18 +89,19 @@
 
 .previewContent {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 15px;
   margin-bottom: 15px;
-  align-items: flex-start;
 }
 
 .previewImage {
   flex-shrink: 0;
   border-radius: 8px;
   overflow: hidden;
-  float: left;
-  margin-right: 15px;
-  margin-bottom: 10px;
+  display: flex;
+  justify-content: center;
+  width: 100%;
 }
 
 .previewImageElement {
@@ -112,7 +113,8 @@
 
 .previewText {
   flex: 1;
-  text-align: left;
+  text-align: center;
+  width: 100%;
 }
 
 .previewTopic {
@@ -121,12 +123,14 @@
   color: #333;
   margin-bottom: 8px;
   line-height: 1.3;
+  text-align: center;
 }
 
 .previewDescription {
   font-size: 0.9rem;
   color: #666;
   line-height: 1.4;
+  text-align: center;
 }
 
 .previewStats {
@@ -286,10 +290,9 @@
   }
   
   .previewImage {
-    float: none;
-    margin-right: 0;
-    margin-bottom: 12px;
-    align-self: center;
+    display: flex;
+    justify-content: center;
+    width: 100%;
   }
   
   .previewImageElement {

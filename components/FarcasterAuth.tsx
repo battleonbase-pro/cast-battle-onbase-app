@@ -80,6 +80,68 @@ export default function FarcasterAuth({ onAuthSuccess, onAuthError }: FarcasterA
       }
 
       const address = accounts[0];
+      console.log('✅ Connected to Farcaster wallet:', address);
+
+      // Now perform SIWE (Sign-In with Ethereum) authentication
+      console.log('🔐 Starting SIWE authentication...');
+      
+      // Get a fresh nonce from backend
+      const nonceResponse = await fetch('/api/auth/nonce');
+      if (!nonceResponse.ok) {
+        throw new Error('Failed to generate nonce');
+      }
+      const data = await nonceResponse.json();
+      const nonce = data.nonce;
+      console.log('🔑 Using nonce:', nonce);
+
+      // Create SIWE message
+      const domain = window.location.host;
+      const uri = window.location.origin;
+      const currentTime = Math.floor(Date.now() / 1000);
+      
+      const message = `${domain} wants you to sign in with your Ethereum account:
+${address}
+
+Welcome to NewsCast Debate!
+
+This request will not trigger a blockchain transaction or cost any gas fees.
+
+Your authentication status will reset after 24 hours.
+
+URI: ${uri}
+Version: 1
+Chain ID: 84532
+Nonce: ${nonce}
+Issued At: ${new Date(currentTime * 1000).toISOString()}`;
+
+      console.log('📝 Generated SIWE message:', message);
+
+      // Sign the message using personal_sign
+      const signature = await ethProvider.request({
+        method: 'personal_sign',
+        params: [message, address]
+      });
+
+      console.log('✅ personal_sign successful');
+      console.log('📝 Generated signature:', signature);
+
+      // Verify signature with backend
+      console.log('🔍 Verifying signature with backend...');
+      
+      const response = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address, message, signature })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Signature verification failed');
+      }
+
+      const verificationResult = await response.json();
+      console.log('✅ Backend verification successful:', verificationResult);
+
       setUserAddress(address);
       setIsConnected(true);
 
@@ -90,7 +152,7 @@ export default function FarcasterAuth({ onAuthSuccess, onAuthError }: FarcasterA
         environment: 'farcaster'
       };
 
-      console.log('✅ Farcaster authentication successful:', user);
+      console.log('✅ Farcaster SIWE authentication successful:', user);
       onAuthSuccess(user);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Farcaster authentication failed';

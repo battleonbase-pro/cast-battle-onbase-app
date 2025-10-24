@@ -1,9 +1,7 @@
 "use client";
-import { useState, useEffect } from 'react';
 import BaseAccountAuth from './BaseAccountAuth';
 import FarcasterAuth from './FarcasterAuth';
 import { useEnvironmentDetection } from '../hooks/useEnvironmentDetection';
-import { sdk } from '@farcaster/miniapp-sdk';
 
 interface UnifiedAuthProps {
   onAuthSuccess: (user: { address: string; isAuthenticated: boolean; environment: string } | null) => void;
@@ -12,29 +10,12 @@ interface UnifiedAuthProps {
 
 export default function UnifiedAuth({ onAuthSuccess, onAuthError }: UnifiedAuthProps) {
   const environmentInfo = useEnvironmentDetection();
-  const [isMiniApp, setIsMiniApp] = useState<boolean | null>(null);
-
-  // Detect mini app environment
-  useEffect(() => {
-    const detectMiniApp = async () => {
-      try {
-        const inMiniApp = await sdk.isInMiniApp();
-        setIsMiniApp(inMiniApp);
-        console.log('🔍 Mini App Detection:', inMiniApp);
-      } catch (error) {
-        console.error('❌ Failed to detect mini app:', error);
-        setIsMiniApp(false);
-      }
-    };
-
-    detectMiniApp();
-  }, []);
 
   // Show loading while detecting environment
   if (environmentInfo.isLoading) {
     return (
       <div>
-        {/* Debug Mini App Status */}
+        {/* Debug Environment Status */}
         <div style={{ 
           background: '#f0f0f0', 
           padding: '8px 16px', 
@@ -44,7 +25,7 @@ export default function UnifiedAuth({ onAuthSuccess, onAuthError }: UnifiedAuthP
           borderBottom: '1px solid #ddd',
           textAlign: 'center'
         }}>
-          🔍 Debug: Environment = {environmentInfo.isLoading ? 'Loading...' : environmentInfo.environment} | isMiniApp = {isMiniApp === null ? 'Loading...' : isMiniApp ? 'true' : 'false'}
+          🔍 Debug: Environment = {environmentInfo.isLoading ? 'Loading...' : environmentInfo.environment}
         </div>
         
         <div style={{ 
@@ -66,8 +47,8 @@ export default function UnifiedAuth({ onAuthSuccess, onAuthError }: UnifiedAuthP
   // Render appropriate authentication component based on environment
   const renderAuthComponent = () => {
     switch (environmentInfo.environment) {
-      case 'miniapp':
-        // Both Farcaster and Base Mini Apps use FarcasterAuth
+      case 'farcaster':
+        // Mini App environment - use FarcasterAuth
         return (
           <FarcasterAuth 
             onAuthSuccess={onAuthSuccess} 
@@ -89,7 +70,7 @@ export default function UnifiedAuth({ onAuthSuccess, onAuthError }: UnifiedAuthP
 
   return (
     <div>
-      {/* Debug Mini App Status */}
+      {/* Debug Environment Status */}
       <div style={{ 
         background: '#f0f0f0', 
         padding: '8px 16px', 
@@ -99,7 +80,10 @@ export default function UnifiedAuth({ onAuthSuccess, onAuthError }: UnifiedAuthP
         borderBottom: '1px solid #ddd',
         textAlign: 'center'
       }}>
-        🔍 Debug: Environment = {environmentInfo.isLoading ? 'Loading...' : environmentInfo.environment} | isMiniApp = {isMiniApp === null ? 'Loading...' : isMiniApp ? 'true' : 'false'}
+        🔍 Debug: Environment = {environmentInfo.environment} | 
+        {environmentInfo.isMiniApp && (
+          <> Mini App = Yes | Farcaster = {environmentInfo.isFarcaster ? 'Yes' : 'No'}</>
+        )}
       </div>
       
       {renderAuthComponent()}

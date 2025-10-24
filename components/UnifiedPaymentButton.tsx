@@ -61,16 +61,16 @@ export default function UnifiedPaymentButton({
     default:
       // External browsers use BasePaymentButton
       return (
-        <BasePaymentButton
-          onClick={onClick}
-          onSuccess={onSuccess}
-          disabled={disabled}
-          loading={loading}
-          amount={amount}
-          recipientAddress={recipientAddress}
-        >
-          {children}
-        </BasePaymentButton>
+                    <BasePaymentButton
+                      onClick={onClick}
+                      onSuccess={onSuccess}
+                      disabled={disabled}
+                      loading={loading}
+                      amount={amount}
+                      recipientAddress={recipientAddress}
+                    >
+                      {children}
+                    </BasePaymentButton>
       );
   }
 }

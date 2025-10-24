@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Transaction, TransactionButton } from '@coinbase/onchainkit/transaction';
 import { parseUnits, encodeFunctionData } from 'viem';
 import { erc20Abi } from 'viem';
-import { useAccount } from 'wagmi';
+import { useAccount, useConnect } from 'wagmi';
 import styles from './BasePaymentButton.module.css';
 
 interface BasePaymentButtonProps {
@@ -74,6 +74,7 @@ export default function BasePaymentButton({
     setIsProcessing(false);
   };
 
+
   // USDC payment for debate participation - use the amount prop
   const usdcAmount = parseUnits(amount, 6); // Use the amount prop (USDC has 6 decimals)
   // Try the official Base Sepolia USDC contract
@@ -99,9 +100,8 @@ export default function BasePaymentButton({
     console.log('  - Network Setting:', process.env.NEXT_PUBLIC_NETWORK);
   }, [recipientAddress, isConnected, address, usdcContractAddress]);
 
-  // If wallet is not connected, show a disabled button
+  // If wallet is not connected, show connect message
   if (!isConnected || !address) {
-    console.log('⚠️ Wallet not connected, showing disabled button');
     return (
       <div className={styles.paymentButtonContainer}>
         <button

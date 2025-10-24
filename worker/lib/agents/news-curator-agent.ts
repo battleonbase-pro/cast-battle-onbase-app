@@ -137,11 +137,19 @@ class NewsCuratorAgent extends BaseAgent {
       const category = this.categorizeArticle(hottestArticle);
       
       // Use provided image or generate fallback
-      const imageUrl = hottestArticle.imageUrl || hottestArticle.thumbnail || 
-        imageFallbackService.generateFallbackImage({
+      let imageUrl = hottestArticle.imageUrl || hottestArticle.thumbnail;
+      
+      // Always ensure we have an image URL - use fallback if none provided
+      if (!imageUrl) {
+        console.log(`[News Curator] No image found for article "${hottestArticle.title}", generating fallback...`);
+        imageUrl = imageFallbackService.generateFallbackImage({
           category: category,
           title: hottestArticle.title
         });
+        console.log(`[News Curator] Generated fallback image: ${imageUrl}`);
+      } else {
+        console.log(`[News Curator] Using provided image: ${imageUrl.substring(0, 80)}...`);
+      }
       
       const curatedTopic = {
         id: `curated_${Date.now()}`,

@@ -1178,16 +1178,29 @@ export default function Home() {
                         // Connect to wagmi for payment transactions
                         try {
                           console.log('🔗 Connecting to wagmi for payment transactions...');
-                          const baseAccountConnector = connectors.find(c => c.id === 'baseAccount');
-                          if (baseAccountConnector) {
-                            await connect({ connector: baseAccountConnector });
+                          
+                          // Choose the right connector based on environment
+                          let connector;
+                          if (user.environment === 'farcaster') {
+                            connector = connectors.find(c => c.id === 'farcasterMiniApp');
+                            console.log('🔍 Using Farcaster Mini App connector');
+                          } else {
+                            connector = connectors.find(c => c.id === 'baseAccount');
+                            console.log('🔍 Using Base Account connector');
+                          }
+                          
+                          if (connector) {
+                            await connect({ connector });
                             console.log('✅ Connected to wagmi successfully');
                           } else {
-                            console.log('⚠️ Base Account connector not found in wagmi');
+                            console.log('⚠️ Connector not found in wagmi');
+                            console.log('🔍 Available connectors:', connectors.map(c => ({ id: c.id, name: c.name })));
                           }
                         } catch (error) {
                           console.error('❌ Failed to connect to wagmi:', error);
+                          console.log('🔍 This is expected in some cases - payment will work through native SDK');
                           // Don't fail authentication if wagmi connection fails
+                          // The native SDK can handle payments independently
                         }
                         
                         // Fetch user points immediately after authentication
