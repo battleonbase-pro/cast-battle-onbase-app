@@ -250,6 +250,64 @@ export default function Home() {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Authentication success callback - wrapped in useCallback to prevent unnecessary re-renders
+  const handleAuthSuccess = useCallback(async (user: { address: string; isAuthenticated: boolean; environment: string } | null) => {
+    if (user) {
+      console.log('🔐 Auth success callback - user:', user.address);
+      console.log('🔐 Auth success callback - environment:', user.environment);
+      console.log('🔐 Auth success callback - isAuthenticated:', user.isAuthenticated);
+      setBaseAccountUser(user);
+      setIsAuthenticated(true);
+      setActiveTab('debate');
+      console.log('✅ Unified authentication successful - proceeding to debate page');
+      
+      // Connect to wagmi for payment transactions
+      try {
+        console.log('🔗 Connecting to wagmi for payment transactions...');
+        console.log('🔍 Enhanced environment detection:', {
+          userEnvironment: user.environment,
+          isBaseApp: environmentInfo.isBaseApp,
+          isFarcaster: environmentInfo.isFarcaster,
+          isMiniApp: environmentInfo.isMiniApp,
+          environment: environmentInfo.environment,
+          clientFid: context?.client?.clientFid
+        });
+
+        // Choose the right connector based on enhanced environment detection
+        let connector;
+        if (environmentInfo.isFarcaster || user.environment === 'farcaster') { // Use from hook
+          connector = connectors.find(c => c.id === 'farcasterMiniApp');
+          console.log('🔍 Using Farcaster Mini App connector (enhanced detection)');
+        } else if (environmentInfo.isBaseApp || user.environment === 'base') { // Use from hook
+          connector = connectors.find(c => c.id === 'baseAccount');
+          console.log('🔍 Using Base Account connector (enhanced detection)');
+        } else {
+          // Fallback to user environment
+          if (user.environment === 'farcaster') {
+            connector = connectors.find(c => c.id === 'farcasterMiniApp');
+            console.log('🔍 Using Farcaster Mini App connector (fallback)');
+          } else {
+            connector = connectors.find(c => c.id === 'coinbaseWallet');
+            console.log('🔍 Using Coinbase Wallet connector (fallback)');
+          }
+        }
+
+        if (connector) {
+          console.log('🔗 Attempting to connect with connector:', connector.id);
+          await connect({ connector });
+          console.log('✅ Wagmi connection successful');
+        } else {
+          console.log('⚠️ No suitable connector found, proceeding without wagmi connection');
+        }
+      } catch (connectError) {
+        console.error('❌ Error connecting to wagmi for payments:', connectError);
+      }
+      
+      // Fetch user points immediately after authentication
+      fetchUserPoints(user.address);
+    }
+  }, [environmentInfo, context, connect, connectors, fetchUserPoints]);
+
   // Authentication is now handled by UnifiedAuth component
 
 
@@ -1355,82 +1413,7 @@ export default function Home() {
               {!baseAccountUser ? (
                 <section className={styles.authSection}>
                   <UnifiedAuth
-                    onAuthSuccess={async (user) => {
-                      if (user) {
-                        console.log('🔐 Auth success callback - user:', user.address);
-                        setBaseAccountUser(user);
-                        setIsAuthenticated(true);
-                        setActiveTab('debate');
-                        console.log('✅ Unified authentication successful');
-                        
-                        // Connect to wagmi for payment transactions
-                        try {
-                          console.log('🔗 Connecting to wagmi for payment transactions...');
-                          console.log('🔍 Enhanced environment detection:', {
-                            userEnvironment: user.environment,
-                            isBaseApp: environmentInfo.isBaseApp,
-                            isFarcaster: environmentInfo.isFarcaster,
-                            isMiniApp: environmentInfo.isMiniApp,
-                            environment: environmentInfo.environment,
-                            clientFid: context?.client?.clientFid
-                          });
-                          
-                          // Choose the right connector based on enhanced environment detection
-                          let connector;
-                          if (environmentInfo.isFarcaster || user.environment === 'farcaster') {
-                            connector = connectors.find(c => c.id === 'farcasterMiniApp');
-                            console.log('🔍 Using Farcaster Mini App connector (enhanced detection)');
-                          } else if (environmentInfo.isBaseApp || user.environment === 'base') {
-                            connector = connectors.find(c => c.id === 'baseAccount');
-                            console.log('🔍 Using Base Account connector (enhanced detection)');
-                          } else {
-                            // Fallback to user environment
-                            if (user.environment === 'farcaster') {
-                              connector = connectors.find(c => c.id === 'farcasterMiniApp');
-                              console.log('🔍 Using Farcaster Mini App connector (fallback)');
-                            } else {
-                              connector = connectors.find(c => c.id === 'baseAccount');
-                              console.log('🔍 Using Base Account connector (fallback)');
-                            }
-                          }
-                          
-                          if (connector) {
-                            await connect({ connector });
-                            console.log('✅ Connected to wagmi successfully');
-                          } else {
-                            console.log('⚠️ Connector not found in wagmi');
-                            console.log('🔍 Available connectors:', connectors.map(c => ({ id: c.id, name: c.name })));
-                          }
-                        } catch (error) {
-                          console.error('❌ Failed to connect to wagmi:', error);
-                          console.log('🔍 This is expected in some cases - payment will work through native SDK');
-                          // Don't fail authentication if wagmi connection fails
-                          // The native SDK can handle payments independently
-                        }
-                        
-                        // Fetch user points immediately after authentication
-                        fetchUserPoints(user.address);
-                      } else {
-                        // User signed out - clear all state
-                        console.log('🔐 User signed out - clearing all state');
-                        setBaseAccountUser(null);
-                        setIsAuthenticated(false);
-                        setActiveTab('debate');
-                        
-                        // Clear all user-specific data
-                        setHasSubmittedCast(false);
-                        setUserPoints(0);
-                        setCastContent('');
-                        setSelectedSide(null);
-                        setShowForm(false);
-                        setPaymentStatus('idle');
-                        setPaymentError(null);
-                        setPaymentTransactionId(null);
-                        setSubmittingCast(false);
-                        
-                        console.log('✅ Unified sign out successful - all state cleared');
-                      }
-                    }}
+                    onAuthSuccess={handleAuthSuccess}
                     onAuthError={(error) => {
                       console.error('❌ Unified authentication error:', error);
                       // Error is now handled within the UnifiedAuth component

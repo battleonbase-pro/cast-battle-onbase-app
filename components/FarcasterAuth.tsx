@@ -94,14 +94,35 @@ export default function FarcasterAuth({ onAuthSuccess, onAuthError }: FarcasterA
       try {
         const response = await fetch('/api/battle/current');
         if (response.ok) {
-          const battle = await response.json();
-          setBattlePreview(battle);
-          
-          // Calculate time remaining
-          const endTime = new Date(battle.endTime).getTime();
-          const now = Date.now();
-          const remaining = Math.max(0, endTime - now);
-          setTimeRemaining(remaining);
+          const data = await response.json();
+          if (data.success && data.battle) {
+            setBattlePreview(data.battle);
+            console.log('📊 FarcasterAuth - Battle preview loaded:', {
+              title: data.battle.title,
+              description: data.battle.description,
+              participants: data.battle.participants,
+              endTime: data.battle.endTime
+            });
+            
+            // Calculate time remaining
+            const endTime = new Date(data.battle.endTime).getTime();
+            const now = Date.now();
+            const remaining = Math.max(0, endTime - now);
+            setTimeRemaining(remaining);
+            console.log('🕐 FarcasterAuth - Time remaining calculated:', {
+              endTime: data.battle.endTime,
+              remaining,
+              remainingSeconds: Math.floor(remaining / 1000)
+            });
+          } else {
+            console.log('📊 FarcasterAuth - No active battle found');
+            setBattlePreview(null);
+            setTimeRemaining(0);
+          }
+        } else {
+          console.log('📊 FarcasterAuth - API returned error status');
+          setBattlePreview(null);
+          setTimeRemaining(0);
         }
       } catch (error) {
         console.error('Failed to fetch battle preview:', error);

@@ -82,6 +82,7 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
       };
 
       console.log('✅ OnchainKitAuth authentication successful:', authUser);
+      console.log('🚀 OnchainKitAuth - Calling onAuthSuccess to proceed to debate page...');
       onAuthSuccess(authUser);
     }
   }, [isConnected, address, isMiniAppReady, context, onAuthSuccess]);
@@ -93,8 +94,35 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
         const response = await fetch('/api/battle/current');
         if (response.ok) {
           const data = await response.json();
-          setBattlePreview(data.battle);
-          setTimeRemaining(data.battle.timeRemaining);
+          if (data.success && data.battle) {
+            setBattlePreview(data.battle);
+            console.log('📊 OnchainKitAuth - Battle preview loaded:', {
+              title: data.battle.title,
+              description: data.battle.description,
+              participants: data.battle.participants,
+              endTime: data.battle.endTime
+            });
+            
+            // Calculate time remaining in seconds from endTime
+            if (data.battle.endTime) {
+              const endTime = new Date(data.battle.endTime).getTime();
+              const now = Date.now();
+              const remainingMs = Math.max(0, endTime - now);
+              const remainingSeconds = Math.floor(remainingMs / 1000);
+              setTimeRemaining(remainingSeconds);
+              console.log('🕐 OnchainKitAuth - Time remaining calculated:', {
+                endTime: data.battle.endTime,
+                remainingMs,
+                remainingSeconds
+              });
+            } else {
+              setTimeRemaining(0);
+            }
+          } else {
+            console.log('📊 OnchainKitAuth - No active battle found');
+            setBattlePreview(null);
+            setTimeRemaining(0);
+          }
         } else {
           console.log('No active battle found, attempting to create new one...');
           // Optionally trigger battle creation or show a message
