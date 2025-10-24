@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
-import { useAuthenticate } from '@coinbase/onchainkit';
+import { useMiniKit } from '@coinbase/onchainkit/minikit';
 import Image from 'next/image';
 import styles from './OnchainKitAuth.module.css';
 
@@ -26,45 +26,51 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [userAddress, setUserAddress] = useState<string | null>(null);
   
-  // Use OnchainKit's useAuthenticate hook for Base App Mini App
-  const { authenticate, isAuthenticating, isAuthenticated: onchainKitAuthenticated, address } = useAuthenticate();
+  // Use OnchainKit's useMiniKit hook for Base App Mini App
+  const { context, isMiniAppReady } = useMiniKit();
 
-  // Handle OnchainKit authentication
+  // Handle OnchainKit authentication for Base App Mini App
   const handleOnchainKitAuth = useCallback(async () => {
     try {
       setError(null);
       console.log('🔐 Starting OnchainKit authentication for Base App Mini App...');
       
-      // Use OnchainKit's authenticate function
-      await authenticate();
+      // For Base App Mini App, authentication happens automatically through MiniKit context
+      // We just need to wait for the context to be ready
+      if (!isMiniAppReady || !context) {
+        throw new Error('MiniKit context not ready');
+      }
       
-      console.log('✅ OnchainKit authentication successful');
+      console.log('✅ OnchainKit authentication successful for Base App Mini App');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'OnchainKit authentication failed';
       setError(errorMessage);
       onAuthError(errorMessage);
       console.error('❌ OnchainKit authentication error:', error);
     }
-  }, [authenticate, onAuthError]);
+  }, [isMiniAppReady, context, onAuthError]);
 
   // Handle authentication success
   useEffect(() => {
-    if (onchainKitAuthenticated && address) {
-      console.log('✅ OnchainKit authentication detected:', { address, authenticated: onchainKitAuthenticated });
+    if (isMiniAppReady && context?.user?.fid) {
+      console.log('✅ OnchainKit authentication detected for Base App:', { 
+        fid: context.user.fid, 
+        clientFid: context.client?.clientFid 
+      });
       
-      setUserAddress(address);
+      setUserAddress(context.user.fid.toString());
       setIsAuthenticated(true);
 
-      const user = {
-        address: address,
+      const authUser = {
+        address: context.user.fid.toString(), // Using FID as address identifier
         isAuthenticated: true,
         environment: 'base' // Indicate Base App environment
       };
 
-      console.log('✅ OnchainKit authentication successful:', user);
-      onAuthSuccess(user);
+      console.log('✅ OnchainKit authentication successful for Base App:', authUser);
+      onAuthSuccess(authUser);
     }
-  }, [onchainKitAuthenticated, address, onAuthSuccess]);
+  }, [isMiniAppReady, context, onAuthSuccess]);
 
   // Fetch current battle preview
   useEffect(() => {
@@ -133,14 +139,14 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
         {!isAuthenticated ? (
           <button
             onClick={handleOnchainKitAuth}
-            disabled={isAuthenticating}
+            disabled={!isMiniAppReady}
             className={styles.signInButton}
           >
-            {isAuthenticating ? 'Authenticating...' : 'Sign In with Base'}
+            {!isMiniAppReady ? 'Loading...' : 'Sign In with Base'}
           </button>
         ) : (
           <div className={styles.connectedInfo}>
-            <p>✅ Connected: {userAddress?.substring(0, 6)}...{userAddress?.substring(userAddress.length - 4)}</p>
+            <p>✅ Authenticated as FID: {userAddress}</p>
             <p>You are ready to participate!</p>
           </div>
         )}
