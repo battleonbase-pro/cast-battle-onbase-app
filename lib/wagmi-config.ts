@@ -32,21 +32,45 @@ export const config = (() => {
       console.log('Current URL for metadata:', currentUrl);
     }
 
-    // Build connectors array - we'll detect environment asynchronously in components
-    // For now, prioritize Base Account as default, components will handle Farcaster detection
+    // Build connectors array - prioritize Base Account for Mini Apps
     console.log('🔗 Initializing connectors - environment detection will be handled asynchronously');
     const connectors = [
       baseAccount({
         appName: 'NewsCast Debate',
       }),
       miniAppConnector(), // Farcaster connector as fallback
-      metaMask({
-        dappMetadata: {
-          name: 'NewsCast Debate',
-          url: currentUrl,
-        },
-      }),
     ];
+    
+    // Add external wallet connectors for external browsers only
+    // This prevents eip6963RequestProvider errors in Mini App environments
+    try {
+      // Check if we're in a Mini App environment by looking for Mini App specific globals
+      const isInMiniApp = typeof window !== 'undefined' && 
+        (window.location.href.includes('miniapp') || 
+         window.location.href.includes('farcaster') ||
+         window.parent !== window);
+      
+      if (!isInMiniApp) {
+        connectors.push(
+          metaMask({
+            dappMetadata: {
+              name: 'NewsCast Debate',
+              url: currentUrl,
+            },
+          })
+        );
+      }
+    } catch (error) {
+      // If we can't detect environment, include MetaMask as fallback
+      connectors.push(
+        metaMask({
+          dappMetadata: {
+            name: 'NewsCast Debate',
+            url: currentUrl,
+          },
+        })
+      );
+    }
     if (hasValidWalletConnectId) {
       connectors.push(
         walletConnect({

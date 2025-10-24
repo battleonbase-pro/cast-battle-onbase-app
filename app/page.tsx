@@ -216,6 +216,7 @@ export default function Home() {
   
   // Debug clientFid availability
   const clientFid = context?.client?.clientFid;
+  const userFid = context?.user?.fid; // Add missing userFid variable
   const hasClientContext = !!context?.client;
   
   // Enhanced debugging for context availability
