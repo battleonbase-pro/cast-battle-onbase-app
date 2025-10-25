@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useMiniKit } from '@coinbase/onchainkit/minikit';
+import { useEnvironmentCache } from './useEnvironmentCache';
 
 export interface EnvironmentInfo {
   isMiniApp: boolean;
@@ -15,6 +16,7 @@ export interface EnvironmentInfo {
 
 export function useEnvironmentDetection(): EnvironmentInfo {
   const { context, isMiniAppReady } = useMiniKit();
+  const { cachedEnvironment, cacheEnvironment } = useEnvironmentCache();
   const [environmentInfo, setEnvironmentInfo] = useState<EnvironmentInfo>({
     isMiniApp: false,
     isExternalBrowser: true,
@@ -25,6 +27,13 @@ export function useEnvironmentDetection(): EnvironmentInfo {
   });
 
   useEffect(() => {
+    // If we have a cached environment, use it immediately
+    if (cachedEnvironment) {
+      console.log('📦 Using cached environment, skipping detection');
+      setEnvironmentInfo(cachedEnvironment);
+      return;
+    }
+
     let timeoutId: NodeJS.Timeout;
     
     const detectEnvironment = async () => {
@@ -34,14 +43,16 @@ export function useEnvironmentDetection(): EnvironmentInfo {
         // Set a timeout to prevent infinite loading
         timeoutId = setTimeout(() => {
           console.log('⏰ Environment detection timeout, defaulting to external browser');
-          setEnvironmentInfo({
+          const detectedEnv = {
             isMiniApp: false,
             isExternalBrowser: true,
             isFarcaster: false,
             isBaseApp: false,
-            environment: 'external',
+            environment: 'external' as const,
             isLoading: false
-          });
+          };
+          setEnvironmentInfo(detectedEnv);
+          cacheEnvironment(detectedEnv);
         }, 5000); // 5 second timeout - much more reasonable
         
         // Immediate fallback detection - don't wait for MiniKit context
@@ -56,16 +67,18 @@ export function useEnvironmentDetection(): EnvironmentInfo {
           if (isBaseAppUrl) {
             console.log('🔍 Immediate detection: Base App Mini App detected via URL');
             clearTimeout(timeoutId);
-            setEnvironmentInfo({
+            const detectedEnv = {
               isMiniApp: true,
               isExternalBrowser: false,
               isFarcaster: false,
               isBaseApp: true,
-              environment: 'base',
+              environment: 'base' as const,
               isLoading: false,
               userFid: undefined,
               clientFid: '309857' // Assume Base App ClientFID
-            });
+            };
+            setEnvironmentInfo(detectedEnv);
+            cacheEnvironment(detectedEnv);
             return;
           }
           
@@ -78,16 +91,18 @@ export function useEnvironmentDetection(): EnvironmentInfo {
           if (isFarcasterUrl) {
             console.log('🔍 Immediate detection: Farcaster Mini App detected via URL');
             clearTimeout(timeoutId);
-            setEnvironmentInfo({
+            const detectedEnv = {
               isMiniApp: true,
               isExternalBrowser: false,
               isFarcaster: true,
               isBaseApp: false,
-              environment: 'farcaster',
+              environment: 'farcaster' as const,
               isLoading: false,
               userFid: undefined,
               clientFid: '9152' // Assume Farcaster ClientFID
-            });
+            };
+            setEnvironmentInfo(detectedEnv);
+            cacheEnvironment(detectedEnv);
             return;
           }
           
@@ -100,16 +115,18 @@ export function useEnvironmentDetection(): EnvironmentInfo {
           if (hasBaseFeatures) {
             console.log('🔍 Immediate detection: Base App Mini App detected via features');
             clearTimeout(timeoutId);
-            setEnvironmentInfo({
+            const detectedEnv = {
               isMiniApp: true,
               isExternalBrowser: false,
               isFarcaster: false,
               isBaseApp: true,
-              environment: 'base',
+              environment: 'base' as const,
               isLoading: false,
               userFid: undefined,
               clientFid: '309857'
-            });
+            };
+            setEnvironmentInfo(detectedEnv);
+            cacheEnvironment(detectedEnv);
             return;
           }
         }
@@ -126,14 +143,16 @@ export function useEnvironmentDetection(): EnvironmentInfo {
           const miniKitTimeout = setTimeout(() => {
             console.log('⏰ MiniKit context timeout, using fallback detection');
             clearTimeout(timeoutId);
-            setEnvironmentInfo({
+            const detectedEnv = {
               isMiniApp: false,
               isExternalBrowser: true,
               isFarcaster: false,
               isBaseApp: false,
-              environment: 'external',
+              environment: 'external' as const,
               isLoading: false
-            });
+            };
+            setEnvironmentInfo(detectedEnv);
+            cacheEnvironment(detectedEnv);
           }, 2000); // 2 second timeout for MiniKit context
           
           return () => clearTimeout(miniKitTimeout);
@@ -159,51 +178,59 @@ export function useEnvironmentDetection(): EnvironmentInfo {
         if (isMiniApp) {
           if (isBaseApp) {
             console.log('✅ Environment detected: Base App Mini App');
-            setEnvironmentInfo({
+            const detectedEnv = {
               isMiniApp: true,
               isExternalBrowser: false,
               isFarcaster: false,
               isBaseApp: true,
-              environment: 'base',
+              environment: 'base' as const,
               isLoading: false,
               userFid: context.user?.fid,
               clientFid: context.client?.clientFid?.toString()
-            });
+            };
+            setEnvironmentInfo(detectedEnv);
+            cacheEnvironment(detectedEnv);
           } else if (isFarcaster) {
             console.log('✅ Environment detected: Farcaster Mini App');
-            setEnvironmentInfo({
+            const detectedEnv = {
               isMiniApp: true,
               isExternalBrowser: false,
               isFarcaster: true,
               isBaseApp: false,
-              environment: 'farcaster',
+              environment: 'farcaster' as const,
               isLoading: false,
               userFid: context.user?.fid,
               clientFid: context.client?.clientFid?.toString()
-            });
+            };
+            setEnvironmentInfo(detectedEnv);
+            cacheEnvironment(detectedEnv);
           }
         } else {
           // Not in Mini App environment - external browser
           console.log('🌐 Environment detected: External browser');
-          setEnvironmentInfo({
+          const detectedEnv = {
             isMiniApp: false,
             isExternalBrowser: true,
             isFarcaster: false,
             isBaseApp: false,
-            environment: 'external',
+            environment: 'external' as const,
             isLoading: false
-          });
+          };
+          setEnvironmentInfo(detectedEnv);
+          cacheEnvironment(detectedEnv);
         }
       } catch (error) {
         console.log('⚠️ Environment detection failed, defaulting to external:', error);
-        setEnvironmentInfo({
+        const detectedEnv = {
           isMiniApp: false,
           isExternalBrowser: true,
           isFarcaster: false,
           isBaseApp: false,
-          environment: 'external',
+          environment: 'external' as const,
           isLoading: false
-        });
+        };
+        setEnvironmentInfo(detectedEnv);
+        cacheEnvironment(detectedEnv);
       }
     };
 
@@ -215,7 +242,7 @@ export function useEnvironmentDetection(): EnvironmentInfo {
         clearTimeout(timeoutId);
       }
     };
-  }, [context, isMiniAppReady]);
+  }, [context, isMiniAppReady, cachedEnvironment, cacheEnvironment]);
 
   return environmentInfo;
 }
