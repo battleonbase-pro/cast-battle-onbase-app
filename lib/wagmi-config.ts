@@ -49,7 +49,14 @@ export const config = (() => {
         const isInMiniApp = window.location.href.includes('miniapp') || 
                            window.location.href.includes('farcaster') ||
                            window.parent !== window ||
-                           window.location.href.includes('base.app');
+                           window.location.href.includes('base.app') ||
+                           window.location.href.includes('warpcast.com') ||
+                           window.location.href.includes('farcaster.xyz') ||
+                           // Check for Mini App specific properties
+                           (window as any).farcaster ||
+                           (window as any).miniapp ||
+                           // Check if we're in an iframe (common for Mini Apps)
+                           window.self !== window.top;
         
         if (!isInMiniApp) {
           // Add injected connector first (handles most wallets)

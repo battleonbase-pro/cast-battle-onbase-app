@@ -36,7 +36,9 @@ export async function GET(_request: NextRequest) {
       side: cast.side,
       userAddress: cast.user?.address || '', // Extract address from user object
       createdAt: cast.createdAt,
-      user: cast.user // Keep user object for additional data if needed
+      timestamp: cast.createdAt, // Add timestamp for compatibility
+      likes: cast.likes || 0,
+      isLiked: false // Default value to prevent hydration mismatch
     }));
 
     return NextResponse.json({
