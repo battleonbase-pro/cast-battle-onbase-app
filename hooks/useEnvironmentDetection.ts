@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useMiniKit } from '@coinbase/onchainkit/minikit';
 import { useEnvironmentCache } from './useEnvironmentCache';
+import { detectEnvironmentFromURL, detectEnvironmentFromMiniKit } from '../lib/environment-detection';
 
 export interface EnvironmentInfo {
   isMiniApp: boolean;
@@ -55,80 +56,27 @@ export function useEnvironmentDetection(): EnvironmentInfo {
           cacheEnvironment(detectedEnv);
         }, 5000); // 5 second timeout - much more reasonable
         
-        // Immediate fallback detection - don't wait for MiniKit context
-        if (typeof window !== 'undefined') {
-          // Check if we're in Base App by looking at the URL or user agent
-          const isBaseAppUrl = window.location.href.includes('base.app') || 
-                             window.location.href.includes('miniapp') ||
-                             window.location.hostname.includes('base') ||
-                             window.location.search.includes('base') ||
-                             document.referrer.includes('base.app');
-          
-          if (isBaseAppUrl) {
-            console.log('🔍 Immediate detection: Base App Mini App detected via URL');
-            clearTimeout(timeoutId);
-            const detectedEnv = {
-              isMiniApp: true,
-              isExternalBrowser: false,
-              isFarcaster: false,
-              isBaseApp: true,
-              environment: 'base' as const,
-              isLoading: false,
-              userFid: undefined,
-              clientFid: '309857' // Assume Base App ClientFID
-            };
-            setEnvironmentInfo(detectedEnv);
-            cacheEnvironment(detectedEnv);
-            return;
-          }
-          
-          // Check for Farcaster Mini App
-          const isFarcasterUrl = window.location.href.includes('farcaster.xyz') ||
-                                window.location.href.includes('warpcast.com') ||
-                                window.location.hostname.includes('farcaster') ||
-                                document.referrer.includes('farcaster');
-          
-          if (isFarcasterUrl) {
-            console.log('🔍 Immediate detection: Farcaster Mini App detected via URL');
-            clearTimeout(timeoutId);
-            const detectedEnv = {
-              isMiniApp: true,
-              isExternalBrowser: false,
-              isFarcaster: true,
-              isBaseApp: false,
-              environment: 'farcaster' as const,
-              isLoading: false,
-              userFid: undefined,
-              clientFid: '9152' // Assume Farcaster ClientFID
-            };
-            setEnvironmentInfo(detectedEnv);
-            cacheEnvironment(detectedEnv);
-            return;
-          }
-          
-          // Additional Base App detection - check for Base-specific features
-          const hasBaseFeatures = window.ethereum?.isBase || 
-                                window.ethereum?.isCoinbaseWallet ||
-                                navigator.userAgent.includes('Base') ||
-                                window.location.protocol === 'https:' && window.location.hostname.includes('base');
-          
-          if (hasBaseFeatures) {
-            console.log('🔍 Immediate detection: Base App Mini App detected via features');
-            clearTimeout(timeoutId);
-            const detectedEnv = {
-              isMiniApp: true,
-              isExternalBrowser: false,
-              isFarcaster: false,
-              isBaseApp: true,
-              environment: 'base' as const,
-              isLoading: false,
-              userFid: undefined,
-              clientFid: '309857'
-            };
-            setEnvironmentInfo(detectedEnv);
-            cacheEnvironment(detectedEnv);
-            return;
-          }
+        // Immediate fallback detection using shared logic
+        const urlDetectionResult = detectEnvironmentFromURL();
+        
+        if (urlDetectionResult.confidence === 'high' && urlDetectionResult.isMiniApp) {
+          console.log('🔍 Immediate detection:', urlDetectionResult.method, '-', urlDetectionResult.environment);
+          clearTimeout(timeoutId);
+          const detectedEnv = {
+            isMiniApp: urlDetectionResult.isMiniApp,
+            isExternalBrowser: urlDetectionResult.isExternal,
+            isFarcaster: urlDetectionResult.isFarcaster,
+            isBaseApp: urlDetectionResult.isBaseApp,
+            environment: urlDetectionResult.environment,
+            isLoading: false,
+            userFid: undefined,
+            clientFid: urlDetectionResult.isBaseApp 
+              ? (process.env.NEXT_PUBLIC_BASE_APP_CLIENT_FID || '309857')
+              : (process.env.NEXT_PUBLIC_FARCASTER_CLIENT_FID || '9152')
+          };
+          setEnvironmentInfo(detectedEnv);
+          cacheEnvironment(detectedEnv);
+          return;
         }
 
         // Wait for MiniKit context to be available for more precise detection
@@ -161,64 +109,44 @@ export function useEnvironmentDetection(): EnvironmentInfo {
         // Clear timeout since we got context
         clearTimeout(timeoutId);
 
-        // Use MiniKit context for precise detection
-        const isBaseApp = context.client?.clientFid === 309857;
-        const isFarcaster = context.client?.clientFid === 9152; // Updated with actual Farcaster ClientFID
-        const isMiniApp = isBaseApp || isFarcaster;
-
+        // Use shared MiniKit detection logic for consistency
+        const miniKitDetectionResult = detectEnvironmentFromMiniKit(context);
+        
         console.log('🎯 MiniKit context detection:', {
           clientFid: context.client?.clientFid,
-          isBaseApp,
-          isFarcaster,
-          isMiniApp,
           userFid: context.user?.fid,
-          launchLocation: context.location
+          launchLocation: context.location,
+          detectionResult: miniKitDetectionResult
         });
 
-        if (isMiniApp) {
-          if (isBaseApp) {
-            console.log('✅ Environment detected: Base App Mini App');
-            const detectedEnv = {
-              isMiniApp: true,
-              isExternalBrowser: false,
-              isFarcaster: false,
-              isBaseApp: true,
-              environment: 'base' as const,
-              isLoading: false,
-              userFid: context.user?.fid,
-              clientFid: context.client?.clientFid?.toString()
-            };
-            setEnvironmentInfo(detectedEnv);
-            cacheEnvironment(detectedEnv);
-          } else if (isFarcaster) {
-            console.log('✅ Environment detected: Farcaster Mini App');
-            const detectedEnv = {
-              isMiniApp: true,
-              isExternalBrowser: false,
-              isFarcaster: true,
-              isBaseApp: false,
-              environment: 'farcaster' as const,
-              isLoading: false,
-              userFid: context.user?.fid,
-              clientFid: context.client?.clientFid?.toString()
-            };
-            setEnvironmentInfo(detectedEnv);
-            cacheEnvironment(detectedEnv);
-          }
-        } else {
-          // Not in Mini App environment - external browser
-          console.log('🌐 Environment detected: External browser');
-          const detectedEnv = {
-            isMiniApp: false,
-            isExternalBrowser: true,
-            isFarcaster: false,
-            isBaseApp: false,
-            environment: 'external' as const,
-            isLoading: false
-          };
-          setEnvironmentInfo(detectedEnv);
-          cacheEnvironment(detectedEnv);
+        // Add environment validation and warnings
+        const BASE_APP_CLIENT_FID = parseInt(process.env.NEXT_PUBLIC_BASE_APP_CLIENT_FID || '309857');
+        const FARCASTER_CLIENT_FID = parseInt(process.env.NEXT_PUBLIC_FARCASTER_CLIENT_FID || '9152');
+        
+        if (miniKitDetectionResult.isBaseApp && !context.user?.fid) {
+          console.warn('⚠️ Base App detected but no user FID available in MiniKit context');
         }
+        if (miniKitDetectionResult.isFarcaster && !context.user?.fid) {
+          console.warn('⚠️ Farcaster detected but no user FID available in MiniKit context');
+        }
+        if (context.client?.clientFid && ![BASE_APP_CLIENT_FID, FARCASTER_CLIENT_FID].includes(context.client.clientFid)) {
+          console.warn('⚠️ Unknown ClientFID detected:', context.client.clientFid, 'Expected:', BASE_APP_CLIENT_FID, 'or', FARCASTER_CLIENT_FID);
+        }
+
+        console.log('✅ Environment detected:', miniKitDetectionResult.environment, 'via', miniKitDetectionResult.method);
+        
+        const detectedEnv = {
+          isMiniApp: miniKitDetectionResult.isMiniApp,
+          isExternalBrowser: miniKitDetectionResult.isExternal,
+          isFarcaster: miniKitDetectionResult.isFarcaster,
+          isBaseApp: miniKitDetectionResult.isBaseApp,
+          environment: miniKitDetectionResult.environment,
+          isLoading: false,
+          userFid: context.user?.fid?.toString(),
+          clientFid: context.client?.clientFid?.toString()
+        };
+        setEnvironmentInfo(detectedEnv);
+        cacheEnvironment(detectedEnv);
       } catch (error) {
         console.log('⚠️ Environment detection failed, defaulting to external:', error);
         const detectedEnv = {

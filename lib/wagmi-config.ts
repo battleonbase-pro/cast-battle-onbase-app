@@ -2,7 +2,7 @@ import { http, createConfig } from 'wagmi'
 import { base, baseSepolia, mainnet } from 'wagmi/chains'
 import { injected, metaMask, walletConnect, baseAccount } from 'wagmi/connectors'
 import { farcasterMiniApp as miniAppConnector } from '@farcaster/miniapp-wagmi-connector'
-import { sdk } from '@farcaster/miniapp-sdk'
+import { detectEnvironmentFromURL } from './environment-detection'
 
 // Create config as singleton to prevent multiple WalletConnect initializations
 let wagmiConfig: ReturnType<typeof createConfig> | null = null;
@@ -43,43 +43,33 @@ export const config = (() => {
     
     // Add external wallet connectors for external browsers only
     // This prevents eip6963RequestProvider errors in Mini App environments
-    if (typeof window !== 'undefined') {
-      try {
-        // More robust Mini App detection
-        const isInMiniApp = window.location.href.includes('miniapp') || 
-                           window.location.href.includes('farcaster') ||
-                           window.parent !== window ||
-                           window.location.href.includes('base.app') ||
-                           window.location.href.includes('warpcast.com') ||
-                           window.location.href.includes('farcaster.xyz') ||
-                           // Check for Mini App specific properties
-                           (window as any).farcaster ||
-                           (window as any).miniapp ||
-                           // Check if we're in an iframe (common for Mini Apps)
-                           window.self !== window.top;
-        
-        if (!isInMiniApp) {
-          // Add injected connector first (handles most wallets)
-          connectors.push(injected());
-          
-          // Add MetaMask connector
-          connectors.push(
-            metaMask({
-              dappMetadata: {
-                name: 'NewsCast Debate',
-                url: currentUrl,
-              },
-            })
-          );
-        }
-      } catch (error) {
-        console.warn('Could not detect Mini App environment, skipping external connectors:', error);
-        // Fallback: add injected connector for external browsers
-        connectors.push(injected());
-      }
-    } else {
-      // SSR fallback: add injected connector
+    // Use shared detection logic for consistency
+    const detectionResult = detectEnvironmentFromURL();
+    
+    console.log('🔗 Wagmi connector detection:', {
+      environment: detectionResult.environment,
+      isMiniApp: detectionResult.isMiniApp,
+      confidence: detectionResult.confidence,
+      method: detectionResult.method
+    });
+    
+    if (!detectionResult.isMiniApp) {
+      // Add injected connector first (handles most wallets)
       connectors.push(injected());
+      
+      // Add MetaMask connector
+      connectors.push(
+        metaMask({
+          dappMetadata: {
+            name: 'NewsCast Debate',
+            url: currentUrl,
+          },
+        })
+      );
+      
+      console.log('✅ Added external wallet connectors for', detectionResult.environment);
+    } else {
+      console.log('🚫 Skipped external wallet connectors for Mini App environment:', detectionResult.environment);
     }
     if (hasValidWalletConnectId) {
       connectors.push(
