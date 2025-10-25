@@ -1,6 +1,6 @@
 "use client";
-import { useEffect } from 'react';
-import { useSendToken } from '@coinbase/onchainkit/minikit';
+import { useEffect, useMemo } from 'react';
+import { Transaction, TransactionButton, LifecycleStatus } from '@coinbase/onchainkit/transaction';
 import { parseUnits } from 'viem';
 import { useAccount } from 'wagmi';
 import styles from './BasePaymentButton.module.css';
@@ -17,41 +17,36 @@ interface BasePaymentButtonProps {
 
 export default function BasePaymentButton({
   onClick,
-  onSuccess: _onSuccess,
+  onSuccess,
   disabled = false,
   loading = false,
-  children,
+  children: _children,
   amount,
   recipientAddress
 }: BasePaymentButtonProps) {
   const { address, isConnected } = useAccount();
 
-  // Use MiniKit's useSendToken hook for proper authorization
-  const { sendToken, isPending, error } = useSendToken();
-
   // USDC contract address on Base Sepolia
   const USDC_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS!;
 
-  const handlePayment = () => {
-    if (!isConnected || !address) {
-      console.error('❌ Wallet not connected');
-      return;
+  // Prepare transaction calls for USDC transfer
+  const calls = useMemo(() => [
+    {
+      to: USDC_CONTRACT_ADDRESS as `0x${string}`,
+      data: `0xa9059cbb${recipientAddress.slice(2).padStart(64, '0')}${parseUnits(amount, 6).toString(16).padStart(64, '0')}` as `0x${string}`
     }
+  ], [USDC_CONTRACT_ADDRESS, recipientAddress, amount]);
 
-    console.log('🚀 Initiating USDC payment via MiniKit useSendToken...');
+  const handleTransactionStatus = (lifecycleStatus: LifecycleStatus) => {
+    console.log('🔍 Transaction status:', lifecycleStatus);
     
-    // Use MiniKit's sendToken for proper authorization
-    // This opens a UI form for the user to confirm the transaction
-    sendToken({
-      token: `eip155:84532/erc20:${USDC_CONTRACT_ADDRESS}`, // Base Sepolia USDC
-      amount: parseUnits(amount, 6).toString(), // Convert to wei (6 decimals for USDC)
-      recipientAddress: recipientAddress,
-    });
-
-    // Note: sendToken opens a UI form and handles the transaction flow
-    // We'll need to handle success/failure through other means (event listeners or polling)
-    // For now, we'll call the onClick handler immediately
-    onClick();
+    if (lifecycleStatus?.statusName === 'success') {
+      console.log('✅ Transaction successful');
+      onClick(); // Call the onClick handler
+      onSuccess?.(); // Call the onSuccess callback
+    } else if (lifecycleStatus?.statusName === 'error') {
+      console.error('❌ Transaction failed');
+    }
   };
 
   // Debug logging
@@ -62,10 +57,9 @@ export default function BasePaymentButton({
       amount,
       isConnected,
       address,
-      isPending,
-      error: error?.message
+      calls
     });
-  }, [USDC_CONTRACT_ADDRESS, recipientAddress, amount, isConnected, address, isPending, error]);
+  }, [USDC_CONTRACT_ADDRESS, recipientAddress, amount, isConnected, address, calls]);
 
   // If wallet is not connected, show connect message
   if (!isConnected || !address) {
@@ -85,28 +79,9 @@ export default function BasePaymentButton({
 
   return (
     <div className={styles.paymentButtonContainer}>
-      <button
-        onClick={handlePayment}
-        disabled={disabled || loading || isPending}
-        className={styles.transactionButton}
-      >
-        {loading || isPending
-          ? `Processing ${amount} USDC Payment...`
-          : children
-        }
-      </button>
-      {error && (
-        <div style={{ 
-          marginTop: '8px', 
-          padding: '8px', 
-          backgroundColor: '#fee2e2', 
-          color: '#dc2626', 
-          borderRadius: '4px',
-          fontSize: '12px'
-        }}>
-          Error: {error.message}
-        </div>
-      )}
+      <Transaction calls={calls} onStatus={handleTransactionStatus}>
+        <TransactionButton disabled={disabled || loading} />
+      </Transaction>
     </div>
   );
 }
