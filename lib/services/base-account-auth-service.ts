@@ -320,7 +320,7 @@ Issued At: ${new Date(currentTime * 1000).toISOString()}`;
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          castContent,
+          content: castContent,
           debateId
         })
       });

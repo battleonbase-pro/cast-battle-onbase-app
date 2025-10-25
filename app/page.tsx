@@ -307,7 +307,7 @@ export default function Home() {
         },
         body: JSON.stringify({
           userAddress: baseAccountUser?.address,
-          castContent: castContent.trim(),
+          content: castContent.trim(),
           side: selectedSide,
         }),
       });
@@ -362,10 +362,10 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
+                body: JSON.stringify({
           userAddress: baseAccountUser.address,
-          content: castContent.trim(),
-          side: selectedSide,
+                  content: castContent.trim(),
+                  side: selectedSide,
           transactionId: transactionId
         }),
               });
