@@ -26,15 +26,13 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
   const [battlePreview, setBattlePreview] = useState<BattlePreview | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
+  const [hasAuthenticated, setHasAuthenticated] = useState<boolean>(false);
   
   // Use OnchainKit's useMiniKit hook for Base App Mini App
   const { context, isMiniAppReady } = useMiniKit();
   
   // Use wagmi's useAccount to check wallet connection (official pattern)
   const { isConnected, address } = useAccount();
-  
-  // Debug wagmi connection state
-  console.log('🔍 OnchainKitAuth - Wagmi connection state:', { isConnected, address });
 
   // Initialize Farcaster SDK for Base App Mini App
   useEffect(() => {
@@ -54,18 +52,27 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
 
   // Handle authentication success based on wallet connection (official pattern)
   useEffect(() => {
+    // Prevent multiple authentication calls
+    if (hasAuthenticated) {
+      return;
+    }
+
+    // Only proceed if wallet is connected and we have an address
+    if (!isConnected || !address) {
+      return;
+    }
+
     console.log('🔍 OnchainKitAuth - Auth check:', { 
       isConnected, 
       address, 
       isMiniAppReady, 
       clientFid: context?.client?.clientFid,
       hasContext: !!context,
-      contextClient: context?.client,
-      contextUser: context?.user
+      hasAuthenticated
     });
     
     // Primary condition: Base App Mini App with proper context
-    if (isConnected && address && context?.client?.clientFid === 309857) {
+    if (context?.client?.clientFid === 309857) {
       console.log('✅ OnchainKitAuth - Wallet connected in Base App:', { 
         address,
         fid: context.user?.fid, 
@@ -82,15 +89,19 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
       console.log('✅ OnchainKitAuth authentication successful:', authUser);
       console.log('🚀 OnchainKitAuth - Calling onAuthSuccess to proceed to debate page...');
       
-      // Call onAuthSuccess immediately - no delay needed
+      setHasAuthenticated(true);
       onAuthSuccess(authUser);
+      return;
     }
+    
     // Fallback condition: If wallet is connected but context is not ready yet
-    else if (isConnected && address && !isMiniAppReady) {
+    if (!isMiniAppReady) {
       console.log('⚠️ OnchainKitAuth - Wallet connected but MiniKit not ready yet, waiting...');
+      return;
     }
+    
     // Fallback condition: If wallet is connected but we don't have proper context
-    else if (isConnected && address && (!context || !context.client)) {
+    if (!context || !context.client) {
       console.log('⚠️ OnchainKitAuth - Wallet connected but no MiniKit context, proceeding anyway...');
       
       // Proceed with authentication even without proper context
@@ -103,10 +114,13 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
       console.log('✅ OnchainKitAuth fallback authentication successful:', authUser);
       console.log('🚀 OnchainKitAuth - Calling onAuthSuccess (fallback) to proceed to debate page...');
       
+      setHasAuthenticated(true);
       onAuthSuccess(authUser);
+      return;
     }
+    
     // Additional fallback: If we're in Base App environment (detected by URL) and wallet is connected
-    else if (isConnected && address && typeof window !== 'undefined') {
+    if (typeof window !== 'undefined') {
       const isBaseAppUrl = window.location.href.includes('base.app') || 
                           window.location.href.includes('miniapp') ||
                           window.location.hostname.includes('base');
@@ -123,25 +137,27 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
         console.log('✅ OnchainKitAuth URL-based authentication successful:', authUser);
         console.log('🚀 OnchainKitAuth - Calling onAuthSuccess (URL-based) to proceed to debate page...');
         
+        setHasAuthenticated(true);
         onAuthSuccess(authUser);
+        return;
       }
     }
+    
     // Final fallback: If wallet is connected, proceed regardless of context
-    else if (isConnected && address) {
-      console.log('🔍 OnchainKitAuth - Final fallback: Wallet connected, proceeding with authentication...');
-      
-      const authUser = {
-        address: address,
-        isAuthenticated: true,
-        environment: 'base'
-      };
+    console.log('🔍 OnchainKitAuth - Final fallback: Wallet connected, proceeding with authentication...');
+    
+    const authUser = {
+      address: address,
+      isAuthenticated: true,
+      environment: 'base'
+    };
 
-      console.log('✅ OnchainKitAuth final fallback authentication successful:', authUser);
-      console.log('🚀 OnchainKitAuth - Calling onAuthSuccess (final fallback) to proceed to debate page...');
-      
-      onAuthSuccess(authUser);
-    }
-  }, [isConnected, address, isMiniAppReady, context, onAuthSuccess]);
+    console.log('✅ OnchainKitAuth final fallback authentication successful:', authUser);
+    console.log('🚀 OnchainKitAuth - Calling onAuthSuccess (final fallback) to proceed to debate page...');
+    
+    setHasAuthenticated(true);
+    onAuthSuccess(authUser);
+  }, [isConnected, address, isMiniAppReady, context, hasAuthenticated]);
 
   // Fetch current battle preview
   useEffect(() => {
