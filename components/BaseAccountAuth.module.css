@@ -179,6 +179,36 @@
   margin-top: 20px;
 }
 
+.loginSection {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+}
+
+.loginButton {
+  background: linear-gradient(135deg, #0052ff 0%, #00d4aa 100%);
+  color: white;
+  border: none;
+  padding: 16px 32px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 82, 255, 0.3);
+  min-width: 200px;
+}
+
+.loginButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 82, 255, 0.4);
+}
+
+.loginButton:active {
+  transform: translateY(0);
+}
+
 .signInButton {
   background: linear-gradient(135deg, #0052ff, #00d4aa);
   color: white;

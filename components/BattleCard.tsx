@@ -68,7 +68,7 @@ export default function BattleCard({ battle, timeRemaining, isLoading }: BattleC
             📰 {battle.source}
           </a>
           <span className={styles.participantsCount}>
-            👥 {battle.participants?.length || 0} participants
+            👥 {battle.participants || 0} participants
           </span>
           {timeRemaining !== null && (
             <span className={styles.timer}>

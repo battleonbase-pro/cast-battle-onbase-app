@@ -43,8 +43,6 @@ export const config = (() => {
     
     // Add external wallet connectors for external browsers only
     // This prevents eip6963RequestProvider errors in Mini App environments
-    // For Mini Apps, we only use baseAccount and miniAppConnector
-    // External wallets are only added for external browser environments
     if (typeof window !== 'undefined') {
       try {
         // More robust Mini App detection
@@ -54,6 +52,10 @@ export const config = (() => {
                            window.location.href.includes('base.app');
         
         if (!isInMiniApp) {
+          // Add injected connector first (handles most wallets)
+          connectors.push(injected());
+          
+          // Add MetaMask connector
           connectors.push(
             metaMask({
               dappMetadata: {
@@ -64,8 +66,13 @@ export const config = (() => {
           );
         }
       } catch (error) {
-        console.warn('Could not detect Mini App environment, skipping MetaMask connector:', error);
+        console.warn('Could not detect Mini App environment, skipping external connectors:', error);
+        // Fallback: add injected connector for external browsers
+        connectors.push(injected());
       }
+    } else {
+      // SSR fallback: add injected connector
+      connectors.push(injected());
     }
     if (hasValidWalletConnectId) {
       connectors.push(

@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { useMiniKit } from '@coinbase/onchainkit/minikit';
+import { useMiniKit, useAuthenticate } from '@coinbase/onchainkit/minikit';
 import { ConnectWallet, Wallet } from '@coinbase/onchainkit/wallet';
 import { useAccount } from 'wagmi';
 import { sdk } from '@farcaster/miniapp-sdk';
@@ -30,6 +30,7 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
   
   // Use OnchainKit's MiniKit hooks for proper authentication
   const { setMiniAppReady, isMiniAppReady, context } = useMiniKit();
+  const { signIn } = useAuthenticate();
   
   // Use wagmi's useAccount to check wallet connection
   const { isConnected, address } = useAccount();
@@ -58,39 +59,39 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
     initializeSDK();
   }, []);
 
-  // Handle authentication using useAuthenticate hook
-  useEffect(() => {
-    console.log('🔍 OnchainKitAuth - Authentication state:', { 
-      context, 
-      isConnected, 
-      address,
-      hasAuthenticated
-    });
-
-    // Prevent multiple authentication calls
-    if (hasAuthenticated) {
-      console.log('⚠️ OnchainKitAuth - Already authenticated, skipping');
+  // Manual authentication handler for login button
+  const handleLogin = async () => {
+    if (!isConnected || !address) {
+      onAuthError('Please connect your wallet first');
       return;
     }
 
-    // If wallet is connected, consider user authenticated without requiring signIn()
-    // This prevents redirect loops on page reload in Base App Mini App
-    if (isConnected && address && !hasAuthenticated) {
-      console.log('🔍 OnchainKitAuth - Wallet connected, treating as authenticated...');
+    try {
+      console.log('🔐 Starting manual authentication...');
+      const result = await signIn();
       
-      const authUser = {
-        address: address,
-        isAuthenticated: true,
-        environment: 'base',
-        signature: undefined, // No signature needed for existing connection
-        message: undefined,
-        authMethod: 'wallet_connection'
-      };
+      if (result) {
+        console.log('✅ Authentication successful:', result);
+        
+        const authUser = {
+          address: address,
+          isAuthenticated: true,
+          environment: 'base',
+          signature: result.signature,
+          message: result.message,
+          authMethod: result.authMethod
+        };
 
-      setHasAuthenticated(true);
-      onAuthSuccess(authUser);
+        setHasAuthenticated(true);
+        onAuthSuccess(authUser);
+      } else {
+        console.log('⚠️ Authentication cancelled by user');
+      }
+    } catch (error) {
+      console.error('❌ Authentication failed:', error);
+      onAuthError(error instanceof Error ? error.message : 'Authentication failed');
     }
-  }, [isConnected, address, hasAuthenticated, onAuthSuccess, onAuthError, context]);
+  };
 
   // Fetch current battle preview
   useEffect(() => {
@@ -218,7 +219,7 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
 
         {/* Authentication Section */}
         <div className={styles.authSection}>
-          {!hasAuthenticated && !isConnected ? (
+          {!isConnected ? (
             <div className={styles.walletSection}>
               <p className={styles.authDescription}>
                 Connect your Base wallet to participate in debates and earn rewards.
@@ -227,16 +228,34 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
                 <ConnectWallet />
               </Wallet>
             </div>
+          ) : !hasAuthenticated ? (
+            <div className={styles.loginSection}>
+              <div className={styles.connectedInfo}>
+                <div className={styles.connectedIcon}>🔗</div>
+                <div className={styles.connectedText}>
+                  <div className={styles.connectedTitle}>Wallet Connected</div>
+                  <div className={styles.connectedAddress}>
+                    {address?.substring(0, 6)}...{address?.substring(address?.length - 4)}
+                  </div>
+                </div>
+              </div>
+              <button 
+                className={styles.loginButton}
+                onClick={handleLogin}
+              >
+                Sign In to Continue
+              </button>
+            </div>
           ) : (
             <div className={styles.connectedInfo}>
               <div className={styles.connectedIcon}>✅</div>
               <div className={styles.connectedText}>
-                <div className={styles.connectedTitle}>Wallet Connected</div>
+                <div className={styles.connectedTitle}>Authenticated</div>
                 <div className={styles.connectedAddress}>
                   {address?.substring(0, 6)}...{address?.substring(address?.length - 4)}
                 </div>
                 <div className={styles.connectedStatus}>
-                  {hasAuthenticated ? 'Authenticated' : 'Connecting...'}
+                  Ready to participate!
                 </div>
               </div>
             </div>
