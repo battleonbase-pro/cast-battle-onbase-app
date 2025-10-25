@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
-import { useMiniKit } from '@coinbase/onchainkit/minikit';
+import { useMiniKit, useAuthenticate } from '@coinbase/onchainkit/minikit';
 import { ConnectWallet, Wallet } from '@coinbase/onchainkit/wallet';
 import { useAccount } from 'wagmi';
 import { sdk } from '@farcaster/miniapp-sdk';
@@ -28,11 +28,20 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
   const [error, setError] = useState<string | null>(null);
   const [hasAuthenticated, setHasAuthenticated] = useState<boolean>(false);
   
-  // Use OnchainKit's useMiniKit hook for Base App Mini App
-  const { context, isMiniAppReady } = useMiniKit();
+  // Use OnchainKit's MiniKit hooks for proper authentication
+  const { setFrameReady, isFrameReady } = useMiniKit();
+  const { authenticate, isAuthenticated, user } = useAuthenticate();
   
-  // Use wagmi's useAccount to check wallet connection (official pattern)
+  // Use wagmi's useAccount to check wallet connection
   const { isConnected, address } = useAccount();
+
+  // Signal frame readiness as per MiniKit best practices
+  useEffect(() => {
+    if (!isFrameReady) {
+      console.log('🔧 OnchainKitAuth - Signaling frame readiness...');
+      setFrameReady();
+    }
+  }, [setFrameReady, isFrameReady]);
 
   // Initialize Farcaster SDK for Base App Mini App
   useEffect(() => {
@@ -50,17 +59,14 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
     initializeSDK();
   }, []);
 
-  // Handle authentication success based on wallet connection (official pattern)
+  // Handle authentication using cryptographically verified authentication
   useEffect(() => {
-    console.log('🔍 OnchainKitAuth - useEffect triggered:', { 
+    console.log('🔍 OnchainKitAuth - Authentication state:', { 
+      isAuthenticated, 
+      user, 
       isConnected, 
-      address, 
-      isMiniAppReady, 
-      clientFid: context?.client?.clientFid,
-      hasContext: !!context,
-      hasAuthenticated,
-      contextClient: context?.client,
-      contextUser: context?.user
+      address,
+      hasAuthenticated
     });
 
     // Prevent multiple authentication calls
@@ -69,102 +75,38 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
       return;
     }
 
-    // Only proceed if wallet is connected and we have an address
-    if (!isConnected || !address) {
-      console.log('⚠️ OnchainKitAuth - Wallet not connected or no address');
-      return;
-    }
-
-    console.log('🔍 OnchainKitAuth - Proceeding with authentication...');
-    
-    // Primary condition: Base App Mini App with proper context
-    if (context?.client?.clientFid === 309857) {
-      console.log('✅ OnchainKitAuth - Primary path: Base App Mini App with proper context');
-      console.log('✅ OnchainKitAuth - Wallet connected in Base App:', { 
-        address,
-        fid: context.user?.fid, 
-        clientFid: context.client?.clientFid 
-      });
+    // Use cryptographically verified authentication from useAuthenticate
+    if (isAuthenticated && user && user.address) {
+      console.log('✅ OnchainKitAuth - Cryptographically verified authentication successful:', user);
       
-      // Use wallet address as the primary identifier
       const authUser = {
-        address: address, // Use wallet address
+        address: user.address,
         isAuthenticated: true,
-        environment: 'base' // Indicate Base App environment
+        environment: 'base'
       };
 
-      console.log('✅ OnchainKitAuth authentication successful:', authUser);
-      console.log('🚀 OnchainKitAuth - Calling onAuthSuccess to proceed to debate page...');
-      
       setHasAuthenticated(true);
       onAuthSuccess(authUser);
       return;
     }
-    
-    // Fallback condition: If wallet is connected but context is not ready yet
-    if (!isMiniAppReady) {
-      console.log('⚠️ OnchainKitAuth - Fallback 1: MiniKit not ready yet, waiting...');
-      return;
-    }
-    
-    // Fallback condition: If wallet is connected but we don't have proper context
-    if (!context || !context.client) {
-      console.log('⚠️ OnchainKitAuth - Fallback 2: No MiniKit context, proceeding anyway...');
+
+    // Fallback: If wallet is connected but not authenticated, try to authenticate
+    if (isConnected && address && !isAuthenticated) {
+      console.log('🔍 OnchainKitAuth - Wallet connected but not authenticated, attempting authentication...');
       
-      // Proceed with authentication even without proper context
-      const authUser = {
-        address: address,
-        isAuthenticated: true,
-        environment: 'base' // Assume Base App if wallet is connected
+      const handleAuthentication = async () => {
+        try {
+          await authenticate();
+          console.log('✅ OnchainKitAuth - Authentication initiated');
+        } catch (error) {
+          console.error('❌ OnchainKitAuth - Authentication failed:', error);
+          onAuthError(error instanceof Error ? error.message : 'Authentication failed');
+        }
       };
 
-      console.log('✅ OnchainKitAuth fallback authentication successful:', authUser);
-      console.log('🚀 OnchainKitAuth - Calling onAuthSuccess (fallback) to proceed to debate page...');
-      
-      setHasAuthenticated(true);
-      onAuthSuccess(authUser);
-      return;
+      handleAuthentication();
     }
-    
-    // Additional fallback: If we're in Base App environment (detected by URL) and wallet is connected
-    if (typeof window !== 'undefined') {
-      const isBaseAppUrl = window.location.href.includes('base.app') || 
-                          window.location.href.includes('miniapp') ||
-                          window.location.hostname.includes('base');
-      
-      if (isBaseAppUrl) {
-        console.log('🔍 OnchainKitAuth - Fallback 3: Base App detected via URL, wallet connected, proceeding...');
-        
-        const authUser = {
-          address: address,
-          isAuthenticated: true,
-          environment: 'base'
-        };
-
-        console.log('✅ OnchainKitAuth URL-based authentication successful:', authUser);
-        console.log('🚀 OnchainKitAuth - Calling onAuthSuccess (URL-based) to proceed to debate page...');
-        
-        setHasAuthenticated(true);
-        onAuthSuccess(authUser);
-        return;
-      }
-    }
-    
-    // Final fallback: If wallet is connected, proceed regardless of context
-    console.log('🔍 OnchainKitAuth - Final fallback: Wallet connected, proceeding with authentication...');
-    
-    const authUser = {
-      address: address,
-      isAuthenticated: true,
-      environment: 'base'
-    };
-
-    console.log('✅ OnchainKitAuth final fallback authentication successful:', authUser);
-    console.log('🚀 OnchainKitAuth - Calling onAuthSuccess (final fallback) to proceed to debate page...');
-    
-    setHasAuthenticated(true);
-    onAuthSuccess(authUser);
-  }, [isConnected, address, isMiniAppReady, context, hasAuthenticated]);
+  }, [isAuthenticated, user, isConnected, address, hasAuthenticated, authenticate, onAuthSuccess, onAuthError]);
 
   // Fetch current battle preview
   useEffect(() => {
@@ -292,7 +234,7 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
 
         {/* Authentication Section */}
         <div className={styles.authSection}>
-          {!isConnected ? (
+          {!isAuthenticated ? (
             <div className={styles.walletSection}>
               <p className={styles.authDescription}>
                 Connect your Base wallet to participate in debates and earn rewards.
@@ -307,7 +249,7 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
               <div className={styles.connectedText}>
                 <div className={styles.connectedTitle}>Wallet Connected</div>
                 <div className={styles.connectedAddress}>
-                  {address?.substring(0, 6)}...{address?.substring(address.length - 4)}
+                  {user?.address?.substring(0, 6)}...{user?.address?.substring(user.address.length - 4)}
                 </div>
               </div>
             </div>

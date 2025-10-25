@@ -3,6 +3,7 @@ import { ReactNode } from 'react';
 import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { OnchainKitProvider } from '@coinbase/onchainkit';
+import { MiniKitProvider } from '@coinbase/onchainkit/minikit';
 import { base } from 'wagmi/chains';
 import '@coinbase/onchainkit/styles.css';
 import { config } from '@/lib/wagmi-config';
@@ -55,7 +56,9 @@ export function RootProvider({ children, apiKey }: RootProviderProps) {
             notificationProxyUrl: undefined,
           }}
         >
-          {children}
+          <MiniKitProvider>
+            {children}
+          </MiniKitProvider>
         </OnchainKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
