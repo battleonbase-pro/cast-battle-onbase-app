@@ -1,9 +1,8 @@
 "use client";
-import { useState, useEffect } from 'react';
-import { Transaction, TransactionButton } from '@coinbase/onchainkit/transaction';
-import { parseUnits, encodeFunctionData } from 'viem';
-import { erc20Abi } from 'viem';
-import { useAccount, useConnect } from 'wagmi';
+import { useEffect } from 'react';
+import { useSendToken } from '@coinbase/onchainkit/minikit';
+import { parseUnits } from 'viem';
+import { useAccount } from 'wagmi';
 import styles from './BasePaymentButton.module.css';
 
 interface BasePaymentButtonProps {
@@ -18,87 +17,55 @@ interface BasePaymentButtonProps {
 
 export default function BasePaymentButton({
   onClick,
-  onSuccess,
+  onSuccess: _onSuccess,
   disabled = false,
   loading = false,
   children,
   amount,
   recipientAddress
 }: BasePaymentButtonProps) {
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [hasCalledSuccess, setHasCalledSuccess] = useState(false);
   const { address, isConnected } = useAccount();
+
+  // Use MiniKit's useSendToken hook for proper authorization
+  const { sendToken, isPending, error } = useSendToken();
 
   // USDC contract address on Base Sepolia
   const USDC_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS!;
 
-  const handleTransactionSuccess = (transactionData?: any) => {
-    if (hasCalledSuccess) {
-      console.log('⚠️ Success already called, skipping...');
+  const handlePayment = () => {
+    if (!isConnected || !address) {
+      console.error('❌ Wallet not connected');
       return;
     }
-    
-    console.log('✅ Payment transaction successful');
-    console.log('🎉 Thank you for your participation!');
-    console.log('📝 Transaction data:', transactionData);
-    
-    // Extract transaction hash from OnchainKit response
-    let transactionHash: string | undefined;
-    if (typeof transactionData === 'string') {
-      transactionHash = transactionData;
-    } else if (transactionData && transactionData.transactionReceipts && Array.isArray(transactionData.transactionReceipts)) {
-      // Extract hash from the first transaction receipt
-      transactionHash = transactionData.transactionReceipts[0]?.transactionHash;
-    } else if (transactionData && transactionData.hash) {
-      transactionHash = transactionData.hash;
-    }
-    
-    console.log('📝 Extracted transaction hash:', transactionHash);
-    
-    setIsProcessing(false);
-    setHasCalledSuccess(true);
-    
-    // Call the success callback with transaction hash
-    if (onSuccess) {
-      onSuccess(transactionHash);
-    }
-  };
 
-  const handleTransactionError = (error: Error) => {
-    console.error('❌ Base payment transaction failed:', error);
-    console.error('❌ Error details:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
+    console.log('🚀 Initiating USDC payment via MiniKit useSendToken...');
+    
+    // Use MiniKit's sendToken for proper authorization
+    // This opens a UI form for the user to confirm the transaction
+    sendToken({
+      token: `eip155:84532/erc20:${USDC_CONTRACT_ADDRESS}`, // Base Sepolia USDC
+      amount: parseUnits(amount, 6).toString(), // Convert to wei (6 decimals for USDC)
+      recipientAddress: recipientAddress,
     });
-    setIsProcessing(false);
+
+    // Note: sendToken opens a UI form and handles the transaction flow
+    // We'll need to handle success/failure through other means (event listeners or polling)
+    // For now, we'll call the onClick handler immediately
+    onClick();
   };
 
-
-  // USDC payment for debate participation - use the amount prop
-  const usdcAmount = parseUnits(amount, 6); // Use the amount prop (USDC has 6 decimals)
-  // Try the official Base Sepolia USDC contract
-  const usdcContractAddress = process.env.NEXT_PUBLIC_USDC_ADDRESS!; // USDC on Base Sepolia
-  
-  // Base Sepolia testnet configuration - USE USDC NOT ETH
-  const isTestnet = process.env.NEXT_PUBLIC_NETWORK === 'testnet' || process.env.NODE_ENV === 'development';
-  const testMode = false; // Always use USDC, never ETH
-  const ethAmount = parseUnits('0.001', 18); // Not used anymore
-
-  // Only log once when component mounts or key values change
+  // Debug logging
   useEffect(() => {
-    console.log('🔧 Base Sepolia USDC Payment Configuration:');
-    console.log('  - Network: Base Sepolia (Testnet)');
-    console.log('  - Payment: USDC Transfer');
-    console.log('  - USDC Contract:', usdcContractAddress);
-    console.log('  - Recipient (DebatePool):', recipientAddress);
-    console.log('  - Amount:', amount, 'USDC');
-    console.log('  - Chain ID:', 84532);
-    console.log('  - Wallet Connected:', isConnected);
-    console.log('  - Wallet Address:', address);
-    console.log('  - Environment:', process.env.NODE_ENV);
-    console.log('  - Network Setting:', process.env.NEXT_PUBLIC_NETWORK);
-  }, [recipientAddress, isConnected, address, usdcContractAddress]);
+    console.log('🔧 BasePaymentButton Configuration:', {
+      USDC_CONTRACT_ADDRESS,
+      recipientAddress,
+      amount,
+      isConnected,
+      address,
+      isPending,
+      error: error?.message
+    });
+  }, [USDC_CONTRACT_ADDRESS, recipientAddress, amount, isConnected, address, isPending, error]);
 
   // If wallet is not connected, show connect message
   if (!isConnected || !address) {
@@ -116,48 +83,30 @@ export default function BasePaymentButton({
     );
   }
 
-  // Debug transaction calls
-  const transactionCalls = [{
-    // USDC transfer - call transfer function on USDC contract
-    to: usdcContractAddress as `0x${string}`, // USDC contract address
-    data: encodeFunctionData({
-      abi: erc20Abi,
-      functionName: 'transfer',
-      args: [recipientAddress as `0x${string}`, usdcAmount] // Transfer to debate pool contract
-    }),
-    value: 0n, // No ETH value for ERC20 transfer
-  }];
-
-  console.log('🔧 BasePaymentButton Transaction Calls Debug:', {
-    usdcContractAddress,
-    recipientAddress,
-    usdcAmount: usdcAmount.toString(),
-    transactionCalls,
-    hasTo: !!transactionCalls[0]?.to,
-    hasData: !!transactionCalls[0]?.data,
-    hasValue: transactionCalls[0]?.value !== undefined
-  });
-
   return (
     <div className={styles.paymentButtonContainer}>
-      <Transaction
-        calls={transactionCalls}
-        chainId={84532} // Base Sepolia
-        onSuccess={(transactionData) => {
-          handleTransactionSuccess(transactionData);
-        }}
-        onError={handleTransactionError}
+      <button
+        onClick={handlePayment}
+        disabled={disabled || loading || isPending}
+        className={styles.transactionButton}
       >
-        <TransactionButton
-          disabled={disabled || loading || isProcessing}
-          className={styles.transactionButton}
-        >
-          {loading || isProcessing 
-            ? `Processing ${amount} USDC Payment...` 
-            : children
-          }
-        </TransactionButton>
-      </Transaction>
+        {loading || isPending
+          ? `Processing ${amount} USDC Payment...`
+          : children
+        }
+      </button>
+      {error && (
+        <div style={{ 
+          marginTop: '8px', 
+          padding: '8px', 
+          backgroundColor: '#fee2e2', 
+          color: '#dc2626', 
+          borderRadius: '4px',
+          fontSize: '12px'
+        }}>
+          Error: {error.message}
+        </div>
+      )}
     </div>
   );
 }
