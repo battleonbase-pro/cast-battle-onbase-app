@@ -81,7 +81,8 @@ export default function RootLayout({
     hasApiKey: !!apiKey,
     apiKeyLength: apiKey?.length,
     apiKeyPreview: apiKey ? `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}` : 'undefined',
-    nodeEnv: process.env.NODE_ENV
+    nodeEnv: process.env.NODE_ENV,
+    allEnvVars: Object.keys(process.env).filter(key => key.includes('ONCHAINKIT') || key.includes('NEXT_PUBLIC'))
   });
   
   return (
