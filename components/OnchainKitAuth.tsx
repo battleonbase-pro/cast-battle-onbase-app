@@ -59,7 +59,9 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
       address, 
       isMiniAppReady, 
       clientFid: context?.client?.clientFid,
-      hasContext: !!context
+      hasContext: !!context,
+      contextClient: context?.client,
+      contextUser: context?.user
     });
     
     // Primary condition: Base App Mini App with proper context
@@ -123,6 +125,21 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
         
         onAuthSuccess(authUser);
       }
+    }
+    // Final fallback: If wallet is connected, proceed regardless of context
+    else if (isConnected && address) {
+      console.log('🔍 OnchainKitAuth - Final fallback: Wallet connected, proceeding with authentication...');
+      
+      const authUser = {
+        address: address,
+        isAuthenticated: true,
+        environment: 'base'
+      };
+
+      console.log('✅ OnchainKitAuth final fallback authentication successful:', authUser);
+      console.log('🚀 OnchainKitAuth - Calling onAuthSuccess (final fallback) to proceed to debate page...');
+      
+      onAuthSuccess(authUser);
     }
   }, [isConnected, address, isMiniAppReady, context, onAuthSuccess]);
 
