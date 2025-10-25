@@ -52,27 +52,34 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
 
   // Handle authentication success based on wallet connection (official pattern)
   useEffect(() => {
-    // Prevent multiple authentication calls
-    if (hasAuthenticated) {
-      return;
-    }
-
-    // Only proceed if wallet is connected and we have an address
-    if (!isConnected || !address) {
-      return;
-    }
-
-    console.log('🔍 OnchainKitAuth - Auth check:', { 
+    console.log('🔍 OnchainKitAuth - useEffect triggered:', { 
       isConnected, 
       address, 
       isMiniAppReady, 
       clientFid: context?.client?.clientFid,
       hasContext: !!context,
-      hasAuthenticated
+      hasAuthenticated,
+      contextClient: context?.client,
+      contextUser: context?.user
     });
+
+    // Prevent multiple authentication calls
+    if (hasAuthenticated) {
+      console.log('⚠️ OnchainKitAuth - Already authenticated, skipping');
+      return;
+    }
+
+    // Only proceed if wallet is connected and we have an address
+    if (!isConnected || !address) {
+      console.log('⚠️ OnchainKitAuth - Wallet not connected or no address');
+      return;
+    }
+
+    console.log('🔍 OnchainKitAuth - Proceeding with authentication...');
     
     // Primary condition: Base App Mini App with proper context
     if (context?.client?.clientFid === 309857) {
+      console.log('✅ OnchainKitAuth - Primary path: Base App Mini App with proper context');
       console.log('✅ OnchainKitAuth - Wallet connected in Base App:', { 
         address,
         fid: context.user?.fid, 
@@ -96,13 +103,13 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
     
     // Fallback condition: If wallet is connected but context is not ready yet
     if (!isMiniAppReady) {
-      console.log('⚠️ OnchainKitAuth - Wallet connected but MiniKit not ready yet, waiting...');
+      console.log('⚠️ OnchainKitAuth - Fallback 1: MiniKit not ready yet, waiting...');
       return;
     }
     
     // Fallback condition: If wallet is connected but we don't have proper context
     if (!context || !context.client) {
-      console.log('⚠️ OnchainKitAuth - Wallet connected but no MiniKit context, proceeding anyway...');
+      console.log('⚠️ OnchainKitAuth - Fallback 2: No MiniKit context, proceeding anyway...');
       
       // Proceed with authentication even without proper context
       const authUser = {
@@ -126,7 +133,7 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
                           window.location.hostname.includes('base');
       
       if (isBaseAppUrl) {
-        console.log('🔍 OnchainKitAuth - Base App detected via URL, wallet connected, proceeding...');
+        console.log('🔍 OnchainKitAuth - Fallback 3: Base App detected via URL, wallet connected, proceeding...');
         
         const authUser = {
           address: address,
