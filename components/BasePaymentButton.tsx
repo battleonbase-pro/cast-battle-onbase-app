@@ -167,7 +167,12 @@ export default function BasePaymentButton({
       isConnected,
       address,
       parsedAmount: parseUnits(amount, 6).toString(),
-      calls: JSON.stringify(calls, null, 2)
+      callsCount: calls.length,
+      callsPreview: calls.map(call => ({
+        address: call.address,
+        functionName: call.functionName,
+        args: call.args?.map(arg => typeof arg === 'bigint' ? arg.toString() : arg)
+      }))
     });
   }, [USDC_CONTRACT_ADDRESS, recipientAddress, amount, isConnected, address, calls]);
 
