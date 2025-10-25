@@ -65,7 +65,7 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
     });
     
     // Primary condition: Base App Mini App with proper context
-    if (isConnected && address && isMiniAppReady && context?.client?.clientFid === 309857) {
+    if (isConnected && address && context?.client?.clientFid === 309857) {
       console.log('✅ OnchainKitAuth - Wallet connected in Base App:', { 
         address,
         fid: context.user?.fid, 
