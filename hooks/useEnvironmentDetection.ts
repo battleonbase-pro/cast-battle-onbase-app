@@ -42,7 +42,7 @@ export function useEnvironmentDetection(): EnvironmentInfo {
             environment: 'external',
             isLoading: false
           });
-        }, 10000); // 10 second timeout - increased for Base App Mini App
+        }, 30000); // 30 second timeout - increased for Base App Mini App
         
         // Wait for MiniKit context to be available
         // Check for context availability rather than just isMiniAppReady
@@ -58,7 +58,9 @@ export function useEnvironmentDetection(): EnvironmentInfo {
           if (typeof window !== 'undefined') {
             const isBaseAppUrl = window.location.href.includes('base.app') || 
                                window.location.href.includes('miniapp') ||
-                               window.location.hostname.includes('base');
+                               window.location.hostname.includes('base') ||
+                               window.location.search.includes('base') ||
+                               document.referrer.includes('base.app');
             
             if (isBaseAppUrl) {
               console.log('🔍 Fallback detection: Base App Mini App detected via URL');
@@ -72,6 +74,28 @@ export function useEnvironmentDetection(): EnvironmentInfo {
                 isLoading: false,
                 userFid: undefined,
                 clientFid: '309857' // Assume Base App ClientFID
+              });
+              return;
+            }
+            
+            // Additional Base App detection - check for Base-specific features
+            const hasBaseFeatures = window.ethereum?.isBase || 
+                                  window.ethereum?.isCoinbaseWallet ||
+                                  navigator.userAgent.includes('Base') ||
+                                  window.location.protocol === 'https:' && window.location.hostname.includes('base');
+            
+            if (hasBaseFeatures) {
+              console.log('🔍 Fallback detection: Base App Mini App detected via features');
+              clearTimeout(timeoutId);
+              setEnvironmentInfo({
+                isMiniApp: true,
+                isExternalBrowser: false,
+                isFarcaster: false,
+                isBaseApp: true,
+                environment: 'base',
+                isLoading: false,
+                userFid: undefined,
+                clientFid: '309857'
               });
               return;
             }
