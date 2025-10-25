@@ -42,66 +42,101 @@ export function useEnvironmentDetection(): EnvironmentInfo {
             environment: 'external',
             isLoading: false
           });
-        }, 30000); // 30 second timeout - increased for Base App Mini App
+        }, 5000); // 5 second timeout - much more reasonable
         
-        // Wait for MiniKit context to be available
-        // Check for context availability rather than just isMiniAppReady
+        // Immediate fallback detection - don't wait for MiniKit context
+        if (typeof window !== 'undefined') {
+          // Check if we're in Base App by looking at the URL or user agent
+          const isBaseAppUrl = window.location.href.includes('base.app') || 
+                             window.location.href.includes('miniapp') ||
+                             window.location.hostname.includes('base') ||
+                             window.location.search.includes('base') ||
+                             document.referrer.includes('base.app');
+          
+          if (isBaseAppUrl) {
+            console.log('🔍 Immediate detection: Base App Mini App detected via URL');
+            clearTimeout(timeoutId);
+            setEnvironmentInfo({
+              isMiniApp: true,
+              isExternalBrowser: false,
+              isFarcaster: false,
+              isBaseApp: true,
+              environment: 'base',
+              isLoading: false,
+              userFid: undefined,
+              clientFid: '309857' // Assume Base App ClientFID
+            });
+            return;
+          }
+          
+          // Check for Farcaster Mini App
+          const isFarcasterUrl = window.location.href.includes('farcaster.xyz') ||
+                                window.location.href.includes('warpcast.com') ||
+                                window.location.hostname.includes('farcaster') ||
+                                document.referrer.includes('farcaster');
+          
+          if (isFarcasterUrl) {
+            console.log('🔍 Immediate detection: Farcaster Mini App detected via URL');
+            clearTimeout(timeoutId);
+            setEnvironmentInfo({
+              isMiniApp: true,
+              isExternalBrowser: false,
+              isFarcaster: true,
+              isBaseApp: false,
+              environment: 'farcaster',
+              isLoading: false,
+              userFid: undefined,
+              clientFid: '9152' // Assume Farcaster ClientFID
+            });
+            return;
+          }
+          
+          // Additional Base App detection - check for Base-specific features
+          const hasBaseFeatures = window.ethereum?.isBase || 
+                                window.ethereum?.isCoinbaseWallet ||
+                                navigator.userAgent.includes('Base') ||
+                                window.location.protocol === 'https:' && window.location.hostname.includes('base');
+          
+          if (hasBaseFeatures) {
+            console.log('🔍 Immediate detection: Base App Mini App detected via features');
+            clearTimeout(timeoutId);
+            setEnvironmentInfo({
+              isMiniApp: true,
+              isExternalBrowser: false,
+              isFarcaster: false,
+              isBaseApp: true,
+              environment: 'base',
+              isLoading: false,
+              userFid: undefined,
+              clientFid: '309857'
+            });
+            return;
+          }
+        }
+
+        // Wait for MiniKit context to be available for more precise detection
         if (!context || !context.client) {
-          console.log('⏳ Waiting for MiniKit context...', {
+          console.log('⏳ Waiting for MiniKit context for precise detection...', {
             hasContext: !!context,
             hasClient: !!context?.client,
             isMiniAppReady
           });
           
-          // Fallback detection for Base App Mini App when MiniKit context is not available
-          // Check if we're in Base App by looking at the URL or user agent
-          if (typeof window !== 'undefined') {
-            const isBaseAppUrl = window.location.href.includes('base.app') || 
-                               window.location.href.includes('miniapp') ||
-                               window.location.hostname.includes('base') ||
-                               window.location.search.includes('base') ||
-                               document.referrer.includes('base.app');
-            
-            if (isBaseAppUrl) {
-              console.log('🔍 Fallback detection: Base App Mini App detected via URL');
-              clearTimeout(timeoutId);
-              setEnvironmentInfo({
-                isMiniApp: true,
-                isExternalBrowser: false,
-                isFarcaster: false,
-                isBaseApp: true,
-                environment: 'base',
-                isLoading: false,
-                userFid: undefined,
-                clientFid: '309857' // Assume Base App ClientFID
-              });
-              return;
-            }
-            
-            // Additional Base App detection - check for Base-specific features
-            const hasBaseFeatures = window.ethereum?.isBase || 
-                                  window.ethereum?.isCoinbaseWallet ||
-                                  navigator.userAgent.includes('Base') ||
-                                  window.location.protocol === 'https:' && window.location.hostname.includes('base');
-            
-            if (hasBaseFeatures) {
-              console.log('🔍 Fallback detection: Base App Mini App detected via features');
-              clearTimeout(timeoutId);
-              setEnvironmentInfo({
-                isMiniApp: true,
-                isExternalBrowser: false,
-                isFarcaster: false,
-                isBaseApp: true,
-                environment: 'base',
-                isLoading: false,
-                userFid: undefined,
-                clientFid: '309857'
-              });
-              return;
-            }
-          }
+          // Set a shorter timeout for MiniKit context
+          const miniKitTimeout = setTimeout(() => {
+            console.log('⏰ MiniKit context timeout, using fallback detection');
+            clearTimeout(timeoutId);
+            setEnvironmentInfo({
+              isMiniApp: false,
+              isExternalBrowser: true,
+              isFarcaster: false,
+              isBaseApp: false,
+              environment: 'external',
+              isLoading: false
+            });
+          }, 2000); // 2 second timeout for MiniKit context
           
-          return;
+          return () => clearTimeout(miniKitTimeout);
         }
 
         // Clear timeout since we got context
