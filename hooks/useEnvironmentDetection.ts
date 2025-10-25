@@ -6,6 +6,7 @@ import { detectEnvironmentFallback, detectEnvironmentFromMiniKit } from '../lib/
 // Global state to prevent multiple detection instances
 let globalDetectionInProgress = false;
 let globalDetectionResult: EnvironmentInfo | null = null;
+let globalTimeoutId: NodeJS.Timeout | null = null;
 
 export interface EnvironmentInfo {
   isMiniApp: boolean;
@@ -63,8 +64,8 @@ export function useEnvironmentDetection(): EnvironmentInfo {
         console.log('🔍 Starting SINGLE environment detection...');
         globalDetectionInProgress = true;
         
-        // Set a timeout to prevent infinite loading
-        timeoutId = setTimeout(() => {
+        // Set a global timeout to prevent infinite loading
+        globalTimeoutId = setTimeout(() => {
           console.log('⏰ Environment detection timeout, defaulting to external browser');
           const detectedEnv = {
             isMiniApp: false,
@@ -76,6 +77,7 @@ export function useEnvironmentDetection(): EnvironmentInfo {
           };
           globalDetectionResult = detectedEnv;
           globalDetectionInProgress = false;
+          globalTimeoutId = null;
           setEnvironmentInfo(detectedEnv);
         }, 3000); // Reduced timeout to 3 seconds
         
@@ -93,7 +95,11 @@ export function useEnvironmentDetection(): EnvironmentInfo {
           // Set a shorter timeout for MiniKit context
           const miniKitTimeout = setTimeout(() => {
             console.log('⏰ MiniKit context timeout, using fallback detection');
-            clearTimeout(timeoutId);
+            // Clear the global timeout since we're handling this case
+            if (globalTimeoutId) {
+              clearTimeout(globalTimeoutId);
+              globalTimeoutId = null;
+            }
             
             const fallbackResult = detectEnvironmentFallback();
             const detectedEnv = {
@@ -112,8 +118,12 @@ export function useEnvironmentDetection(): EnvironmentInfo {
           return () => clearTimeout(miniKitTimeout);
         }
 
-        // Clear timeout since we got context
-        clearTimeout(timeoutId);
+        // Clear global timeout since we got context and detected successfully
+        if (globalTimeoutId) {
+          clearTimeout(globalTimeoutId);
+          globalTimeoutId = null;
+          console.log('✅ Cancelled global timeout - successful detection');
+        }
 
         // Use shared MiniKit detection logic for consistency
         const miniKitDetectionResult = detectEnvironmentFromMiniKit(context);
@@ -154,6 +164,7 @@ export function useEnvironmentDetection(): EnvironmentInfo {
         globalDetectionResult = detectedEnv;
         globalDetectionInProgress = false;
         setEnvironmentInfo(detectedEnv);
+        console.log('✅ Environment detection completed successfully');
       } catch (error) {
         console.log('⚠️ Environment detection failed, defaulting to external:', error);
         const detectedEnv = {
@@ -174,8 +185,9 @@ export function useEnvironmentDetection(): EnvironmentInfo {
     
     // Cleanup timeout on unmount
     return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
+      if (globalTimeoutId) {
+        clearTimeout(globalTimeoutId);
+        globalTimeoutId = null;
       }
     };
   }, [context, isMiniAppReady]);
