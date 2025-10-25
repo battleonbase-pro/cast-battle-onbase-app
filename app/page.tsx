@@ -39,8 +39,8 @@ interface Cast {
 }
 
 interface Player {
-  address: string;
-  username?: string;
+    address: string;
+    username?: string;
   points: number;
   winCount: number;
   participationCount: number;
@@ -137,7 +137,7 @@ export default function Home() {
         // Calculate time remaining
         if (battleData.battle.endTime) {
           const endTime = new Date(battleData.battle.endTime).getTime();
-          const now = Date.now();
+      const now = Date.now();
           const remainingMs = Math.max(0, endTime - now);
           const remainingSeconds = Math.floor(remainingMs / 1000);
           setTimeRemaining(remainingSeconds);
@@ -152,9 +152,18 @@ export default function Home() {
           const castData = await castResponse.json();
           
           if (castData.success && castData.casts && castData.casts.length > 0) {
-            setHasSubmittedCast(true);
-          }
+              setHasSubmittedCast(true);
+            }
         }
+      } else if (battleData.fallback) {
+        // Handle database quota issues gracefully
+        console.log('⚠️ Database quota exceeded, showing maintenance message');
+        setError('Service temporarily unavailable due to high demand. Please try again in a few minutes.');
+        setCurrentBattle(null);
+        setTimeRemaining(0);
+      } else {
+        console.log('No active battle found, attempting to create new one...');
+        // Optionally trigger battle creation or show a message
       }
       
       // Fetch leaderboard
@@ -237,7 +246,7 @@ export default function Home() {
           console.log('🔗 Attempting to connect with connector:', selectedConnector.id);
           await connect({ connector: selectedConnector });
           console.log('✅ Wagmi connection successful');
-        } catch (error) {
+    } catch (error) {
           console.error('❌ Wagmi connection failed:', error);
         }
       } else {
@@ -270,7 +279,7 @@ export default function Home() {
       setHasSubmittedCast(false);
       setPaymentStatus('idle');
       setPaymentError(null);
-      setUserPoints(0);
+        setUserPoints(0);
       setLeaderboard([]);
       setBattleHistory([]);
       setSentimentData(null);
@@ -344,29 +353,29 @@ export default function Home() {
       console.log('📝 Submitting cast:', {
         userAddress: baseAccountUser.address,
         castContent: castContent.trim(),
-        side: selectedSide,
+          side: selectedSide,
         transactionId
       });
 
       const response = await fetch('/api/battle/submit-cast', {
-        method: 'POST',
+                method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
+                body: JSON.stringify({
           userAddress: baseAccountUser.address,
           castContent: castContent.trim(),
-          side: selectedSide,
+                  side: selectedSide,
           transactionId: transactionId
         }),
-      });
-
+              });
+              
       const data = await response.json();
-
+              
       if (data.success) {
         console.log('✅ Cast submitted successfully:', data);
-        setHasSubmittedCast(true);
-        setCastContent('');
+                setHasSubmittedCast(true);
+                setCastContent('');
         setSelectedSide(null);
         setPaymentStatus('idle');
         setPaymentError(null);
@@ -381,11 +390,11 @@ export default function Home() {
         const castsData = await castsResponse.json();
         if (castsData.success) {
           setCasts(castsData.casts);
-        }
-      } else {
+                }
+              } else {
         const errorMessage = data.error || 'Failed to submit cast';
         console.log('❌ Cast submission failed:', errorMessage);
-        setPaymentError(errorMessage);
+          setPaymentError(errorMessage);
         setPaymentSuccessCastFailed(true);
         console.log('🆘 Payment succeeded but cast submission failed - user should contact support');
       }
@@ -395,7 +404,7 @@ export default function Home() {
       setPaymentError(errorMessage);
       setPaymentSuccessCastFailed(true);
     } finally {
-      setSubmittingCast(false);
+        setSubmittingCast(false);
     }
   };
 
@@ -482,8 +491,8 @@ export default function Home() {
               : cast
           )
         );
-      }
-    } catch (error) {
+            }
+          } catch (error) {
       console.error('Failed to like cast:', error);
     }
   };
@@ -497,8 +506,8 @@ export default function Home() {
           const data = await response.json();
           if (data.success) {
             setCasts(data.casts);
-          }
-        } catch (error) {
+              }
+            } catch (error) {
           console.error('Failed to load casts:', error);
         }
       };
@@ -531,16 +540,16 @@ export default function Home() {
   return (
     <div className={styles.container}>
       {/* Authentication Landing Page */}
-      {!baseAccountUser ? (
-        <section className={styles.authSection}>
-          <UnifiedAuth
+              {!baseAccountUser ? (
+                <section className={styles.authSection}>
+                  <UnifiedAuth
             onAuthSuccess={handleAuthSuccess}
-            onAuthError={(error) => {
-              console.error('❌ Unified authentication error:', error);
-            }}
+                    onAuthError={(error) => {
+                      console.error('❌ Unified authentication error:', error);
+                    }}
             environmentInfo={environmentInfo}
-          />
-        </section>
+                  />
+                </section>
       ) : (
         /* Main App Content - Only visible when authenticated */
         <section className={styles.appSection}>
@@ -570,25 +579,25 @@ export default function Home() {
 
             {/* Tab Navigation */}
             <div className={styles.tabNavigation}>
-              <button
+              <button 
                 onClick={() => setActiveTab('debate')}
                 className={`${styles.tabButton} ${activeTab === 'debate' ? styles.activeTab : ''}`}
               >
                 💬 Debate
               </button>
-              <button
+              <button 
                 onClick={() => setActiveTab('arguments')}
                 className={`${styles.tabButton} ${activeTab === 'arguments' ? styles.activeTab : ''}`}
               >
                 📝 Arguments
               </button>
-              <button
+              <button 
                 onClick={() => setActiveTab('history')}
                 className={`${styles.tabButton} ${activeTab === 'history' ? styles.activeTab : ''}`}
               >
                 📚 History
               </button>
-              <button
+              <button 
                 onClick={() => setActiveTab('leaderboard')}
                 className={`${styles.tabButton} ${activeTab === 'leaderboard' ? styles.activeTab : ''}`}
               >
@@ -634,7 +643,7 @@ export default function Home() {
                 leaderboard={leaderboard}
                 isLoading={loading}
               />
-            )}
+        )}
           </main>
         </section>
       )}

@@ -29,6 +29,17 @@ export async function GET(_request: NextRequest) {
 
   } catch (error) {
     console.error('❌ Error fetching current battle:', error);
+    
+    // Handle database quota issues gracefully
+    if (error.message && error.message.includes('quota')) {
+      console.log('⚠️ Database quota exceeded, returning fallback response');
+      return NextResponse.json({
+        success: false,
+        error: 'Service temporarily unavailable due to high demand. Please try again later.',
+        fallback: true
+      }, { status: 503 }); // Service Unavailable
+    }
+    
     return NextResponse.json({
       success: false,
       error: 'Failed to fetch current battle'
