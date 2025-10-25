@@ -32,6 +32,9 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
   
   // Use wagmi's useAccount to check wallet connection (official pattern)
   const { isConnected, address } = useAccount();
+  
+  // Debug wagmi connection state
+  console.log('🔍 OnchainKitAuth - Wagmi connection state:', { isConnected, address });
 
   // Initialize Farcaster SDK for Base App Mini App
   useEffect(() => {
@@ -59,6 +62,7 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
       hasContext: !!context
     });
     
+    // Primary condition: Base App Mini App with proper context
     if (isConnected && address && isMiniAppReady && context?.client?.clientFid === 309857) {
       console.log('✅ OnchainKitAuth - Wallet connected in Base App:', { 
         address,
@@ -76,10 +80,28 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
       console.log('✅ OnchainKitAuth authentication successful:', authUser);
       console.log('🚀 OnchainKitAuth - Calling onAuthSuccess to proceed to debate page...');
       
-      // Add a small delay to ensure state is properly set
-      setTimeout(() => {
-        onAuthSuccess(authUser);
-      }, 100);
+      // Call onAuthSuccess immediately - no delay needed
+      onAuthSuccess(authUser);
+    }
+    // Fallback condition: If wallet is connected but context is not ready yet
+    else if (isConnected && address && !isMiniAppReady) {
+      console.log('⚠️ OnchainKitAuth - Wallet connected but MiniKit not ready yet, waiting...');
+    }
+    // Fallback condition: If wallet is connected but we don't have proper context
+    else if (isConnected && address && (!context || !context.client)) {
+      console.log('⚠️ OnchainKitAuth - Wallet connected but no MiniKit context, proceeding anyway...');
+      
+      // Proceed with authentication even without proper context
+      const authUser = {
+        address: address,
+        isAuthenticated: true,
+        environment: 'base' // Assume Base App if wallet is connected
+      };
+
+      console.log('✅ OnchainKitAuth fallback authentication successful:', authUser);
+      console.log('🚀 OnchainKitAuth - Calling onAuthSuccess (fallback) to proceed to debate page...');
+      
+      onAuthSuccess(authUser);
     }
   }, [isConnected, address, isMiniAppReady, context, onAuthSuccess]);
 
