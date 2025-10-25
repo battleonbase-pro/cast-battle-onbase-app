@@ -222,6 +222,7 @@ export default function BasePaymentButton({
     <div className={styles.paymentButtonContainer}>
       <Transaction 
         calls={calls} 
+        cryptoCurrencyCode="USDC"
         onStatus={handleTransactionStatus}
         onSuccess={handleTransactionSuccess}
         onError={handleTransactionError}
