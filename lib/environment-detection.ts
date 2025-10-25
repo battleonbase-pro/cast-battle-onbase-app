@@ -14,91 +14,18 @@ export interface DetectionResult {
 }
 
 /**
- * Fast URL-based detection (used by wagmi-config)
- * This runs synchronously and doesn't depend on MiniKit context
+ * Simple fallback detection for SSR and when MiniKit context is unavailable
+ * This is only used as a last resort fallback
  */
-export function detectEnvironmentFromURL(): DetectionResult {
-  if (typeof window === 'undefined') {
-    return {
-      isMiniApp: false,
-      isBaseApp: false,
-      isFarcaster: false,
-      isExternal: true,
-      environment: 'external',
-      confidence: 'low',
-      method: 'ssr-fallback'
-    };
-  }
-
-  // Base App detection patterns
-  const isBaseAppUrl = window.location.href.includes('base.app') || 
-                     window.location.href.includes('miniapp') ||
-                     window.location.hostname.includes('base') ||
-                     window.location.search.includes('base') ||
-                     document.referrer.includes('base.app');
-
-  // Farcaster detection patterns  
-  const isFarcasterUrl = window.location.href.includes('farcaster.xyz') ||
-                        window.location.href.includes('warpcast.com') ||
-                        window.location.hostname.includes('farcaster') ||
-                        document.referrer.includes('farcaster');
-
-  // Additional Base App feature detection
-  const hasBaseFeatures = window.ethereum?.isBase || 
-                         window.ethereum?.isCoinbaseWallet ||
-                         navigator.userAgent.includes('Base') ||
-                         (window.location.protocol === 'https:' && window.location.hostname.includes('base'));
-
-  // Mini App iframe detection
-  const isInIframe = window.parent !== window || window.self !== window.top;
-
-  // Mini App property detection
-  const hasMiniAppProperties = !!(window as any).farcaster || !!(window as any).miniapp;
-
-  if (isBaseAppUrl || hasBaseFeatures) {
-    return {
-      isMiniApp: true,
-      isBaseApp: true,
-      isFarcaster: false,
-      isExternal: false,
-      environment: 'base',
-      confidence: 'high',
-      method: 'url-and-features'
-    };
-  }
-
-  if (isFarcasterUrl) {
-    return {
-      isMiniApp: true,
-      isBaseApp: false,
-      isFarcaster: true,
-      isExternal: false,
-      environment: 'farcaster',
-      confidence: 'high',
-      method: 'url-patterns'
-    };
-  }
-
-  if (isInIframe || hasMiniAppProperties) {
-    return {
-      isMiniApp: true,
-      isBaseApp: false,
-      isFarcaster: false,
-      isExternal: false,
-      environment: 'external', // Default to external for unknown Mini Apps
-      confidence: 'medium',
-      method: 'iframe-or-properties'
-    };
-  }
-
+export function detectEnvironmentFallback(): DetectionResult {
   return {
     isMiniApp: false,
     isBaseApp: false,
     isFarcaster: false,
     isExternal: true,
     environment: 'external',
-    confidence: 'high',
-    method: 'external-browser'
+    confidence: 'low',
+    method: 'fallback'
   };
 }
 
@@ -108,7 +35,7 @@ export function detectEnvironmentFromURL(): DetectionResult {
  */
 export function detectEnvironmentFromMiniKit(context: any): DetectionResult {
   if (!context || !context.client) {
-    return detectEnvironmentFromURL(); // Fallback to URL detection
+    return detectEnvironmentFallback(); // Fallback to simple fallback
   }
 
   // Make ClientFIDs configurable via environment variables

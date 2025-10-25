@@ -1,8 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useMiniKit } from '@coinbase/onchainkit/minikit';
-import { useEnvironmentCache } from './useEnvironmentCache';
-import { detectEnvironmentFromURL, detectEnvironmentFromMiniKit } from '../lib/environment-detection';
+import { detectEnvironmentFallback, detectEnvironmentFromMiniKit } from '../lib/environment-detection';
 
 export interface EnvironmentInfo {
   isMiniApp: boolean;
@@ -17,7 +16,6 @@ export interface EnvironmentInfo {
 
 export function useEnvironmentDetection(): EnvironmentInfo {
   const { context, isMiniAppReady } = useMiniKit();
-  const { cachedEnvironment, cacheEnvironment } = useEnvironmentCache();
   const [environmentInfo, setEnvironmentInfo] = useState<EnvironmentInfo>({
     isMiniApp: false,
     isExternalBrowser: true,
@@ -28,10 +26,9 @@ export function useEnvironmentDetection(): EnvironmentInfo {
   });
 
   useEffect(() => {
-    // If we have a cached environment, use it immediately
-    if (cachedEnvironment) {
-      console.log('📦 Using cached environment, skipping detection');
-      setEnvironmentInfo(cachedEnvironment);
+    // Prevent multiple detection instances
+    if (environmentInfo.isLoading === false) {
+      console.log('🔍 Environment already detected, skipping');
       return;
     }
 
@@ -39,7 +36,7 @@ export function useEnvironmentDetection(): EnvironmentInfo {
     
     const detectEnvironment = async () => {
       try {
-        console.log('🔍 Starting enhanced environment detection...');
+        console.log('🔍 Starting environment detection...');
         
         // Set a timeout to prevent infinite loading
         timeoutId = setTimeout(() => {
@@ -53,35 +50,14 @@ export function useEnvironmentDetection(): EnvironmentInfo {
             isLoading: false
           };
           setEnvironmentInfo(detectedEnv);
-          cacheEnvironment(detectedEnv);
-        }, 5000); // 5 second timeout - much more reasonable
+        }, 3000); // Reduced timeout to 3 seconds
         
-        // Immediate fallback detection using shared logic
-        const urlDetectionResult = detectEnvironmentFromURL();
-        
-        if (urlDetectionResult.confidence === 'high' && urlDetectionResult.isMiniApp) {
-          console.log('🔍 Immediate detection:', urlDetectionResult.method, '-', urlDetectionResult.environment);
-          clearTimeout(timeoutId);
-          const detectedEnv = {
-            isMiniApp: urlDetectionResult.isMiniApp,
-            isExternalBrowser: urlDetectionResult.isExternal,
-            isFarcaster: urlDetectionResult.isFarcaster,
-            isBaseApp: urlDetectionResult.isBaseApp,
-            environment: urlDetectionResult.environment,
-            isLoading: false,
-            userFid: undefined,
-            clientFid: urlDetectionResult.isBaseApp 
-              ? (process.env.NEXT_PUBLIC_BASE_APP_CLIENT_FID || '309857')
-              : (process.env.NEXT_PUBLIC_FARCASTER_CLIENT_FID || '9152')
-          };
-          setEnvironmentInfo(detectedEnv);
-          cacheEnvironment(detectedEnv);
-          return;
-        }
+        // Wait for MiniKit context - no immediate URL detection
+        console.log('🔍 Waiting for MiniKit context for accurate detection...');
 
-        // Wait for MiniKit context to be available for more precise detection
+        // Wait for MiniKit context to be available
         if (!context || !context.client) {
-          console.log('⏳ Waiting for MiniKit context for precise detection...', {
+          console.log('⏳ Waiting for MiniKit context...', {
             hasContext: !!context,
             hasClient: !!context?.client,
             isMiniAppReady
@@ -91,16 +67,17 @@ export function useEnvironmentDetection(): EnvironmentInfo {
           const miniKitTimeout = setTimeout(() => {
             console.log('⏰ MiniKit context timeout, using fallback detection');
             clearTimeout(timeoutId);
+            
+            const fallbackResult = detectEnvironmentFallback();
             const detectedEnv = {
-              isMiniApp: false,
-              isExternalBrowser: true,
-              isFarcaster: false,
-              isBaseApp: false,
-              environment: 'external' as const,
+              isMiniApp: fallbackResult.isMiniApp,
+              isExternalBrowser: fallbackResult.isExternal,
+              isFarcaster: fallbackResult.isFarcaster,
+              isBaseApp: fallbackResult.isBaseApp,
+              environment: fallbackResult.environment,
               isLoading: false
             };
             setEnvironmentInfo(detectedEnv);
-            cacheEnvironment(detectedEnv);
           }, 2000); // 2 second timeout for MiniKit context
           
           return () => clearTimeout(miniKitTimeout);
@@ -146,7 +123,6 @@ export function useEnvironmentDetection(): EnvironmentInfo {
           clientFid: context.client?.clientFid?.toString()
         };
         setEnvironmentInfo(detectedEnv);
-        cacheEnvironment(detectedEnv);
       } catch (error) {
         console.log('⚠️ Environment detection failed, defaulting to external:', error);
         const detectedEnv = {
@@ -158,7 +134,6 @@ export function useEnvironmentDetection(): EnvironmentInfo {
           isLoading: false
         };
         setEnvironmentInfo(detectedEnv);
-        cacheEnvironment(detectedEnv);
       }
     };
 
@@ -170,7 +145,7 @@ export function useEnvironmentDetection(): EnvironmentInfo {
         clearTimeout(timeoutId);
       }
     };
-  }, [context, isMiniAppReady, cachedEnvironment, cacheEnvironment]);
+  }, [context, isMiniAppReady]);
 
   return environmentInfo;
 }

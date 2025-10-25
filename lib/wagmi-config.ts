@@ -2,7 +2,7 @@ import { http, createConfig } from 'wagmi'
 import { base, baseSepolia, mainnet } from 'wagmi/chains'
 import { injected, metaMask, walletConnect, baseAccount } from 'wagmi/connectors'
 import { farcasterMiniApp as miniAppConnector } from '@farcaster/miniapp-wagmi-connector'
-import { detectEnvironmentFromURL } from './environment-detection'
+import { detectEnvironmentFallback } from './environment-detection'
 
 // Create config as singleton to prevent multiple WalletConnect initializations
 let wagmiConfig: ReturnType<typeof createConfig> | null = null;
@@ -43,34 +43,29 @@ export const config = (() => {
     
     // Add external wallet connectors for external browsers only
     // This prevents eip6963RequestProvider errors in Mini App environments
-    // Use shared detection logic for consistency
-    const detectionResult = detectEnvironmentFromURL();
+    // Use fallback detection - MiniKit context will override this at runtime
+    const detectionResult = detectEnvironmentFallback();
     
-    console.log('🔗 Wagmi connector detection:', {
+    console.log('🔗 Wagmi connector detection (fallback):', {
       environment: detectionResult.environment,
       isMiniApp: detectionResult.isMiniApp,
       confidence: detectionResult.confidence,
       method: detectionResult.method
     });
     
-    if (!detectionResult.isMiniApp) {
-      // Add injected connector first (handles most wallets)
-      connectors.push(injected());
-      
-      // Add MetaMask connector
-      connectors.push(
-        metaMask({
-          dappMetadata: {
-            name: 'NewsCast Debate',
-            url: currentUrl,
-          },
-        })
-      );
-      
-      console.log('✅ Added external wallet connectors for', detectionResult.environment);
-    } else {
-      console.log('🚫 Skipped external wallet connectors for Mini App environment:', detectionResult.environment);
-    }
+    // Always add external connectors in wagmi config
+    // The actual environment detection happens at runtime via MiniKit context
+    connectors.push(injected());
+    connectors.push(
+      metaMask({
+        dappMetadata: {
+          name: 'NewsCast Debate',
+          url: currentUrl,
+        },
+      })
+    );
+    
+    console.log('✅ Added external wallet connectors (will be filtered at runtime)');
     if (hasValidWalletConnectId) {
       connectors.push(
         walletConnect({
