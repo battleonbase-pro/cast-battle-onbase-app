@@ -158,7 +158,7 @@ export default function Home() {
       }
       
       // Fetch leaderboard
-      const leaderboardResponse = await fetch('/api/leaderboard');
+      const leaderboardResponse = await fetch('/api/user/leaderboard');
       const leaderboardData = await leaderboardResponse.json();
       if (leaderboardData.success) {
         setLeaderboard(leaderboardData.leaderboard);
@@ -372,7 +372,9 @@ export default function Home() {
         setPaymentError(null);
         
         // Refresh user points
-        fetchUserPoints(baseAccountUser.address);
+        if (baseAccountUser?.address) {
+          fetchUserPoints(baseAccountUser.address);
+        }
         
         // Refresh casts list
         const castsResponse = await fetch('/api/battle/casts');
