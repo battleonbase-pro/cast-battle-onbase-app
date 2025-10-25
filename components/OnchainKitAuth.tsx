@@ -103,6 +103,27 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
       
       onAuthSuccess(authUser);
     }
+    // Additional fallback: If we're in Base App environment (detected by URL) and wallet is connected
+    else if (isConnected && address && typeof window !== 'undefined') {
+      const isBaseAppUrl = window.location.href.includes('base.app') || 
+                          window.location.href.includes('miniapp') ||
+                          window.location.hostname.includes('base');
+      
+      if (isBaseAppUrl) {
+        console.log('🔍 OnchainKitAuth - Base App detected via URL, wallet connected, proceeding...');
+        
+        const authUser = {
+          address: address,
+          isAuthenticated: true,
+          environment: 'base'
+        };
+
+        console.log('✅ OnchainKitAuth URL-based authentication successful:', authUser);
+        console.log('🚀 OnchainKitAuth - Calling onAuthSuccess (URL-based) to proceed to debate page...');
+        
+        onAuthSuccess(authUser);
+      }
+    }
   }, [isConnected, address, isMiniAppReady, context, onAuthSuccess]);
 
   // Fetch current battle preview

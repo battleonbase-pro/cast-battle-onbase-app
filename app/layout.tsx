@@ -76,6 +76,14 @@ export default function RootLayout({
   // Clean approach: Get API key from server-side environment
   const apiKey = process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY || '';
   
+  // Debug API key availability
+  console.log('🔑 Layout API Key Debug:', {
+    hasApiKey: !!apiKey,
+    apiKeyLength: apiKey?.length,
+    apiKeyPreview: apiKey ? `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}` : 'undefined',
+    nodeEnv: process.env.NODE_ENV
+  });
+  
   return (
     <html lang="en">
       <head>

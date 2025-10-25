@@ -52,6 +52,31 @@ export function useEnvironmentDetection(): EnvironmentInfo {
             hasClient: !!context?.client,
             isMiniAppReady
           });
+          
+          // Fallback detection for Base App Mini App when MiniKit context is not available
+          // Check if we're in Base App by looking at the URL or user agent
+          if (typeof window !== 'undefined') {
+            const isBaseAppUrl = window.location.href.includes('base.app') || 
+                               window.location.href.includes('miniapp') ||
+                               window.location.hostname.includes('base');
+            
+            if (isBaseAppUrl) {
+              console.log('🔍 Fallback detection: Base App Mini App detected via URL');
+              clearTimeout(timeoutId);
+              setEnvironmentInfo({
+                isMiniApp: true,
+                isExternalBrowser: false,
+                isFarcaster: false,
+                isBaseApp: true,
+                environment: 'base',
+                isLoading: false,
+                userFid: undefined,
+                clientFid: '309857' // Assume Base App ClientFID
+              });
+              return;
+            }
+          }
+          
           return;
         }
 
