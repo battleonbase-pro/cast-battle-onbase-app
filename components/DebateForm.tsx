@@ -11,6 +11,7 @@ interface DebateFormProps {
   paymentStatus: string;
   paymentError: string | null;
   paymentSuccessCastFailed: boolean;
+  transactionHash: string | null;
   onSideSelect: (side: string) => void;
   onContentChange: (content: string) => void;
   onSubmitCast: () => void;
@@ -35,6 +36,7 @@ export default function DebateForm({
   paymentStatus,
   paymentError,
   paymentSuccessCastFailed,
+  transactionHash,
   onSideSelect,
   onContentChange,
   onSubmitCast,
@@ -79,8 +81,24 @@ export default function DebateForm({
           <div className={styles.submittedContent}>
             <h3 className={styles.submittedTitle}>🎉 Thank You for Participating!</h3>
             <p className={styles.submittedMessage}>
-              🎉 Thank you for participating in NewsCast Debate! Your 1 USDC payment has been processed successfully and your argument has been submitted! Good luck with your debate - may the best debater win! 🏆
+              🎉 Thank you for participating in NewsCast Debate! Your <strong>1 USDC payment</strong> has been processed successfully and your argument has been submitted! Good luck with your debate - may the best debater win! 🏆
             </p>
+            {transactionHash && (
+              <p className={styles.submittedNote}>
+                <strong>Transaction:</strong> <a 
+                  href={`https://sepolia.basescan.org/tx/${transactionHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ 
+                    color: '#0052ff', 
+                    textDecoration: 'underline',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  View on BaseScan
+                </a>
+              </p>
+            )}
             <p className={styles.submittedNote}>
               Track the debate progress below and check back when it ends to see if you won!
             </p>

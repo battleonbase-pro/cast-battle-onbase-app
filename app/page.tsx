@@ -66,6 +66,7 @@ export default function Home() {
   const [_error, setError] = useState<string | null>(null);
   const [paymentSuccessCastFailed, setPaymentSuccessCastFailed] = useState(false);
   const [_paymentCompleted, setPaymentCompleted] = useState(false);
+  const [transactionHash, setTransactionHash] = useState<string | null>(null);
   const [currentBattle, setCurrentBattle] = useState<Battle | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [selectedSide, setSelectedSide] = useState<string | null>(null);
@@ -416,6 +417,7 @@ export default function Home() {
     setPaymentStatus('idle');
     setPaymentError(null);
     setPaymentCompleted(true);
+    setTransactionHash(transactionId || null);
     
     // Auto-submit the cast after successful payment
     console.log('📝 Auto-submitting argument after successful payment...');
@@ -617,6 +619,7 @@ export default function Home() {
                 paymentStatus={paymentStatus}
                 paymentError={paymentError}
                 paymentSuccessCastFailed={paymentSuccessCastFailed}
+                transactionHash={transactionHash}
                 onSideSelect={handleSideSelect}
                 onContentChange={handleContentChange}
                 onSubmitCast={handleSubmitCast}
