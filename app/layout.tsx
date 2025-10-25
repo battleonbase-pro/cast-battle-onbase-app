@@ -74,7 +74,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   // Clean approach: Get API key from server-side environment
-  const apiKey = process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY || '';
+  // Fallback to hardcoded value if env var is not available (for production)
+  const apiKey = process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY || 'iLo6nW8uHzW3B59QVnOvIfUNeIwca99k';
   
   // Debug API key availability
   console.log('🔑 Layout API Key Debug:', {
