@@ -3,6 +3,10 @@ import { useState, useEffect } from 'react';
 import { useMiniKit } from '@coinbase/onchainkit/minikit';
 import { detectEnvironmentFallback, detectEnvironmentFromMiniKit } from '../lib/environment-detection';
 
+// Global state to prevent multiple detection instances
+let globalDetectionInProgress = false;
+let globalDetectionResult: EnvironmentInfo | null = null;
+
 export interface EnvironmentInfo {
   isMiniApp: boolean;
   isExternalBrowser: boolean;
@@ -16,16 +20,36 @@ export interface EnvironmentInfo {
 
 export function useEnvironmentDetection(): EnvironmentInfo {
   const { context, isMiniAppReady } = useMiniKit();
-  const [environmentInfo, setEnvironmentInfo] = useState<EnvironmentInfo>({
-    isMiniApp: false,
-    isExternalBrowser: true,
-    isFarcaster: false,
-    isBaseApp: false,
-    environment: 'external',
-    isLoading: true
+  const [environmentInfo, setEnvironmentInfo] = useState<EnvironmentInfo>(() => {
+    // Use global result if available
+    if (globalDetectionResult) {
+      console.log('📦 Using global detection result:', globalDetectionResult.environment);
+      return globalDetectionResult;
+    }
+    return {
+      isMiniApp: false,
+      isExternalBrowser: true,
+      isFarcaster: false,
+      isBaseApp: false,
+      environment: 'external',
+      isLoading: true
+    };
   });
 
   useEffect(() => {
+    // If we already have a global result, use it
+    if (globalDetectionResult) {
+      console.log('📦 Using existing global detection result:', globalDetectionResult.environment);
+      setEnvironmentInfo(globalDetectionResult);
+      return;
+    }
+
+    // If detection is already in progress, wait for it
+    if (globalDetectionInProgress) {
+      console.log('⏳ Detection already in progress, waiting...');
+      return;
+    }
+
     // Prevent multiple detection instances
     if (environmentInfo.isLoading === false) {
       console.log('🔍 Environment already detected, skipping');
@@ -36,7 +60,8 @@ export function useEnvironmentDetection(): EnvironmentInfo {
     
     const detectEnvironment = async () => {
       try {
-        console.log('🔍 Starting environment detection...');
+        console.log('🔍 Starting SINGLE environment detection...');
+        globalDetectionInProgress = true;
         
         // Set a timeout to prevent infinite loading
         timeoutId = setTimeout(() => {
@@ -49,6 +74,8 @@ export function useEnvironmentDetection(): EnvironmentInfo {
             environment: 'external' as const,
             isLoading: false
           };
+          globalDetectionResult = detectedEnv;
+          globalDetectionInProgress = false;
           setEnvironmentInfo(detectedEnv);
         }, 3000); // Reduced timeout to 3 seconds
         
@@ -77,6 +104,8 @@ export function useEnvironmentDetection(): EnvironmentInfo {
               environment: fallbackResult.environment,
               isLoading: false
             };
+            globalDetectionResult = detectedEnv;
+            globalDetectionInProgress = false;
             setEnvironmentInfo(detectedEnv);
           }, 2000); // 2 second timeout for MiniKit context
           
@@ -122,6 +151,8 @@ export function useEnvironmentDetection(): EnvironmentInfo {
           userFid: context.user?.fid?.toString(),
           clientFid: context.client?.clientFid?.toString()
         };
+        globalDetectionResult = detectedEnv;
+        globalDetectionInProgress = false;
         setEnvironmentInfo(detectedEnv);
       } catch (error) {
         console.log('⚠️ Environment detection failed, defaulting to external:', error);
@@ -133,6 +164,8 @@ export function useEnvironmentDetection(): EnvironmentInfo {
           environment: 'external' as const,
           isLoading: false
         };
+        globalDetectionResult = detectedEnv;
+        globalDetectionInProgress = false;
         setEnvironmentInfo(detectedEnv);
       }
     };
