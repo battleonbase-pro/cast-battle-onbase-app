@@ -362,10 +362,10 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-                body: JSON.stringify({
+        body: JSON.stringify({
           userAddress: baseAccountUser.address,
-          castContent: castContent.trim(),
-                  side: selectedSide,
+          content: castContent.trim(),
+          side: selectedSide,
           transactionId: transactionId
         }),
               });
@@ -432,11 +432,17 @@ export default function Home() {
   // Handle side selection
   const handleSideSelect = (side: string) => {
     setSelectedSide(side);
+    // Reset payment success state when user selects a new side
+    setPaymentSuccessCastFailed(false);
+    setPaymentError(null);
   };
 
   // Handle content change
   const handleContentChange = (content: string) => {
     setCastContent(content);
+    // Reset payment success state when user changes content
+    setPaymentSuccessCastFailed(false);
+    setPaymentError(null);
   };
 
   // Handle cast submission
