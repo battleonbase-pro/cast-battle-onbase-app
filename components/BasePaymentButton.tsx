@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo } from 'react';
-import { Transaction, TransactionButton, LifecycleStatus } from '@coinbase/onchainkit/transaction';
+import { Transaction, LifecycleStatus, TransactionResponseType } from '@coinbase/onchainkit/transaction';
 import { parseUnits } from 'viem';
 import { useAccount } from 'wagmi';
 import styles from './BasePaymentButton.module.css';
@@ -43,10 +43,23 @@ export default function BasePaymentButton({
     if (lifecycleStatus?.statusName === 'success') {
       console.log('✅ Transaction successful');
       onClick(); // Call the onClick handler
-      onSuccess?.(); // Call the onSuccess callback
     } else if (lifecycleStatus?.statusName === 'error') {
-      console.error('❌ Transaction failed');
+      console.error('❌ Transaction failed:', lifecycleStatus.statusData);
     }
+  };
+
+  const handleTransactionSuccess = (response: TransactionResponseType) => {
+    console.log('🎉 Transaction completed successfully:', response);
+    
+    // Extract transaction hash from the first receipt
+    const transactionHash = response.transactionReceipts[0]?.transactionHash;
+    
+    if (transactionHash) {
+      console.log('📝 Transaction hash:', transactionHash);
+      onSuccess?.(transactionHash); // Pass the transaction hash to the callback
+    }
+    
+    onClick(); // Call the onClick handler
   };
 
   // Debug logging
@@ -79,9 +92,12 @@ export default function BasePaymentButton({
 
   return (
     <div className={styles.paymentButtonContainer}>
-      <Transaction calls={calls} onStatus={handleTransactionStatus}>
-        <TransactionButton disabled={disabled || loading} />
-      </Transaction>
+      <Transaction 
+        calls={calls} 
+        onStatus={handleTransactionStatus}
+        onSuccess={handleTransactionSuccess}
+        disabled={disabled || loading}
+      />
     </div>
   );
 }
