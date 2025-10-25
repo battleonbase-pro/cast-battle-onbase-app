@@ -29,11 +29,24 @@ export default function BasePaymentButton({
   // USDC contract address on Base Sepolia
   const USDC_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS!;
 
-  // Prepare transaction calls for USDC transfer
+  // Prepare transaction calls for USDC transfer using contract function format
   const calls = useMemo(() => [
     {
-      to: USDC_CONTRACT_ADDRESS as `0x${string}`,
-      data: `0xa9059cbb${recipientAddress.slice(2).padStart(64, '0')}${parseUnits(amount, 6).toString(16).padStart(64, '0')}` as `0x${string}`
+      address: USDC_CONTRACT_ADDRESS as `0x${string}`,
+      abi: [
+        {
+          type: 'function',
+          name: 'transfer',
+          inputs: [
+            { name: 'to', type: 'address' },
+            { name: 'amount', type: 'uint256' }
+          ],
+          outputs: [{ name: '', type: 'bool' }],
+          stateMutability: 'nonpayable',
+        },
+      ] as const,
+      functionName: 'transfer',
+      args: [recipientAddress as `0x${string}`, parseUnits(amount, 6)]
     }
   ], [USDC_CONTRACT_ADDRESS, recipientAddress, amount]);
 
