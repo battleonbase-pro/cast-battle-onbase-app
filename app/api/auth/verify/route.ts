@@ -39,11 +39,17 @@ export async function POST(request: NextRequest) {
       nonceMatch, 
       extracted,
       noncesSize: nonces.size,
-      allNonces: Array.from(nonces)
+      allNonces: Array.from(nonces.keys())
     });
     
-    if (!extracted || !nonces.delete(extracted)) {
-      console.log('❌ Invalid or reused nonce:', extracted);
+    if (!extracted) {
+      console.log('❌ No nonce found in message');
+      return NextResponse.json({ error: 'No nonce found in message' }, { status: 400 });
+    }
+    
+    // Check if nonce exists (but don't delete it yet - allow multiple attempts)
+    if (!nonces.has(extracted)) {
+      console.log('❌ Invalid or already used nonce:', extracted);
       return NextResponse.json({ error: 'Invalid or reused nonce' }, { status: 400 });
     }
 
@@ -71,7 +77,11 @@ export async function POST(request: NextRequest) {
     
     console.log('✅ Signature verified successfully');
 
-    // 3. Create or update user in database
+    // 3. Remove nonce after successful verification to prevent reuse
+    nonces.delete(extracted);
+    console.log('🗑️ Nonce removed after successful verification:', extracted);
+
+    // 4. Create or update user in database
     try {
       console.log('👤 Creating/updating user in database:', address);
       await databaseService.createOrUpdateUser(address);
