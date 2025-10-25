@@ -222,7 +222,7 @@ export default function BasePaymentButton({
     <div className={styles.paymentButtonContainer}>
       <Transaction 
         calls={calls} 
-        cryptoCurrencyCode="USDC"
+        chainId={84532} // Base Sepolia chain ID
         onStatus={handleTransactionStatus}
         onSuccess={handleTransactionSuccess}
         onError={handleTransactionError}
