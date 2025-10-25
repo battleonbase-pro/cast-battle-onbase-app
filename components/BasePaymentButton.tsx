@@ -116,19 +116,32 @@ export default function BasePaymentButton({
     );
   }
 
+  // Debug transaction calls
+  const transactionCalls = [{
+    // USDC transfer - call transfer function on USDC contract
+    to: usdcContractAddress as `0x${string}`, // USDC contract address
+    data: encodeFunctionData({
+      abi: erc20Abi,
+      functionName: 'transfer',
+      args: [recipientAddress as `0x${string}`, usdcAmount] // Transfer to debate pool contract
+    }),
+    value: 0n, // No ETH value for ERC20 transfer
+  }];
+
+  console.log('🔧 BasePaymentButton Transaction Calls Debug:', {
+    usdcContractAddress,
+    recipientAddress,
+    usdcAmount: usdcAmount.toString(),
+    transactionCalls,
+    hasTo: !!transactionCalls[0]?.to,
+    hasData: !!transactionCalls[0]?.data,
+    hasValue: transactionCalls[0]?.value !== undefined
+  });
+
   return (
     <div className={styles.paymentButtonContainer}>
       <Transaction
-        calls={[{
-          // USDC transfer - ALWAYS use USDC
-          to: usdcContractAddress as `0x${string}`,
-          data: encodeFunctionData({
-            abi: erc20Abi,
-            functionName: 'transfer',
-            args: [recipientAddress as `0x${string}`, usdcAmount]
-          }),
-          value: '0', // No ETH value for ERC20 transfer
-        }]}
+        calls={transactionCalls}
         chainId={84532} // Base Sepolia
         onSuccess={(transactionData) => {
           handleTransactionSuccess(transactionData);

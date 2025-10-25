@@ -46,8 +46,7 @@ export default function UnifiedPaymentButton({
   // Render appropriate payment component based on environment
   switch (environmentInfo.environment) {
     case 'farcaster':
-    case 'base':
-      // Both Farcaster and Base Mini Apps use FarcasterPaymentButton
+      // Farcaster Mini App uses FarcasterPaymentButton
       return (
         <FarcasterPaymentButton
           onClick={onClick}
@@ -59,6 +58,21 @@ export default function UnifiedPaymentButton({
         >
           {children}
         </FarcasterPaymentButton>
+      );
+    
+    case 'base':
+      // Base App Mini App uses BasePaymentButton (OnchainKit Transaction component)
+      return (
+        <BasePaymentButton
+          onClick={onClick}
+          onSuccess={onSuccess}
+          disabled={disabled}
+          loading={loading}
+          amount={amount}
+          recipientAddress={recipientAddress}
+        >
+          {children}
+        </BasePaymentButton>
       );
     
     case 'external':
