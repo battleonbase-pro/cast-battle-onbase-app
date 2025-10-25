@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect, useCallback } from 'react';
-import { useMiniKit, useAuthenticate } from '@coinbase/onchainkit/minikit';
+import { useState, useEffect } from 'react';
+import { useMiniKit } from '@coinbase/onchainkit/minikit';
 import { ConnectWallet, Wallet } from '@coinbase/onchainkit/wallet';
 import { useAccount } from 'wagmi';
 import { sdk } from '@farcaster/miniapp-sdk';
@@ -22,15 +22,14 @@ interface BattlePreview {
   status: string;
 }
 
-export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKitAuthProps) {
+export default function OnchainKitAuth({ onAuthSuccess, onAuthError: _onAuthError }: OnchainKitAuthProps) {
   const [battlePreview, setBattlePreview] = useState<BattlePreview | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [hasAuthenticated, setHasAuthenticated] = useState<boolean>(false);
   
   // Use OnchainKit's MiniKit hooks for proper authentication
-  const { setFrameReady, isFrameReady } = useMiniKit();
-  const { authenticate, isAuthenticated, user } = useAuthenticate();
+  const { setFrameReady, isFrameReady, context } = useMiniKit();
   
   // Use wagmi's useAccount to check wallet connection
   const { isConnected, address } = useAccount();
@@ -59,11 +58,10 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
     initializeSDK();
   }, []);
 
-  // Handle authentication using cryptographically verified authentication
+  // Handle authentication - automatically navigate authenticated users to debate page
   useEffect(() => {
     console.log('🔍 OnchainKitAuth - Authentication state:', { 
-      isAuthenticated, 
-      user, 
+      context, 
       isConnected, 
       address,
       hasAuthenticated
@@ -75,12 +73,12 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
       return;
     }
 
-    // Use cryptographically verified authentication from useAuthenticate
-    if (isAuthenticated && user && user.address) {
-      console.log('✅ OnchainKitAuth - Cryptographically verified authentication successful:', user);
+    // If wallet is connected, consider user authenticated and navigate to debate page
+    if (isConnected && address) {
+      console.log('✅ OnchainKitAuth - Wallet connected, proceeding to debate page:', address);
       
       const authUser = {
-        address: user.address,
+        address: address,
         isAuthenticated: true,
         environment: 'base'
       };
@@ -89,24 +87,7 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
       onAuthSuccess(authUser);
       return;
     }
-
-    // Fallback: If wallet is connected but not authenticated, try to authenticate
-    if (isConnected && address && !isAuthenticated) {
-      console.log('🔍 OnchainKitAuth - Wallet connected but not authenticated, attempting authentication...');
-      
-      const handleAuthentication = async () => {
-        try {
-          await authenticate();
-          console.log('✅ OnchainKitAuth - Authentication initiated');
-        } catch (error) {
-          console.error('❌ OnchainKitAuth - Authentication failed:', error);
-          onAuthError(error instanceof Error ? error.message : 'Authentication failed');
-        }
-      };
-
-      handleAuthentication();
-    }
-  }, [isAuthenticated, user, isConnected, address, hasAuthenticated, authenticate, onAuthSuccess, onAuthError]);
+  }, [isConnected, address, hasAuthenticated, onAuthSuccess, context]);
 
   // Fetch current battle preview
   useEffect(() => {
@@ -234,7 +215,7 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
 
         {/* Authentication Section */}
         <div className={styles.authSection}>
-          {!isAuthenticated ? (
+          {!hasAuthenticated && !isConnected ? (
             <div className={styles.walletSection}>
               <p className={styles.authDescription}>
                 Connect your Base wallet to participate in debates and earn rewards.
@@ -249,7 +230,10 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
               <div className={styles.connectedText}>
                 <div className={styles.connectedTitle}>Wallet Connected</div>
                 <div className={styles.connectedAddress}>
-                  {user?.address?.substring(0, 6)}...{user?.address?.substring(user.address.length - 4)}
+                  {address?.substring(0, 6)}...{address?.substring(address?.length - 4)}
+                </div>
+                <div className={styles.connectedStatus}>
+                  {hasAuthenticated ? 'Authenticated' : 'Connecting...'}
                 </div>
               </div>
             </div>
