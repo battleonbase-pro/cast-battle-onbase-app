@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { useMiniKit, useAuthenticate } from '@coinbase/onchainkit/minikit';
+import { useMiniKit } from '@coinbase/onchainkit/minikit';
 import { ConnectWallet, Wallet } from '@coinbase/onchainkit/wallet';
 import { useAccount } from 'wagmi';
 import { sdk } from '@farcaster/miniapp-sdk';
@@ -30,7 +30,6 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
   
   // Use OnchainKit's MiniKit hooks for proper authentication
   const { setMiniAppReady, isMiniAppReady, context } = useMiniKit();
-  const { signIn } = useAuthenticate();
   
   // Use wagmi's useAccount to check wallet connection
   const { isConnected, address } = useAccount();
@@ -74,39 +73,24 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
       return;
     }
 
-    // If wallet is connected, try to authenticate using useAuthenticate
+    // If wallet is connected, consider user authenticated without requiring signIn()
+    // This prevents redirect loops on page reload in Base App Mini App
     if (isConnected && address && !hasAuthenticated) {
-      console.log('🔍 OnchainKitAuth - Wallet connected, attempting authentication...');
+      console.log('🔍 OnchainKitAuth - Wallet connected, treating as authenticated...');
       
-      const handleAuthentication = async () => {
-        try {
-          const result = await signIn();
-          if (result) {
-            console.log('✅ OnchainKitAuth - Authentication successful:', result);
-            
-            const authUser = {
-              address: address,
-              isAuthenticated: true,
-              environment: 'base',
-              signature: result.signature,
-              message: result.message,
-              authMethod: result.authMethod
-            };
-
-            setHasAuthenticated(true);
-            onAuthSuccess(authUser);
-          } else {
-            console.log('⚠️ OnchainKitAuth - Authentication cancelled by user');
-          }
-        } catch (error) {
-          console.error('❌ OnchainKitAuth - Authentication failed:', error);
-          onAuthError(error instanceof Error ? error.message : 'Authentication failed');
-        }
+      const authUser = {
+        address: address,
+        isAuthenticated: true,
+        environment: 'base',
+        signature: undefined, // No signature needed for existing connection
+        message: undefined,
+        authMethod: 'wallet_connection'
       };
 
-      handleAuthentication();
+      setHasAuthenticated(true);
+      onAuthSuccess(authUser);
     }
-  }, [isConnected, address, hasAuthenticated, signIn, onAuthSuccess, onAuthError, context]);
+  }, [isConnected, address, hasAuthenticated, onAuthSuccess, onAuthError, context]);
 
   // Fetch current battle preview
   useEffect(() => {
