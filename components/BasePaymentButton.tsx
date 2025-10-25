@@ -102,6 +102,7 @@ export default function BasePaymentButton({
 
   // If wallet is not connected, show connect message
   if (!isConnected || !address) {
+    console.log('⚠️ BasePaymentButton: Wallet not connected or no address available');
     return (
       <div className={styles.paymentButtonContainer}>
         <button

@@ -63,9 +63,9 @@ export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [baseAccountUser, setBaseAccountUser] = useState<{ address: string } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
   const [paymentSuccessCastFailed, setPaymentSuccessCastFailed] = useState(false);
-  const [paymentCompleted, setPaymentCompleted] = useState(false);
+  const [_paymentCompleted, setPaymentCompleted] = useState(false);
   const [currentBattle, setCurrentBattle] = useState<Battle | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [selectedSide, setSelectedSide] = useState<string | null>(null);
@@ -86,9 +86,9 @@ export default function Home() {
   }>>([]);
   const [activeTab, setActiveTab] = useState<'debate' | 'arguments' | 'history' | 'leaderboard'>('debate');
   const [casts, setCasts] = useState<Cast[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [hasCalledSuccess, setHasCalledSuccess] = useState(false);
-  const [submittingCast, setSubmittingCast] = useState(false);
+  const [_isProcessing, setIsProcessing] = useState(false);
+  const [_hasCalledSuccess, setHasCalledSuccess] = useState(false);
+  const [_submittingCast, setSubmittingCast] = useState(false);
 
   // Wagmi hooks for external browser payment transactions
   const { isConnected } = useWagmiAccount();
@@ -531,11 +531,7 @@ export default function Home() {
     }
   }, [timeRemaining]);
 
-  // Debug logging for authentication state
-  console.log('🔍 Main page render - baseAccountUser:', baseAccountUser);
-  console.log('🔍 Main page render - isAuthenticated:', isAuthenticated);
-  console.log('🔍 Main page render - environmentInfo:', environmentInfo);
-  console.log('🔍 Main page render - showing auth section:', !baseAccountUser);
+  // Debug logging for authentication state (removed to prevent infinite re-renders)
 
   return (
     <div className={styles.container}>
@@ -620,6 +616,7 @@ export default function Home() {
                 onSubmitCast={handleSubmitCast}
                 onPaymentSuccess={handlePaymentSuccess}
                 onPaymentError={handlePaymentError}
+                currentBattle={currentBattle}
               />
             )}
 
