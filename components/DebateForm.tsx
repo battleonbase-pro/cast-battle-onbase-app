@@ -81,7 +81,7 @@ export default function DebateForm({
           <div className={styles.submittedContent}>
             <h3 className={styles.submittedTitle}>🎉 Thank You for Participating!</h3>
             <p className={styles.submittedMessage}>
-              🎉 Thank you for participating in NewsCast Debate! Your <strong>1 USDC payment</strong> has been processed successfully and your argument has been submitted! Good luck with your debate - may the best debater win! 🏆
+              Your <strong>1 USDC payment</strong> has been processed successfully and your argument has been submitted! Good luck with your debate - may the best debater win! 🏆
             </p>
             {transactionHash && (
               <p className={styles.submittedNote}>
