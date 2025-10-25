@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { useMiniKit } from '@coinbase/onchainkit/minikit';
+import { useMiniKit, useAuthenticate } from '@coinbase/onchainkit/minikit';
 import { ConnectWallet, Wallet } from '@coinbase/onchainkit/wallet';
 import { useAccount } from 'wagmi';
 import { sdk } from '@farcaster/miniapp-sdk';
@@ -22,25 +22,26 @@ interface BattlePreview {
   status: string;
 }
 
-export default function OnchainKitAuth({ onAuthSuccess, onAuthError: _onAuthError }: OnchainKitAuthProps) {
+export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKitAuthProps) {
   const [battlePreview, setBattlePreview] = useState<BattlePreview | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [hasAuthenticated, setHasAuthenticated] = useState<boolean>(false);
   
   // Use OnchainKit's MiniKit hooks for proper authentication
-  const { setFrameReady, isFrameReady, context } = useMiniKit();
+  const { setMiniAppReady, isMiniAppReady, context } = useMiniKit();
+  const { signIn } = useAuthenticate();
   
   // Use wagmi's useAccount to check wallet connection
   const { isConnected, address } = useAccount();
 
   // Signal frame readiness as per MiniKit best practices
   useEffect(() => {
-    if (!isFrameReady) {
+    if (!isMiniAppReady) {
       console.log('🔧 OnchainKitAuth - Signaling frame readiness...');
-      setFrameReady();
+      setMiniAppReady();
     }
-  }, [setFrameReady, isFrameReady]);
+  }, [setMiniAppReady, isMiniAppReady]);
 
   // Initialize Farcaster SDK for Base App Mini App
   useEffect(() => {
@@ -58,7 +59,7 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError: _onAuthErro
     initializeSDK();
   }, []);
 
-  // Handle authentication - automatically navigate authenticated users to debate page
+  // Handle authentication using useAuthenticate hook
   useEffect(() => {
     console.log('🔍 OnchainKitAuth - Authentication state:', { 
       context, 
@@ -73,21 +74,39 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError: _onAuthErro
       return;
     }
 
-    // If wallet is connected, consider user authenticated and navigate to debate page
-    if (isConnected && address) {
-      console.log('✅ OnchainKitAuth - Wallet connected, proceeding to debate page:', address);
+    // If wallet is connected, try to authenticate using useAuthenticate
+    if (isConnected && address && !hasAuthenticated) {
+      console.log('🔍 OnchainKitAuth - Wallet connected, attempting authentication...');
       
-      const authUser = {
-        address: address,
-        isAuthenticated: true,
-        environment: 'base'
+      const handleAuthentication = async () => {
+        try {
+          const result = await signIn();
+          if (result) {
+            console.log('✅ OnchainKitAuth - Authentication successful:', result);
+            
+            const authUser = {
+              address: address,
+              isAuthenticated: true,
+              environment: 'base',
+              signature: result.signature,
+              message: result.message,
+              authMethod: result.authMethod
+            };
+
+            setHasAuthenticated(true);
+            onAuthSuccess(authUser);
+          } else {
+            console.log('⚠️ OnchainKitAuth - Authentication cancelled by user');
+          }
+        } catch (error) {
+          console.error('❌ OnchainKitAuth - Authentication failed:', error);
+          onAuthError(error instanceof Error ? error.message : 'Authentication failed');
+        }
       };
 
-      setHasAuthenticated(true);
-      onAuthSuccess(authUser);
-      return;
+      handleAuthentication();
     }
-  }, [isConnected, address, hasAuthenticated, onAuthSuccess, context]);
+  }, [isConnected, address, hasAuthenticated, signIn, onAuthSuccess, onAuthError, context]);
 
   // Fetch current battle preview
   useEffect(() => {
