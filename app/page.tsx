@@ -446,6 +446,15 @@ export default function Home() {
     console.log('💰 Payment completed successfully');
     console.log('📝 Transaction ID:', transactionId);
     
+    // Debug logging to understand current state
+    console.log('🔍 [DEBUG] Current state when payment succeeds:', {
+      baseAccountUser: baseAccountUser,
+      baseAccountAddress: baseAccountUser?.address,
+      castContent: castContent,
+      selectedSide: selectedSide,
+      isAuthenticated: isAuthenticated
+    });
+    
     setHasProcessedPayment(true);
     setPaymentStatus('idle');
     setPaymentError(null);
