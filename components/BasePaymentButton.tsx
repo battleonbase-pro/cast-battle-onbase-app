@@ -69,19 +69,19 @@ export default function BasePaymentButton({
   ], [USDC_CONTRACT_ADDRESS, recipientAddress, amount, usdcAbi]);
 
   const handleTransactionStatus = useCallback((lifecycleStatus: LifecycleStatus) => {
-    // Only log non-success statuses to prevent infinite logs
-    if (lifecycleStatus?.statusName !== 'success') {
-      console.log('🔍 Transaction status:', lifecycleStatus);
-      
-      // Reset the success flag when a new transaction starts
-      if (lifecycleStatus?.statusName === 'init') {
-        hasProcessedSuccessRef.current = false;
-      }
+    // Reset the success flag when a new transaction starts
+    if (lifecycleStatus?.statusName === 'init') {
+      hasProcessedSuccessRef.current = false;
+      return; // Don't log 'init' status to prevent infinite logs
     }
     
-    if (lifecycleStatus?.statusName === 'error') {
+    // Only log important statuses
+    if (lifecycleStatus?.statusName === 'buildingTransaction') {
+      console.log('🔧 Building transaction...');
+    } else if (lifecycleStatus?.statusName === 'transactionPending') {
+      console.log('⏳ Transaction pending...');
+    } else if (lifecycleStatus?.statusName === 'error') {
       console.error('❌ Transaction failed:', lifecycleStatus.statusData);
-      // Reset on error so user can retry
       hasProcessedSuccessRef.current = false;
     }
   }, []);

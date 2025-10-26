@@ -1,4 +1,5 @@
 "use client";
+import { useEffect } from 'react';
 import BasePaymentButton from './BasePaymentButton';
 import FarcasterPaymentButton from './FarcasterPaymentButton';
 import { useEnvironmentDetection } from '../hooks/useEnvironmentDetection';
@@ -24,8 +25,12 @@ export default function UnifiedPaymentButton({
 }: UnifiedPaymentButtonProps) {
   const environmentInfo = useEnvironmentDetection();
   
-  // Debug logging
-  console.log('🔍 UnifiedPaymentButton - Environment info:', environmentInfo);
+  // Debug logging - log when environment is detected
+  useEffect(() => {
+    if (!environmentInfo.isLoading) {
+      console.log('🔍 UnifiedPaymentButton - Environment detected:', environmentInfo.environment);
+    }
+  }, [environmentInfo.environment, environmentInfo.isLoading]);
 
   // Show loading state while detecting environment
   if (environmentInfo.isLoading) {
