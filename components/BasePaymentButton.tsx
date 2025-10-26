@@ -156,13 +156,15 @@ export default function BasePaymentButton({
 
   const handleTransactionError = (error: unknown) => {
     console.error('❌ Transaction error:', error);
-    console.error('❌ Transaction error details:', {
-      errorMessage: error?.message,
-      errorStack: error?.stack,
-      errorType: error?.name,
-      errorCode: error?.code,
-      fullError: JSON.stringify(error, null, 2)
-    });
+    if (error instanceof Error) {
+      console.error('❌ Transaction error details:', {
+        errorMessage: error.message,
+        errorStack: error.stack,
+        errorType: error.name,
+        errorCode: (error as { code?: string }).code,
+        fullError: JSON.stringify(error, null, 2)
+      });
+    }
     // You could add error handling here if needed
   };
 
