@@ -61,7 +61,7 @@ interface SentimentData {
 export default function Home() {
   const { context } = useMiniKit();
   const environmentInfo = useEnvironmentDetection();
-  const { user: baseAccountUser, setUser, isAuthenticated } = useAuth();
+  const { user: baseAccountUser, setUser, isAuthenticated, formState, setCastContent, setSelectedSide, clearFormState } = useAuth();
   const [loading, setLoading] = useState(true);
   const [_error, setError] = useState<string | null>(null);
   const [paymentSuccessCastFailed, setPaymentSuccessCastFailed] = useState(false);
@@ -69,8 +69,9 @@ export default function Home() {
   const [transactionHash, setTransactionHash] = useState<string | null>(null);
   const [currentBattle, setCurrentBattle] = useState<Battle | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
-  const [selectedSide, setSelectedSide] = useState<string | null>(null);
-  const [castContent, setCastContent] = useState('');
+  // Form state now managed by context
+  const selectedSide = formState.selectedSide;
+  const castContent = formState.castContent;
   const [hasSubmittedCast, setHasSubmittedCast] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<string>('idle');
   const [paymentError, setPaymentError] = useState<string | null>(null);
@@ -288,8 +289,7 @@ export default function Home() {
       setUser(null);
       setCurrentBattle(null);
       setTimeRemaining(null);
-      setSelectedSide(null);
-      setCastContent('');
+      clearFormState(); // Clear form state in context
       setHasSubmittedCast(false);
       setPaymentStatus('idle');
       setPaymentError(null);
@@ -399,9 +399,8 @@ export default function Home() {
               
       if (data.success) {
         console.log('✅ Cast submitted successfully:', data);
-                setHasSubmittedCast(true);
-                setCastContent('');
-        setSelectedSide(null);
+        setHasSubmittedCast(true);
+        clearFormState(); // Clear form state in context
         setPaymentStatus('idle');
         setPaymentError(null);
         

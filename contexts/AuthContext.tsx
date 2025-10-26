@@ -8,17 +8,31 @@ interface AuthUser {
   environment: string;
 }
 
+interface FormState {
+  castContent: string;
+  selectedSide: string | null;
+}
+
 interface AuthContextType {
   user: AuthUser | null;
   isAuthenticated: boolean;
   setUser: (user: AuthUser | null) => void;
   clearUser: () => void;
+  // Form state
+  formState: FormState;
+  setCastContent: (content: string) => void;
+  setSelectedSide: (side: string | null) => void;
+  clearFormState: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<AuthUser | null>(null);
+  const [formState, setFormState] = useState<FormState>({
+    castContent: '',
+    selectedSide: null
+  });
   const { address } = useAccount();
 
   const setUser = useCallback((newUser: AuthUser | null) => {
@@ -29,6 +43,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearUser = useCallback(() => {
     console.log('🔐 [AUTH] Clearing user');
     setUserState(null);
+  }, []);
+
+  // Form state setters
+  const setCastContent = useCallback((content: string) => {
+    console.log('📝 [FORM] Setting cast content:', content);
+    setFormState(prev => ({ ...prev, castContent: content }));
+  }, []);
+
+  const setSelectedSide = useCallback((side: string | null) => {
+    console.log('📝 [FORM] Setting selected side:', side);
+    setFormState(prev => ({ ...prev, selectedSide: side }));
+  }, []);
+
+  const clearFormState = useCallback(() => {
+    console.log('📝 [FORM] Clearing form state');
+    setFormState({ castContent: '', selectedSide: null });
   }, []);
 
   // Note: We do NOT auto-derive from wagmi address here
@@ -42,7 +72,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user, 
         isAuthenticated: !!user, 
         setUser, 
-        clearUser 
+        clearUser,
+        formState,
+        setCastContent,
+        setSelectedSide,
+        clearFormState
       }}
     >
       {children}
