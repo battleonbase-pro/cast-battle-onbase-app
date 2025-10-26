@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useMemo } from 'react';
 import { Transaction, LifecycleStatus, TransactionResponseType } from '@coinbase/onchainkit/transaction';
-import { parseUnits } from 'viem';
-import { useAccount, useConnect } from 'wagmi';
+import { parseUnits, formatUnits } from 'viem';
+import { useAccount, useConnect, useBalance } from 'wagmi';
 import styles from './BasePaymentButton.module.css';
 
 interface BasePaymentButtonProps {
@@ -26,6 +26,7 @@ export default function BasePaymentButton({
 }: BasePaymentButtonProps) {
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
+  const { data: gasBalance } = useBalance({ address });
 
   // USDC contract address on Base Sepolia
   const USDC_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS!;
@@ -153,7 +154,7 @@ export default function BasePaymentButton({
     onClick(); // Call the onClick handler
   };
 
-  const handleTransactionError = (error: any) => {
+  const handleTransactionError = (error: unknown) => {
     console.error('❌ Transaction error:', error);
     console.error('❌ Transaction error details:', {
       errorMessage: error?.message,
@@ -174,6 +175,8 @@ export default function BasePaymentButton({
       isConnected,
       address,
       parsedAmount: parseUnits(amount, 6).toString(),
+      gasBalance: gasBalance ? formatUnits(gasBalance.value, 18) : 'N/A',
+      gasBalanceWei: gasBalance?.value.toString(),
       callsCount: calls.length,
       callsPreview: calls.map(call => ({
         address: call.address,
@@ -181,7 +184,13 @@ export default function BasePaymentButton({
         args: call.args?.map(arg => typeof arg === 'bigint' ? arg.toString() : arg)
       }))
     });
-  }, [USDC_CONTRACT_ADDRESS, recipientAddress, amount, isConnected, address, calls]);
+    
+    // Warn if gas balance is low
+    if (gasBalance && gasBalance.value < parseUnits('0.0001', 18)) {
+      console.warn('⚠️ Low gas balance detected. Ensure you have enough ETH for transaction fees.');
+      console.warn('⚠️ Current gas balance:', formatUnits(gasBalance.value, 18), 'ETH');
+    }
+  }, [USDC_CONTRACT_ADDRESS, recipientAddress, amount, isConnected, address, calls, gasBalance]);
 
   // If wallet is not connected, show connect message
   if (!isConnected || !address) {
@@ -227,7 +236,7 @@ export default function BasePaymentButton({
 
   return (
     <div className={styles.paymentButtonContainer}>
-      <Transaction 
+      <Transaction
         calls={calls} 
         chainId={84532} // Base Sepolia chain ID
         onStatus={handleTransactionStatus}
