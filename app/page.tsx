@@ -192,8 +192,8 @@ export default function Home() {
       // Fetch battle history
       const historyResponse = await fetch('/api/battle/history');
       const historyData = await historyResponse.json();
-      if (historyData.success) {
-        setBattleHistory(historyData.history);
+      if (historyData.success && historyData.battles) {
+        setBattleHistory(historyData.battles); // API returns 'battles' not 'history'
       }
       
     } catch (error) {
