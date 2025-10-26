@@ -36,8 +36,6 @@ export type { Strings } from "./@openzeppelin/contracts/utils/Strings";
 export { Strings__factory } from "./factories/@openzeppelin/contracts/utils/Strings__factory";
 export type { DebatePool } from "./contracts/DebatePool";
 export { DebatePool__factory } from "./factories/contracts/DebatePool__factory";
-export type { DebatePoolV2 } from "./contracts/DebatePoolV2";
-export { DebatePoolV2__factory } from "./factories/contracts/DebatePoolV2__factory";
 export type { EmergencyUSDCWithdrawer } from "./contracts/EmergencyUSDCWithdrawer";
 export { EmergencyUSDCWithdrawer__factory } from "./factories/contracts/EmergencyUSDCWithdrawer__factory";
 export type { IDebatePool } from "./contracts/interfaces/IDebatePool";

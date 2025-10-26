@@ -32,7 +32,7 @@ export default function BasePaymentButton({
   // USDC contract address on Base Sepolia
   const USDC_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS!;
 
-  // USDC ABI (moved outside to prevent infinite re-renders)
+  // USDC ABI for ERC20 transfer
   const usdcAbi = useMemo(() => [
     {
       type: 'function',
@@ -56,9 +56,8 @@ export default function BasePaymentButton({
     }
   ] as const, []);
 
-  // Prepare USDC transfer call
-  // NOTE: Base Sepolia testnet USDC may allow transfer without approval
-  // OnchainKit should handle approvals automatically if needed
+  // Prepare USDC transfer call to debate pool
+  // Direct transfer: User sends 1 USDC to the debate pool address
   const calls = useMemo(() => [
     {
       address: USDC_CONTRACT_ADDRESS as `0x${string}`,

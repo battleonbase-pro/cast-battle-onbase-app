@@ -74,10 +74,6 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.DebatePool__factory>;
     getContractFactory(
-      name: "DebatePoolV2",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.DebatePoolV2__factory>;
-    getContractFactory(
       name: "EmergencyUSDCWithdrawer",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.EmergencyUSDCWithdrawer__factory>;
@@ -170,11 +166,6 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer
     ): Promise<Contracts.DebatePool>;
     getContractAt(
-      name: "DebatePoolV2",
-      address: string | ethers.Addressable,
-      signer?: ethers.Signer
-    ): Promise<Contracts.DebatePoolV2>;
-    getContractAt(
       name: "EmergencyUSDCWithdrawer",
       address: string | ethers.Addressable,
       signer?: ethers.Signer
@@ -255,10 +246,6 @@ declare module "hardhat/types/runtime" {
       name: "DebatePool",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.DebatePool>;
-    deployContract(
-      name: "DebatePoolV2",
-      signerOrOptions?: ethers.Signer | DeployContractOptions
-    ): Promise<Contracts.DebatePoolV2>;
     deployContract(
       name: "EmergencyUSDCWithdrawer",
       signerOrOptions?: ethers.Signer | DeployContractOptions
@@ -351,11 +338,6 @@ declare module "hardhat/types/runtime" {
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.DebatePool>;
-    deployContract(
-      name: "DebatePoolV2",
-      args: any[],
-      signerOrOptions?: ethers.Signer | DeployContractOptions
-    ): Promise<Contracts.DebatePoolV2>;
     deployContract(
       name: "EmergencyUSDCWithdrawer",
       args: any[],

@@ -1,0 +1,60 @@
+import { ethers } from "hardhat";
+
+async function main() {
+  const CONTRACT_ADDRESS = "0xD204b546020765994e8B9da58F76D9E85764a059";
+  
+  try {
+    console.log("💰 Withdrawing All USDC from Contract");
+    console.log(`   Contract: ${CONTRACT_ADDRESS}`);
+    
+    // Get contract instance
+    const contract = await ethers.getContractAt("DebatePool", CONTRACT_ADDRESS);
+    const [owner] = await ethers.getSigners();
+    
+    console.log(`   Owner: ${owner.address}`);
+    
+    // Check contract USDC balance
+    const usdcContract = await ethers.getContractAt("IERC20", "0x036CbD53842c5426634e7929541eC2318f3dCF7e");
+    const contractBalance = await usdcContract.balanceOf(CONTRACT_ADDRESS);
+    const contractBalanceFormatted = ethers.formatUnits(contractBalance, 6);
+    
+    console.log(`\n   Contract USDC Balance: ${contractBalanceFormatted} USDC`);
+    
+    if (contractBalance === 0n) {
+      console.log(`\n⚠️  No USDC to withdraw.`);
+      return;
+    }
+    
+    // Check owner balance before
+    const ownerBalanceBefore = await usdcContract.balanceOf(owner.address);
+    console.log(`   Owner Balance (Before): ${ethers.formatUnits(ownerBalanceBefore, 6)} USDC`);
+    
+    // Withdraw all funds using withdrawPlatformFees()
+    console.log(`\n💸 Calling withdrawPlatformFees()...`);
+    const withdrawTx = await contract.withdrawPlatformFees();
+    console.log(`   Transaction: ${withdrawTx.hash}`);
+    
+    const receipt = await withdrawTx.wait();
+    console.log(`   Confirmed in block: ${receipt?.blockNumber}`);
+    console.log(`   Gas used: ${receipt?.gasUsed.toString()}`);
+    
+    // Check balances after
+    console.log(`\n✅ Withdrawal Complete!`);
+    const contractBalanceAfter = await usdcContract.balanceOf(CONTRACT_ADDRESS);
+    const ownerBalanceAfter = await usdcContract.balanceOf(owner.address);
+    
+    console.log(`   Contract Balance (After): ${ethers.formatUnits(contractBalanceAfter, 6)} USDC`);
+    console.log(`   Owner Balance (After): ${ethers.formatUnits(ownerBalanceAfter, 6)} USDC`);
+    console.log(`   Amount Withdrawn: ${contractBalanceFormatted} USDC`);
+    
+  } catch (error) {
+    console.error("❌ Withdrawal failed:", error);
+  }
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
