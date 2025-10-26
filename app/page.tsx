@@ -129,12 +129,10 @@ export default function Home() {
         const user = JSON.parse(savedUser);
         console.log('🔄 Restoring auth state from sessionStorage:', user);
         
-        // Only restore if we don't have a user yet
-        if (!baseAccountUser) {
-          setBaseAccountUser(user);
-          setIsAuthenticated(true);
-          fetchUserPoints(user.address);
-        }
+        // Always restore from sessionStorage to survive Fast Refresh
+        setBaseAccountUser(user);
+        setIsAuthenticated(true);
+        fetchUserPoints(user.address);
       } catch (error) {
         console.error('Failed to restore auth state:', error);
       }
@@ -185,8 +183,8 @@ export default function Home() {
   const loadInitialData = useCallback(async () => {
     try {
       setLoading(true);
-      
-      // Fetch current battle
+
+  // Fetch current battle
       const battleResponse = await fetch('/api/battle/current');
       const battleData = await battleResponse.json();
       
