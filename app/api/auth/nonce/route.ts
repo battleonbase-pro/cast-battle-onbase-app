@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 
 // Use a global nonces store that persists across requests
@@ -26,21 +26,34 @@ const cleanupOldNonces = () => {
   }
 };
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     // Clean up old nonces first
     cleanupOldNonces();
     
+    // Get request metadata for debugging
+    const userAgent = request.headers.get('user-agent');
+    const referer = request.headers.get('referer');
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+    
     // Generate a 32-character hex nonce (same format as client-side UUID without dashes)
     const nonce = crypto.randomBytes(16).toString('hex');
-    nonces.set(nonce, Date.now());
+    const timestamp = Date.now();
+    nonces.set(nonce, timestamp);
     
-    console.log('🔑 Generated nonce:', nonce);
-    console.log('📝 Total nonces in store:', nonces.size);
+    console.log('🔑 [NONCE GENERATION] Details:', {
+      nonce,
+      timestamp: new Date(timestamp).toISOString(),
+      totalNonces: nonces.size,
+      userAgent: userAgent?.substring(0, 50),
+      referer: referer?.substring(0, 50),
+      ip: ip.substring(0, 20),
+      stackTrace: new Error().stack?.split('\n').slice(2, 5).join(' | ')
+    });
     
     return NextResponse.json({ nonce });
   } catch (error) {
-    console.error('Error generating nonce:', error);
+    console.error('❌ [NONCE GENERATION ERROR]:', error);
     return NextResponse.json(
       { error: 'Failed to generate nonce' },
       { status: 500 }

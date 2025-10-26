@@ -67,11 +67,25 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
     }
 
     try {
-      console.log('🔐 Starting manual authentication...');
+      console.log('🔐 [AUTH] Starting manual authentication...', {
+        address,
+        isConnected,
+        timestamp: new Date().toISOString()
+      });
+      
       const result = await signIn();
+      console.log('🔐 [AUTH] signIn() result:', result);
       
       if (result) {
-        console.log('✅ Authentication successful:', result);
+        console.log('✅ [AUTH] Authentication successful:', {
+          address,
+          environment: 'base',
+          hasSignature: !!result.signature,
+          hasMessage: !!result.message,
+          messageLength: result.message?.length,
+          signatureLength: result.signature?.length,
+          authMethod: result.authMethod
+        });
         
         const authUser = {
           address: address,
@@ -85,10 +99,15 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
         setHasAuthenticated(true);
         onAuthSuccess(authUser);
       } else {
-        console.log('⚠️ Authentication cancelled by user');
+        console.log('⚠️ [AUTH] Authentication cancelled by user');
       }
     } catch (error) {
-      console.error('❌ Authentication failed:', error);
+      console.error('❌ [AUTH] Authentication failed:', {
+        error,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        errorStack: error instanceof Error ? error.stack : 'No stack',
+        timestamp: new Date().toISOString()
+      });
       onAuthError(error instanceof Error ? error.message : 'Authentication failed');
     }
   };

@@ -34,22 +34,29 @@ export async function POST(request: NextRequest) {
     const nonceMatch = message.match(/Nonce:\s*([a-f0-9]{32})/i);
     const extracted = nonceMatch?.[1] || null;
     
-    console.log('🔍 Nonce extraction:', { 
-      message: message.substring(0, 100) + '...', 
+    console.log('🔍 [NONCE VERIFICATION] Step 1 - Extraction:', { 
+      message: message.substring(0, 150) + '...', 
       nonceMatch, 
       extracted,
       noncesSize: nonces.size,
-      allNonces: Array.from(nonces.keys())
+      allNonces: Array.from(nonces.keys()),
+      nonceInStore: extracted ? nonces.has(extracted) : 'N/A',
+      nonceTimestamp: extracted ? new Date(nonces.get(extracted) || 0).toISOString() : 'N/A'
     });
     
     if (!extracted) {
-      console.log('❌ No nonce found in message');
+      console.log('❌ [NONCE VERIFICATION ERROR] No nonce found in message');
       return NextResponse.json({ error: 'No nonce found in message' }, { status: 400 });
     }
     
     // Check if nonce exists (but don't delete it yet - allow multiple attempts)
     if (!nonces.has(extracted)) {
-      console.log('❌ Invalid or already used nonce:', extracted);
+      console.log('❌ [NONCE VERIFICATION ERROR] Nonce not found in store:', {
+        extracted,
+        storeSize: nonces.size,
+        allStoredNonces: Array.from(nonces.keys()),
+        message: message.substring(0, 100)
+      });
       return NextResponse.json({ error: 'Invalid or reused nonce' }, { status: 400 });
     }
 

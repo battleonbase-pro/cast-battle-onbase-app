@@ -53,19 +53,33 @@ export const config = (() => {
       method: detectionResult.method
     });
     
-    // Always add external connectors in wagmi config
-    // The actual environment detection happens at runtime via MiniKit context
-    connectors.push(injected());
-    connectors.push(
-      metaMask({
-        dappMetadata: {
-          name: 'NewsCast Debate',
-          url: currentUrl,
-        },
-      })
+    // Detect if we're in a Mini App environment at build time
+    // This prevents eip6963RequestProvider errors by not adding external connectors
+    const isInMiniApp = typeof window !== 'undefined' && (
+      window.location.href.includes('miniapp') ||
+      window.location.href.includes('base.app') ||
+      window.location.href.includes('farcaster') ||
+      window.parent !== window ||
+      window.self !== window.top ||
+      !!(window as any).farcaster ||
+      !!(window as any).miniapp
     );
     
-    console.log('✅ Added external wallet connectors (will be filtered at runtime)');
+    if (!isInMiniApp) {
+      // Only add external connectors for external browsers
+      connectors.push(injected());
+      connectors.push(
+        metaMask({
+          dappMetadata: {
+            name: 'NewsCast Debate',
+            url: currentUrl,
+          },
+        })
+      );
+      console.log('✅ Added external wallet connectors for external browser');
+    } else {
+      console.log('🚫 Skipped external wallet connectors for Mini App environment');
+    }
     if (hasValidWalletConnectId) {
       connectors.push(
         walletConnect({
