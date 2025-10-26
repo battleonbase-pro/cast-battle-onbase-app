@@ -118,31 +118,17 @@ export default function BasePaymentButton({
     // You could add error handling here if needed
   };
 
-  // Debug logging
+  // Debug logging - log once on mount only
   useEffect(() => {
-    console.log('🔧 BasePaymentButton Configuration:', {
-      USDC_CONTRACT_ADDRESS,
-      recipientAddress,
-      amount,
-      isConnected,
-      address,
-      parsedAmount: parseUnits(amount, 6).toString(),
-      gasBalance: gasBalance ? formatUnits(gasBalance.value, 18) : 'N/A',
-      gasBalanceWei: gasBalance?.value.toString(),
-      callsCount: calls.length,
-      callsPreview: calls.map(call => ({
-        address: call.address,
-        functionName: call.functionName,
-        args: call.args?.map(arg => typeof arg === 'bigint' ? arg.toString() : arg)
-      }))
-    });
-    
-    // Warn if gas balance is low
+    console.log('🔧 BasePaymentButton mounted');
+  }, []); // Empty deps - log only once
+
+  // Separate effect for gas balance warning - only when balance changes
+  useEffect(() => {
     if (gasBalance && gasBalance.value < parseUnits('0.0001', 18)) {
-      console.warn('⚠️ Low gas balance detected. Ensure you have enough ETH for transaction fees.');
-      console.warn('⚠️ Current gas balance:', formatUnits(gasBalance.value, 18), 'ETH');
+      console.warn('⚠️ Low gas balance:', formatUnits(gasBalance.value, 18), 'ETH');
     }
-  }, [USDC_CONTRACT_ADDRESS, recipientAddress, amount, isConnected, address, calls, gasBalance]);
+  }, [gasBalance]);
 
   // If wallet is not connected, show connect message
   if (!isConnected || !address) {
