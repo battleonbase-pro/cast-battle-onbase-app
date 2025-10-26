@@ -114,11 +114,16 @@ export default function Home() {
   useEffect(() => {
     if (baseAccountUser?.address) {
       console.log('💾 [PERSIST] Saving to sessionStorage:', baseAccountUser);
-      sessionStorage.setItem('authenticatedUser', JSON.stringify(baseAccountUser));
-      sessionStorage.setItem('isAuthenticated', 'true');
-    } else if (baseAccountUser === null) {
-      // Clear sessionStorage if auth state is explicitly null
-      console.log('🧹 [PERSIST] Clearing sessionStorage (baseAccountUser is null)');
+      try {
+        sessionStorage.setItem('authenticatedUser', JSON.stringify(baseAccountUser));
+        sessionStorage.setItem('isAuthenticated', 'true');
+        console.log('✅ [PERSIST] Successfully saved to sessionStorage');
+      } catch (error) {
+        console.error('❌ [PERSIST] Failed to save to sessionStorage:', error);
+      }
+    } else if (baseAccountUser === null && hasRestoredRef.current) {
+      // Only clear if we've already restored (to prevent clearing on initial mount)
+      console.log('🧹 [PERSIST] Clearing sessionStorage (baseAccountUser is null and already restored)');
       sessionStorage.removeItem('authenticatedUser');
       sessionStorage.removeItem('isAuthenticated');
     }
