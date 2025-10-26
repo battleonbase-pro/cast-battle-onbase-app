@@ -92,7 +92,7 @@ export default function Home() {
   const [isSubmittingCast, setIsSubmittingCast] = useState(false);
 
   // Wagmi hooks for external browser payment transactions
-  const { isConnected } = useWagmiAccount();
+  const { isConnected, address } = useWagmiAccount();
   const { disconnect } = useDisconnect();
   const { connect, connectors } = useConnect();
 
@@ -108,6 +108,32 @@ export default function Home() {
 
     initializeFarcasterSDK();
   }, []);
+
+  // Persist auth state in sessionStorage to survive Fast Refresh
+  useEffect(() => {
+    if (baseAccountUser?.address) {
+      sessionStorage.setItem('authenticatedUser', JSON.stringify(baseAccountUser));
+      sessionStorage.setItem('isAuthenticated', 'true');
+    }
+  }, [baseAccountUser]);
+
+  // Restore auth state from sessionStorage on mount (to survive Fast Refresh)
+  useEffect(() => {
+    const savedUser = sessionStorage.getItem('authenticatedUser');
+    const savedAuthStatus =社会各界.getItem('isAuthenticated');
+    
+    if (savedUser && savedAuthStatus === 'true' && !baseAccountUser) {
+      try {
+        const user = JSON.parse(savedUser);
+        console.log('🔄 Restoring auth state from sessionStorage:', user);
+        setBaseAccountUser(user);
+        setIsAuthenticated(true);
+        fetchUserPoints(user.address);
+      } catch (error) {
+        console.error('Failed to restore auth state:', error);
+      }
+    }
+  }, [baseAccountUser, fetchUserPoints]);
 
   // Fetch user points - memoized to prevent re-creation
   const fetchUserPoints = useCallback(async (address: string) => {
