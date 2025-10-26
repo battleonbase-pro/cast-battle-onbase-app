@@ -30,26 +30,33 @@ export async function POST(request: NextRequest) {
     }
 
     // Log the full message received from client
-    console.log('📨 [SERVER] Full message received:', message);
-    console.log('📨 [SERVER] Message length:', message.length);
-    console.log('📨 [SERVER] Address:', address);
-    console.log('📨 [SERVER] Signature:', signature.substring(0, 20) + '...');
+    const serverLogInfo = {
+      message: message,
+      messageLength: message.length,
+      address: address,
+      signaturePreview: signature.substring(0, 20) + '...'
+    };
+    console.log('📨 [SERVER] Request received:', JSON.stringify(serverLogInfo, null, 2));
     
     // 1. Extract nonce from SIWE message format: "Nonce: <nonce>"
     // OnchainKit may use different nonce formats, so we match any characters after "Nonce:"
     const nonceMatch = message.match(/Nonce:\s*([^\n\r]+)/i);
     const extracted = nonceMatch?.[1]?.trim() || null;
     
-    console.log('🔍 [NONCE VERIFICATION] Step 1 - Extraction:', { 
+    const extractionInfo = {
       fullMessage: message,
-      messagePreview: message.substring(0, 200) + '...',
-      nonceMatch: nonceMatch ? nonceMatch[0] : null,
-      extracted,
+      messagePreview: message.substring(0, 500),
+      hasNonceMatch: !!nonceMatch,
+      nonceMatchValue: nonceMatch ? nonceMatch[0] : null,
+      extractedNonce: extracted,
       extractedLength: extracted?.length,
-      noncesSize: nonces.size,
+      noncesStoreSize: nonces.size,
       nonceInStore: extracted ? nonces.has(extracted) : 'N/A',
-      allNonces: Array.from(nonces.keys())
-    });
+      allNonces: Array.from(nonces.keys()),
+      hasUsedNonces: extracted ? usedNonces.has(extracted) : 'N/A',
+      usedNoncesSize: usedNonces.size
+    };
+    console.log('🔍 [NONCE VERIFICATION] Step 1 - Extraction:', JSON.stringify(extractionInfo, null, 2));
     
     // 2. Check if nonce has already been used (prevent replay attacks)
     if (extracted && usedNonces.has(extracted)) {

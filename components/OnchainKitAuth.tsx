@@ -74,29 +74,34 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
       });
       
       const result = await signIn();
-      console.log('🔐 [AUTH] signIn() result:', result);
+      console.log('🔐 [AUTH] signIn() result:', JSON.stringify(result, null, 2));
       
       if (result) {
-        console.log('✅ [AUTH] Authentication successful:', {
+        const authInfo = {
           address,
           environment: 'base',
           hasSignature: !!result.signature,
           hasMessage: !!result.message,
           messageLength: result.message?.length,
           signatureLength: result.signature?.length,
-          authMethod: result.authMethod
-        });
+          authMethod: result.authMethod,
+          signature: result.signature,
+          message: result.message
+        };
+        console.log('✅ [AUTH] Authentication successful:', JSON.stringify(authInfo, null, 2));
         
         // Log the full message and extracted nonce for debugging
         console.log('📝 [AUTH CLIENT] Full message:', result.message);
         const nonceMatch = result.message?.match(/Nonce:\s*([^\n\r]+)/i);
         const extractedNonce = nonceMatch?.[1]?.trim();
-        console.log('🔍 [AUTH CLIENT] Extracted nonce from message:', {
+        const nonceInfo = {
           hasNonce: !!nonceMatch,
           nonceValue: extractedNonce,
           nonceLength: extractedNonce?.length,
-          messagePreview: result.message?.substring(0, 100)
-        });
+          nonceMatchValue: nonceMatch?.[0],
+          messagePreview: result.message?.substring(0, 200)
+        };
+        console.log('🔍 [AUTH CLIENT] Extracted nonce from message:', JSON.stringify(nonceInfo, null, 2));
         
         // Verify signature with backend
         console.log('🔍 [AUTH] Verifying signature with backend...');
