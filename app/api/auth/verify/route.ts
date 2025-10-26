@@ -29,17 +29,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Log the full message received from client
+    console.log('📨 [SERVER] Full message received:', message);
+    console.log('📨 [SERVER] Message length:', message.length);
+    console.log('📨 [SERVER] Address:', address);
+    console.log('📨 [SERVER] Signature:', signature.substring(0, 20) + '...');
+    
     // 1. Extract nonce from SIWE message format: "Nonce: <nonce>"
     // OnchainKit may use different nonce formats, so we match any characters after "Nonce:"
     const nonceMatch = message.match(/Nonce:\s*([^\n\r]+)/i);
     const extracted = nonceMatch?.[1]?.trim() || null;
     
     console.log('🔍 [NONCE VERIFICATION] Step 1 - Extraction:', { 
-      message: message.substring(0, 150) + '...', 
-      nonceMatch, 
+      fullMessage: message,
+      messagePreview: message.substring(0, 200) + '...',
+      nonceMatch: nonceMatch ? nonceMatch[0] : null,
       extracted,
+      extractedLength: extracted?.length,
       noncesSize: nonces.size,
-      nonceInStore: extracted ? nonces.has(extracted) : 'N/A'
+      nonceInStore: extracted ? nonces.has(extracted) : 'N/A',
+      allNonces: Array.from(nonces.keys())
     });
     
     // 2. Check if nonce has already been used (prevent replay attacks)

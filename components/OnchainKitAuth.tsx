@@ -29,9 +29,8 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
   const [hasAuthenticated, setHasAuthenticated] = useState<boolean>(false);
   
   // Use OnchainKit's MiniKit hooks for proper authentication
-  // Skip OnchainKit's internal nonce validation - we verify on backend instead
   const { setMiniAppReady, isMiniAppReady } = useMiniKit();
-  const { signIn } = useAuthenticate(undefined, true); // skipValidation=true
+  const { signIn } = useAuthenticate();
   
   // Use wagmi's useAccount to check wallet connection
   const { isConnected, address } = useAccount();
@@ -86,6 +85,17 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
           messageLength: result.message?.length,
           signatureLength: result.signature?.length,
           authMethod: result.authMethod
+        });
+        
+        // Log the full message and extracted nonce for debugging
+        console.log('📝 [AUTH CLIENT] Full message:', result.message);
+        const nonceMatch = result.message?.match(/Nonce:\s*([^\n\r]+)/i);
+        const extractedNonce = nonceMatch?.[1]?.trim();
+        console.log('🔍 [AUTH CLIENT] Extracted nonce from message:', {
+          hasNonce: !!nonceMatch,
+          nonceValue: extractedNonce,
+          nonceLength: extractedNonce?.length,
+          messagePreview: result.message?.substring(0, 100)
         });
         
         // Verify signature with backend
