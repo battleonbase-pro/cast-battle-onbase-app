@@ -16,10 +16,13 @@ SERVICE_NAME="news-debate-app"
 REGION="us-central1"
 IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}"
 
-# Contract addresses from environment
-NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS=${NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS:-"0x6D00f9F5C6a57B46bFa26E032D60B525A1DAe271"}
-NEXT_PUBLIC_USDC_ADDRESS=${NEXT_PUBLIC_USDC_ADDRESS:-"0x036CbD53842c5426634e7929541eC2318f3dCF7e"}
-NEXT_PUBLIC_ENTRY_POINT_ADDRESS=${NEXT_PUBLIC_ENTRY_POINT_ADDRESS:-"0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789"}
+# Contract addresses from environment - REQUIRED
+if [ -z "${NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS}" ] || [ -z "${NEXT_PUBLIC_USDC_ADDRESS}" ] || [ -z "${NEXT_PUBLIC_ENTRY_POINT_ADDRESS}" ]; then
+    echo "❌ Error: Required environment variables not set!"
+    echo "   Please set NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS, NEXT_PUBLIC_USDC_ADDRESS, and NEXT_PUBLIC_ENTRY_POINT_ADDRESS in your .env file"
+    echo "   These values are required for deployment and cannot have fallbacks"
+    exit 1
+fi
 
 echo "🚀 Deploying Next.js Frontend to Google Cloud Run"
 echo "Project ID: ${PROJECT_ID}"

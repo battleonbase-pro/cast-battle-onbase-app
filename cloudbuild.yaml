@@ -32,7 +32,7 @@ steps:
       '--set-secrets', 'DATABASE_URL=database-url:latest,WORKER_BASE_URL=worker-base-url:latest,WORKER_API_KEY=worker-api-key:latest,GOOGLE_GENERATIVE_AI_API_KEY=google-generative-ai-api-key:latest,SERPER_API_KEY=serper-api-key:latest,NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=walletconnect-project-id:latest'
     ]
 
-# Substitution variables for Cloud Build
-substitutions:
-  _NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS: '0x6D00f9F5C6a57B46bFa26E032D60B525A1DAe271'
-  _NEXT_PUBLIC_USDC_ADDRESS: '0x036CbD53842c5426634e7929541eC2318f3dCF7e'
+# Substitution variables for Cloud Build - REQUIRED
+# These must be provided when triggering the build, e.g.:
+# gcloud builds submit --substitutions=_NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS=0x...,_NEXT_PUBLIC_USDC_ADDRESS=0x...
+substitutions: {}

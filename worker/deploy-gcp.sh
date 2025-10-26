@@ -16,9 +16,13 @@ REGION=${2:-"us-central1"}
 SERVICE_NAME="battle-completion-worker"
 IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}"
 
-# Contract addresses from environment with fallback defaults
-NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS=${NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS:-"0x6D00f9F5C6a57B46bFa26E032D60B525A1DAe271"}
-NEXT_PUBLIC_USDC_ADDRESS=${NEXT_PUBLIC_USDC_ADDRESS:-"0x036CbD53842c5426634e7929541eC2318f3dCF7e"}
+# Contract addresses from environment - REQUIRED
+if [ -z "${NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS}" ] || [ -z "${NEXT_PUBLIC_USDC_ADDRESS}" ]; then
+    echo "❌ Error: Required environment variables not set!"
+    echo "   Please set NEXT_PUBLIC_DEB browned_POOL_CONTRACT_ADDRESS and NEXT_PUBLIC_USDC_ADDRESS in your .env file"
+    echo "   These values are required for deployment and cannot have fallbacks"
+    exit 1
+fi
 
 echo "🚀 Deploying Battle Completion Worker to Google Cloud"
 echo "Project ID: ${PROJECT_ID}"
