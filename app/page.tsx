@@ -462,8 +462,7 @@ export default function Home() {
     // Auto-submit the cast after successful payment
     console.log('📝 Auto-submitting argument after successful payment...');
     await submitCastAfterPayment(transactionId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasProcessedPayment]); // submitCastAfterPayment intentionally omitted to prevent re-creation
+  }, [hasProcessedPayment, baseAccountUser, castContent, selectedSide, isAuthenticated, submitCastAfterPayment]);
 
   // Handle payment error
   const handlePaymentError = (error: string) => {
