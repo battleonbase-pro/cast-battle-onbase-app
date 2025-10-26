@@ -99,8 +99,8 @@ export default function DebateForm({
                 </a>
               </p>
             )}
-            <p className={styles.submittedNote}>
-              Track the debate progress below and check back when it ends to see if you won!
+            <p className={styles.submittedNote} style={{ marginTop: '16px', fontSize: '14px', color: '#6b7280' }}>
+              You've already participated in this debate. Check back when a new debate starts!
             </p>
           </div>
         </div>

@@ -122,6 +122,37 @@ export default function Home() {
     }
   }, []);
 
+  // Check if user has already submitted a cast for the current battle
+  const checkUserCastStatus = useCallback(async () => {
+    if (!baseAccountUser?.address || !currentBattle?.id) {
+      return;
+    }
+
+    try {
+      console.log('🔍 Checking if user has already submitted a cast...');
+      const response = await fetch(`/api/battle/submit-cast`);
+      const data = await response.json();
+      
+      if (data.success && data.casts) {
+        // Filter casts for current battle and user
+        const userCasts = data.casts.filter(
+          (cast: Cast) => 
+            cast.userAddress?.toLowerCase() === baseAccountUser.address.toLowerCase()
+        );
+        
+        if (userCasts.length > 0) {
+          console.log('✅ User has already submitted a cast');
+          setHasSubmittedCast(true);
+        } else {
+          console.log('✅ User can still submit a cast');
+          setHasSubmittedCast(false);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error checking user cast status:', error);
+    }
+  }, [baseAccountUser?.address, currentBattle?.id]);
+
   // Load initial data
   const loadInitialData = useCallback(async () => {
     try {
@@ -144,18 +175,7 @@ export default function Home() {
           setTimeRemaining(remainingSeconds);
         }
         
-        // Check if user has already submitted a cast
-        if (baseAccountUser?.address) {
-          console.log('🔄 baseAccountUser:', baseAccountUser?.address);
-          console.log('🔄 hasSubmittedCast before fetch:', hasSubmittedCast);
-          
-          const castResponse = await fetch(`/api/battle/casts?address=${baseAccountUser.address}`);
-          const castData = await castResponse.json();
-          
-          if (castData.success && castData.casts && castData.casts.length > 0) {
-              setHasSubmittedCast(true);
-            }
-        }
+        // Note: User cast status check moved to checkUserCastStatus() to prevent bypass
       } else if (battleData.fallback) {
         // Handle database quota issues gracefully
         console.log('⚠️ Database quota exceeded, showing maintenance message');
@@ -187,7 +207,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [baseAccountUser?.address, hasSubmittedCast]);
+  }, []); // Empty deps - loadInitialData doesn't depend on props
 
   // Handle authentication success
   const handleAuthSuccess = useCallback(async (user: { address: string; environment: string; isAuthenticated: boolean } | null) => {
@@ -425,7 +445,7 @@ export default function Home() {
     // Guard: Prevent duplicate processing
     if (hasProcessedPayment) {
       console.log('⚠️ Payment already processed, skipping duplicate handling');
-      return;
+            return;
     }
     
     console.log('💰 Payment completed successfully');
@@ -487,8 +507,8 @@ export default function Home() {
       } else {
         console.log('✅ No payment required, submitting cast directly');
         await submitCastAfterPayment();
-      }
-    } catch (error) {
+            }
+          } catch (error) {
       console.error('Error submitting cast:', error);
       setPaymentError('Failed to submit cast. Please try again.');
     } finally {
@@ -525,6 +545,13 @@ export default function Home() {
       console.error('Failed to like cast:', error);
     }
   };
+
+  // Check user's cast submission status when authenticated and battle loaded
+  useEffect(() => {
+    if (isAuthenticated && currentBattle?.id) {
+      checkUserCastStatus();
+    }
+  }, [isAuthenticated, currentBattle?.id, checkUserCastStatus]);
 
   // Load casts when switching to arguments tab
   useEffect(() => {
