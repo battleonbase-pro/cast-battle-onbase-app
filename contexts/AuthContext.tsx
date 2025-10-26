@@ -31,18 +31,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserState(null);
   }, []);
 
-  // Auto-derive from wagmi when address is available
-  useEffect(() => {
-    if (address && !user) {
-      const wagmiUser: AuthUser = {
-        address: address,
-        isAuthenticated: true,
-        environment: 'external'
-      };
-      console.log('🔗 [AUTH] Deriving user from wagmi:', wagmiUser);
-      setUserState(wagmiUser);
-    }
-  }, [address, user]);
+  // Note: We do NOT auto-derive from wagmi address here
+  // Instead, we let the auth flow (UnifiedAuth components) manually call setUser
+  // This ensures users explicitly sign in and go through the proper auth flow
+  // The wagmi address is used only for payment transactions, not for authentication
 
   return (
     <AuthContext.Provider 
