@@ -15,9 +15,29 @@ export async function GET(_request: NextRequest) {
     
     if (currentBattle) {
       console.log('✅ Retrieved battle from database:', currentBattle.id);
+      
+      // Serialize battle to plain JSON object, extracting only needed fields
+      const battleResponse = {
+        id: currentBattle.id,
+        title: currentBattle.title,
+        description: currentBattle.description,
+        category: currentBattle.category,
+        source: currentBattle.source,
+        sourceUrl: currentBattle.sourceUrl,
+        imageUrl: currentBattle.imageUrl,
+        thumbnail: currentBattle.thumbnail,
+        startTime: currentBattle.startTime,
+        endTime: currentBattle.endTime,
+        status: currentBattle.status,
+        debatePoints: currentBattle.debatePoints,
+        participants: currentBattle.participants?.length || 0,
+        // Don't include nested objects (participants.casts, etc.) to prevent hydration errors
+        insights: currentBattle.insights
+      };
+      
       return NextResponse.json({
         success: true,
-        battle: currentBattle
+        battle: battleResponse
       });
     }
     
