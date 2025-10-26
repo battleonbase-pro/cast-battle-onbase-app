@@ -1,8 +1,9 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { sdk } from '@farcaster/miniapp-sdk';
 import { useMiniKit } from '@coinbase/onchainkit/minikit';
 import { useEnvironmentDetection } from '../hooks/useEnvironmentDetection';
+import { useAuth } from '../contexts/AuthContext';
 import UnifiedAuth from '../components/UnifiedAuth';
 import AppHeader from '../components/AppHeader';
 import BattleCard from '../components/BattleCard';
@@ -60,8 +61,7 @@ interface SentimentData {
 export default function Home() {
   const { context } = useMiniKit();
   const environmentInfo = useEnvironmentDetection();
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [baseAccountUser, setBaseAccountUser] = useState<{ address: string } | null>(null);
+  const { user: baseAccountUser, setUser, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(true);
   const [_error, setError] = useState<string | null>(null);
   const [paymentSuccessCastFailed, setPaymentSuccessCastFailed] = useState(false);
@@ -92,7 +92,7 @@ export default function Home() {
   const [isSubmittingCast, setIsSubmittingCast] = useState(false);
 
   // Wagmi hooks for external browser payment transactions
-  const { isConnected, address } = useWagmiAccount();
+  const { isConnected } = useWagmiAccount();
   const { disconnect } = useDisconnect();
   const { connect, connectors } = useConnect();
 
@@ -108,21 +108,6 @@ export default function Home() {
 
     initializeFarcasterSDK();
   }, []);
-
-  // Derive baseAccountUser from wagmi address when in external environment
-  useEffect(() => {
-    if (address && !baseAccountUser) {
-      console.log('🔗 [WAGMI] Deriving user from wagmi address:', address);
-      const user = {
-        address: address,
-        isAuthenticated: true,
-        environment: 'external' as const
-      };
-      setBaseAccountUser(user);
-      setIsAuthenticated(true);
-      fetchUserPoints(address);
-    }
-  }, [address, baseAccountUser, fetchUserPoints]);
 
   // Fetch user points - memoized to prevent re-creation
   const fetchUserPoints = useCallback(async (address: string) => {
@@ -234,9 +219,8 @@ export default function Home() {
     
     console.log('✅ Unified authentication successful - proceeding to debate page');
     
-    // Set authentication state
-    setIsAuthenticated(true);
-    setBaseAccountUser(user);
+    // Set authentication state via context
+    setUser(user);
     
     // Fetch user points
     fetchUserPoints(user.address);
@@ -287,7 +271,7 @@ export default function Home() {
     
     // Load initial data
     await loadInitialData();
-  }, [isConnected, connect, connectors, context, fetchUserPoints, loadInitialData]);
+  }, [isConnected, connect, connectors, context, fetchUserPoints, loadInitialData, setUser]);
 
   // Handle sign out
   const handleSignOut = async () => {
@@ -301,8 +285,7 @@ export default function Home() {
       }
       
       // Clear all state
-      setIsAuthenticated(false);
-      setBaseAccountUser(null);
+      setUser(null);
       setCurrentBattle(null);
       setTimeRemaining(null);
       setSelectedSide(null);
@@ -611,7 +594,7 @@ export default function Home() {
   return (
     <div className={styles.container}>
       {/* Authentication Landing Page */}
-              {!baseAccountUser ? (
+              {!baseAccountUser || !isAuthenticated ? (
                 <section className={styles.authSection}>
                   <UnifiedAuth
             onAuthSuccess={handleAuthSuccess}

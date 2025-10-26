@@ -7,6 +7,7 @@ import { MiniKitProvider } from '@coinbase/onchainkit/minikit';
 import { base, baseSepolia } from 'viem/chains';
 import '@coinbase/onchainkit/styles.css';
 import { config } from '@/lib/wagmi-config';
+import { AuthProvider } from '@/contexts/AuthContext';
 
 // Create a QueryClient outside component to prevent recreation on every render
 const queryClient = new QueryClient({
@@ -51,9 +52,11 @@ export function RootProvider({ children, apiKey }: RootProviderProps) {
             notificationProxyUrl: undefined,
           }}
         >
-          <MiniKitProvider>
+        <MiniKitProvider>
+          <AuthProvider>
             {children}
-          </MiniKitProvider>
+          </AuthProvider>
+        </MiniKitProvider>
         </OnchainKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
