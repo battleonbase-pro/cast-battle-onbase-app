@@ -174,7 +174,11 @@ export async function POST(request: NextRequest) {
     }
     
     // Check if user is already a participant in the current battle
-    const isParticipant = currentBattle.participants.some((p: { user: { address: string } }) => p.user.address === userAddress);
+    // Handle both array and count formats
+    const isParticipant = Array.isArray(currentBattle.participants) 
+      ? currentBattle.participants.some((p: { user: { address: string } }) => p.user.address === userAddress)
+      : false; // If participants is a number (count), we need to check via database
+    
     if (!isParticipant) {
       console.log(`🔄 User ${userAddress} not yet joined battle, joining automatically...`);
       const joinSuccess = await battleManager.joinBattle(userAddress);
