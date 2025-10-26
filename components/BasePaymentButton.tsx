@@ -32,103 +32,41 @@ export default function BasePaymentButton({
   // USDC contract address on Base Sepolia
   const USDC_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS!;
 
-  // Prepare transaction calls for USDC transfer using contract function format
+  // USDC ABI (moved outside to prevent infinite re-renders)
+  const usdcAbi = useMemo(() => [
+    {
+      type: 'function',
+      name: 'transfer',
+      inputs: [
+        { name: 'to', type: 'address' },
+        { name: 'amount', type: 'uint256' }
+      ],
+      outputs: [{ name: '', type: 'bool' }],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'approve',
+      inputs: [
+        { name: 'spender', type: 'address' },
+        { name: 'amount', type: 'uint256' }
+      ],
+      outputs: [{ name: '', type: 'bool' }],
+      stateMutability: 'nonpayable',
+    }
+  ] as const, []);
+
+  // Prepare USDC transfer call
+  // NOTE: Base Sepolia testnet USDC may allow transfer without approval
+  // OnchainKit should handle approvals automatically if needed
   const calls = useMemo(() => [
     {
       address: USDC_CONTRACT_ADDRESS as `0x${string}`,
-      abi: [
-        {
-          type: 'function',
-          name: 'transfer',
-          inputs: [
-            { name: 'to', type: 'address' },
-            { name: 'amount', type: 'uint256' }
-          ],
-          outputs: [{ name: '', type: 'bool' }],
-          stateMutability: 'nonpayable',
-        },
-        {
-          type: 'function',
-          name: 'balanceOf',
-          inputs: [{ name: 'account', type: 'address' }],
-          outputs: [{ name: '', type: 'uint256' }],
-          stateMutability: 'view',
-        },
-        {
-          type: 'function',
-          name: 'decimals',
-          inputs: [],
-          outputs: [{ name: '', type: 'uint8' }],
-          stateMutability: 'view',
-        },
-        {
-          type: 'function',
-          name: 'symbol',
-          inputs: [],
-          outputs: [{ name: '', type: 'string' }],
-          stateMutability: 'view',
-        },
-        {
-          type: 'function',
-          name: 'totalSupply',
-          inputs: [],
-          outputs: [{ name: '', type: 'uint256' }],
-          stateMutability: 'view',
-        },
-        {
-          type: 'function',
-          name: 'transferFrom',
-          inputs: [
-            { name: 'from', type: 'address' },
-            { name: 'to', type: 'address' },
-            { name: 'amount', type: 'uint256' }
-          ],
-          outputs: [{ name: '', type: 'bool' }],
-          stateMutability: 'nonpayable',
-        },
-        {
-          type: 'function',
-          name: 'approve',
-          inputs: [
-            { name: 'spender', type: 'address' },
-            { name: 'amount', type: 'uint256' }
-          ],
-          outputs: [{ name: '', type: 'bool' }],
-          stateMutability: 'nonpayable',
-        },
-        {
-          type: 'function',
-          name: 'allowance',
-          inputs: [
-            { name: 'owner', type: 'address' },
-            { name: 'spender', type: 'address' }
-          ],
-          outputs: [{ name: '', type: 'uint256' }],
-          stateMutability: 'view',
-        },
-        {
-          type: 'event',
-          name: 'Transfer',
-          inputs: [
-            { name: 'from', type: 'address', indexed: true },
-            { name: 'to', type: 'address', indexed: true },
-            { name: 'value', type: 'uint256', indexed: false }
-          ],
-        },
-        {
-          type: 'event',
-          name: 'Approval',
-          inputs: [
-            { name: 'owner', type: 'address', indexed: true },
-            { name: 'spender', type: 'address', indexed: true },
-            { name: 'value', type: 'uint256', indexed: false }
-          ],
-        }
-      ] as const,
+      abi: usdcAbi,
       functionName: 'transfer',
       args: [recipientAddress as `0x${string}`, parseUnits(amount, 6)]
     }
-  ], [USDC_CONTRACT_ADDRESS, recipientAddress, amount]);
+  ], [USDC_CONTRACT_ADDRESS, recipientAddress, amount, usdcAbi]);
 
   const handleTransactionStatus = useCallback((lifecycleStatus: LifecycleStatus) => {
     // Only log non-success statuses to prevent infinite logs
