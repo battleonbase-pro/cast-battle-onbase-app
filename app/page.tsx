@@ -109,8 +109,8 @@ export default function Home() {
     initializeFarcasterSDK();
   }, []);
 
-  // Fetch user points
-  const fetchUserPoints = async (address: string) => {
+  // Fetch user points - memoized to prevent re-creation
+  const fetchUserPoints = useCallback(async (address: string) => {
     try {
       const response = await fetch(`/api/user/points?address=${address}`);
       const data = await response.json();
@@ -120,7 +120,7 @@ export default function Home() {
     } catch (error) {
       console.error('Failed to fetch user points:', error);
     }
-  };
+  }, []);
 
   // Load initial data
   const loadInitialData = useCallback(async () => {
@@ -418,7 +418,7 @@ export default function Home() {
     } finally {
       setIsSubmittingCast(false);
     }
-  }, [hasSubmittedCast, isSubmittingCast, baseAccountUser?.address, castContent, selectedSide]);
+  }, [hasSubmittedCast, isSubmittingCast, baseAccountUser?.address, castContent, selectedSide, fetchUserPoints]);
 
   // Handle payment success with guard to prevent duplicate processing
   const handlePaymentSuccess = useCallback(async (transactionId?: string) => {
@@ -440,7 +440,8 @@ export default function Home() {
     // Auto-submit the cast after successful payment
     console.log('📝 Auto-submitting argument after successful payment...');
     await submitCastAfterPayment(transactionId);
-  }, [hasProcessedPayment, submitCastAfterPayment]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasProcessedPayment]); // submitCastAfterPayment intentionally omitted to prevent re-creation
 
   // Handle payment error
   const handlePaymentError = (error: string) => {
