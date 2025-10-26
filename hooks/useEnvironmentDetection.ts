@@ -3,11 +3,6 @@ import { useState, useEffect } from 'react';
 import { useMiniKit } from '@coinbase/onchainkit/minikit';
 import { detectEnvironmentFallback, detectEnvironmentFromMiniKit } from '../lib/environment-detection';
 
-// Global state to prevent multiple detection instances
-let globalDetectionInProgress = false;
-let globalDetectionResult: EnvironmentInfo | null = null;
-let globalTimeoutId: NodeJS.Timeout | null = null;
-
 export interface EnvironmentInfo {
   isMiniApp: boolean;
   isExternalBrowser: boolean;
@@ -21,176 +16,95 @@ export interface EnvironmentInfo {
 
 export function useEnvironmentDetection(): EnvironmentInfo {
   const { context, isMiniAppReady } = useMiniKit();
-  const [environmentInfo, setEnvironmentInfo] = useState<EnvironmentInfo>(() => {
-    // Use global result if available
-    if (globalDetectionResult) {
-      console.log('📦 Using global detection result:', globalDetectionResult.environment);
-      return globalDetectionResult;
-    }
-    return {
-      isMiniApp: false,
-      isExternalBrowser: true,
-      isFarcaster: false,
-      isBaseApp: false,
-      environment: 'external',
-      isLoading: true
-    };
+  const [environmentInfo, setEnvironmentInfo] = useState<EnvironmentInfo>({
+    isMiniApp: false,
+    isExternalBrowser: true,
+    isFarcaster: false,
+    isBaseApp: false,
+    environment: 'external',
+    isLoading: true
   });
 
   useEffect(() => {
-    // If we already have a global result, use it
-    if (globalDetectionResult) {
-      console.log('📦 Using existing global detection result:', globalDetectionResult.environment);
-      setEnvironmentInfo(globalDetectionResult);
-      return;
-    }
-
-    // If detection is already in progress, wait for it
-    if (globalDetectionInProgress) {
-      console.log('⏳ Detection already in progress, waiting...');
-      return;
-    }
-
-    // Prevent multiple detection instances
-    if (environmentInfo.isLoading === false) {
-      console.log('🔍 Environment already detected, skipping');
+    // Only run detection if we're still loading
+    if (!environmentInfo.isLoading) {
       return;
     }
 
     let timeoutId: NodeJS.Timeout;
-    
-    const detectEnvironment = async () => {
-      try {
-        console.log('🔍 Starting SINGLE environment detection...');
-        globalDetectionInProgress = true;
-        
-        // Set a global timeout to prevent infinite loading
-        globalTimeoutId = setTimeout(() => {
-          console.log('⏰ Environment detection timeout, defaulting to external browser');
-          const detectedEnv = {
-            isMiniApp: false,
-            isExternalBrowser: true,
-            isFarcaster: false,
-            isBaseApp: false,
-            environment: 'external' as const,
-            isLoading: false
-          };
-          globalDetectionResult = detectedEnv;
-          globalDetectionInProgress = false;
-          globalTimeoutId = null;
-          setEnvironmentInfo(detectedEnv);
-        }, 3000); // Reduced timeout to 3 seconds
-        
-        // Wait for MiniKit context - no immediate URL detection
-        console.log('🔍 Waiting for MiniKit context for accurate detection...');
 
-        // Wait for MiniKit context to be available
-        if (!context || !context.client) {
-          console.log('⏳ Waiting for MiniKit context...', {
-            hasContext: !!context,
-            hasClient: !!context?.client,
+    const detectEnvironment = () => {
+      try {
+        console.log('🔍 Environment detection: checking MiniKit context...');
+        
+        // If we have MiniKit context, use it
+        if (context && context.client) {
+          console.log('🎯 MiniKit context available:', {
+            clientFid: context.client?.clientFid,
+            userFid: context.user?.fid,
             isMiniAppReady
           });
+
+          const miniKitDetectionResult = detectEnvironmentFromMiniKit(context);
           
-          // Set a shorter timeout for MiniKit context
-          const miniKitTimeout = setTimeout(() => {
-            console.log('⏰ MiniKit context timeout, using fallback detection');
-            // Clear the global timeout since we're handling this case
-            if (globalTimeoutId) {
-              clearTimeout(globalTimeoutId);
-              globalTimeoutId = null;
-            }
-            
-            const fallbackResult = detectEnvironmentFallback();
-            const detectedEnv = {
-              isMiniApp: fallbackResult.isMiniApp,
-              isExternalBrowser: fallbackResult.isExternal,
-              isFarcaster: fallbackResult.isFarcaster,
-              isBaseApp: fallbackResult.isBaseApp,
-              environment: fallbackResult.environment,
-              isLoading: false
-            };
-            globalDetectionResult = detectedEnv;
-            globalDetectionInProgress = false;
-            setEnvironmentInfo(detectedEnv);
-          }, 2000); // 2 second timeout for MiniKit context
+          console.log('✅ Environment detected:', miniKitDetectionResult.environment, 'via', miniKitDetectionResult.method);
           
-          return () => clearTimeout(miniKitTimeout);
+          const detectedEnv = {
+            isMiniApp: miniKitDetectionResult.isMiniApp,
+            isExternalBrowser: miniKitDetectionResult.isExternal,
+            isFarcaster: miniKitDetectionResult.isFarcaster,
+            isBaseApp: miniKitDetectionResult.isBaseApp,
+            environment: miniKitDetectionResult.environment,
+            isLoading: false,
+            userFid: context.user?.fid?.toString(),
+            clientFid: context.client?.clientFid?.toString()
+          };
+          
+          setEnvironmentInfo(detectedEnv);
+          return;
         }
 
-        // Clear global timeout since we got context and detected successfully
-        if (globalTimeoutId) {
-          clearTimeout(globalTimeoutId);
-          globalTimeoutId = null;
-          console.log('✅ Cancelled global timeout - successful detection');
-        }
-
-        // Use shared MiniKit detection logic for consistency
-        const miniKitDetectionResult = detectEnvironmentFromMiniKit(context);
+        // If no context yet, set a timeout for fallback
+        console.log('⏳ Waiting for MiniKit context...');
         
-        console.log('🎯 MiniKit context detection:', {
-          clientFid: context.client?.clientFid,
-          userFid: context.user?.fid,
-          launchLocation: context.location,
-          detectionResult: miniKitDetectionResult
-        });
+        timeoutId = setTimeout(() => {
+          console.log('⏰ MiniKit context timeout, using fallback detection');
+          const fallbackResult = detectEnvironmentFallback();
+          const detectedEnv = {
+            isMiniApp: fallbackResult.isMiniApp,
+            isExternalBrowser: fallbackResult.isExternal,
+            isFarcaster: fallbackResult.isFarcaster,
+            isBaseApp: fallbackResult.isBaseApp,
+            environment: fallbackResult.environment,
+            isLoading: false
+          };
+          setEnvironmentInfo(detectedEnv);
+        }, 2000); // 2 second timeout
 
-        // Add environment validation and warnings
-        const BASE_APP_CLIENT_FID = parseInt(process.env.NEXT_PUBLIC_BASE_APP_CLIENT_FID || '309857');
-        const FARCASTER_CLIENT_FID = parseInt(process.env.NEXT_PUBLIC_FARCASTER_CLIENT_FID || '9152');
-        
-        if (miniKitDetectionResult.isBaseApp && !context.user?.fid) {
-          console.warn('⚠️ Base App detected but no user FID available in MiniKit context');
-        }
-        if (miniKitDetectionResult.isFarcaster && !context.user?.fid) {
-          console.warn('⚠️ Farcaster detected but no user FID available in MiniKit context');
-        }
-        if (context.client?.clientFid && ![BASE_APP_CLIENT_FID, FARCASTER_CLIENT_FID].includes(context.client.clientFid)) {
-          console.warn('⚠️ Unknown ClientFID detected:', context.client.clientFid, 'Expected:', BASE_APP_CLIENT_FID, 'or', FARCASTER_CLIENT_FID);
-        }
-
-        console.log('✅ Environment detected:', miniKitDetectionResult.environment, 'via', miniKitDetectionResult.method);
-        
-        const detectedEnv = {
-          isMiniApp: miniKitDetectionResult.isMiniApp,
-          isExternalBrowser: miniKitDetectionResult.isExternal,
-          isFarcaster: miniKitDetectionResult.isFarcaster,
-          isBaseApp: miniKitDetectionResult.isBaseApp,
-          environment: miniKitDetectionResult.environment,
-          isLoading: false,
-          userFid: context.user?.fid?.toString(),
-          clientFid: context.client?.clientFid?.toString()
-        };
-        globalDetectionResult = detectedEnv;
-        globalDetectionInProgress = false;
-        setEnvironmentInfo(detectedEnv);
-        console.log('✅ Environment detection completed successfully');
       } catch (error) {
         console.log('⚠️ Environment detection failed, defaulting to external:', error);
+        const fallbackResult = detectEnvironmentFallback();
         const detectedEnv = {
-          isMiniApp: false,
-          isExternalBrowser: true,
-          isFarcaster: false,
-          isBaseApp: false,
-          environment: 'external' as const,
+          isMiniApp: fallbackResult.isMiniApp,
+          isExternalBrowser: fallbackResult.isExternal,
+          isFarcaster: fallbackResult.isFarcaster,
+          isBaseApp: fallbackResult.isBaseApp,
+          environment: fallbackResult.environment,
           isLoading: false
         };
-        globalDetectionResult = detectedEnv;
-        globalDetectionInProgress = false;
         setEnvironmentInfo(detectedEnv);
       }
     };
 
     detectEnvironment();
-    
+
     // Cleanup timeout on unmount
     return () => {
-      if (globalTimeoutId) {
-        clearTimeout(globalTimeoutId);
-        globalTimeoutId = null;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
       }
     };
-  }, [context, isMiniAppReady]);
+  }, [context, isMiniAppReady, environmentInfo.isLoading]);
 
   return environmentInfo;
 }
