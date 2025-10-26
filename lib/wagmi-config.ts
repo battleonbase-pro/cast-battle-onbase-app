@@ -1,6 +1,6 @@
 import { http, createConfig } from 'wagmi'
-import { base, baseSepolia, mainnet } from 'wagmi/chains'
-import { injected, metaMask, walletConnect, baseAccount } from 'wagmi/connectors'
+import { base, baseSepolia, mainnet } from 'viem/chains'
+import { walletConnect, baseAccount } from 'wagmi/connectors'
 import { farcasterMiniApp as miniAppConnector } from '@farcaster/miniapp-wagmi-connector'
 import { detectEnvironmentFallback } from './environment-detection'
 
@@ -53,11 +53,17 @@ export const config = (() => {
       method: detectionResult.method
     });
     
-    // IMPORTANT: Only add external connectors for REAL external browsers (not Mini Apps)
-    // This prevents eip6963RequestProvider errors in Mini App environments
-    const isClient = typeof window !== 'undefined';
+    // IMPORTANT: We use OnchainKit for wallet connection in external browsers
+    // OnchainKit has built-in support for Coinbase Wallet, MetaMask, injected wallets, etc.
+    // This prevents eip6963RequestProvider errors and keeps connector management simple
+    // 
+    // Strategy:
+    // - Mini Apps (Base App, Farcaster): Use baseAccount + miniAppConnector only
+    // - External Browsers: Let OnchainKit's ConnectWallet handle wallet discovery via EIP-6963
+    // - OnchainKit automatically detects and supports: Coinbase Wallet, MetaMask, injected wallets, etc.
     
     // Check if we're in a Mini App environment by checking the hostname or parent window
+    const isClient = typeof window !== 'undefined';
     const isInMiniApp = isClient && (
       window.location.href.includes('miniapp') ||
       window.location.hostname.includes('base.dev') ||
@@ -71,27 +77,20 @@ export const config = (() => {
       ))
     );
     
-    const shouldAddExternalConnectors = isClient && !isInMiniApp;
-    
-    if (shouldAddExternalConnectors) {
-      // Only add external connectors for real external browsers
-      connectors.push(injected());
-      connectors.push(
-        metaMask({
-          dappMetadata: {
-            name: 'NewsCast Debate',
-            url: currentUrl,
-          },
-        })
-      );
-      console.log('✅ Added external wallet connectors for external browser');
-    } else {
+    if (isInMiniApp) {
       console.log('🚫 Skipped external wallet connectors - detected Mini App environment:', { 
         isClient, 
         isInMiniApp,
         href: isClient ? window.location.href : 'N/A (SSR)',
-        hostname: isClient ? window.location.hostname : 'N/A (SSR)'
+        hostname: isClient ? window.location.hostname : 'N/A (SSR)',
+        note: 'OnchainKit will handle wallet detection for external browsers'
       });
+    } else {
+      // We don't add injected() or metaMask() connectors because:
+      // 1. OnchainKit's ConnectWallet component handles wallet discovery via EIP-6963
+      // 2. This prevents EIP-6963 errors in Mini App environments
+      // 3. OnchainKit supports: Coinbase Wallet, MetaMask, injected, WalletConnect automatically
+      console.log('✅ Using OnchainKit for wallet detection in external browsers (no manual connectors needed)');
     }
     if (hasValidWalletConnectId) {
       connectors.push(
