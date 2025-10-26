@@ -450,8 +450,18 @@ export default function Home() {
       baseAccountAddress: baseAccountUser?.address,
       castContent: castContent,
       selectedSide: selectedSide,
-      isAuthenticated: isAuthenticated
+      isAuthenticated: isAuthenticated,
+      castContentLength: castContent?.length,
+      selectedSideValue: selectedSide
     });
+    
+    // Check if form data is missing
+    if (!castContent || castContent.trim() === '') {
+      console.error('❌ [PAYMENT DEBUG] castContent is empty at payment success!');
+    }
+    if (!selectedSide) {
+      console.error('❌ [PAYMENT DEBUG] selectedSide is null at payment success!');
+    }
     
     setHasProcessedPayment(true);
     setPaymentStatus('idle');
