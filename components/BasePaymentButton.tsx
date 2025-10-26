@@ -132,10 +132,9 @@ export default function BasePaymentButton({
   const handleTransactionStatus = (lifecycleStatus: LifecycleStatus) => {
     console.log('🔍 Transaction status:', lifecycleStatus);
     
-    if (lifecycleStatus?.statusName === 'success') {
-      console.log('✅ Transaction successful');
-      onClick(); // Call the onClick handler
-    } else if (lifecycleStatus?.statusName === 'error') {
+    // Only log status changes, don't call onClick here
+    // The onSuccess handler will handle completion
+    if (lifecycleStatus?.statusName === 'error') {
       console.error('❌ Transaction failed:', lifecycleStatus.statusData);
     }
   };
@@ -151,7 +150,7 @@ export default function BasePaymentButton({
       onSuccess?.(transactionHash); // Pass the transaction hash to the callback
     }
     
-    onClick(); // Call the onClick handler
+    // Don't call onClick() here - it's handled by the parent via onSuccess
   };
 
   const handleTransactionError = (error: unknown) => {
