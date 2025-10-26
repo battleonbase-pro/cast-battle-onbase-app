@@ -140,8 +140,7 @@ export default function Home() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty deps - only run push once on mount
-原子
+  }, []); // Empty deps - only run once on mount
 
   // Fetch user points - memoized to prevent re-creation
   const fetchUserPoints = useCallback(async (address: string) => {
