@@ -88,8 +88,8 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<'debate' | 'arguments' | 'history' | 'leaderboard'>('debate');
   const [casts, setCasts] = useState<Cast[]>([]);
   const [_isProcessing, setIsProcessing] = useState(false);
-  const [_hasCalledSuccess, setHasCalledSuccess] = useState(false);
-  const [_submittingCast, setSubmittingCast] = useState(false);
+  const [hasProcessedPayment, setHasProcessedPayment] = useState(false);
+  const [isSubmittingCast, setIsSubmittingCast] = useState(false);
 
   // Wagmi hooks for external browser payment transactions
   const { isConnected } = useWagmiAccount();
@@ -287,8 +287,8 @@ export default function Home() {
       setSentimentHistory([]);
       setCasts([]);
       setIsProcessing(false);
-      setHasCalledSuccess(false);
-      setSubmittingCast(false);
+      setHasProcessedPayment(false);
+      setIsSubmittingCast(false);
       setPaymentSuccessCastFailed(false);
       setPaymentCompleted(false);
       
@@ -336,9 +336,20 @@ export default function Home() {
   };
 
   // Submit cast after payment
-  const submitCastAfterPayment = async (transactionId?: string) => {
+  const submitCastAfterPayment = useCallback(async (transactionId?: string) => {
     console.log('🔄 submitCastAfterPayment called');
     console.log('📝 Transaction ID:', transactionId);
+    
+    // Guard: Prevent duplicate submissions
+    if (hasSubmittedCast) {
+      console.log('⚠️ Cast already submitted, skipping duplicate submission');
+      return;
+    }
+    
+    if (isSubmittingCast) {
+      console.log('⚠️ Cast submission already in progress, skipping duplicate submission');
+      return;
+    }
     
     if (!baseAccountUser?.address || !castContent.trim()) {
       console.log('❌ Missing userAddress or castContent:', { 
@@ -349,7 +360,7 @@ export default function Home() {
     }
 
     try {
-      setSubmittingCast(true);
+      setIsSubmittingCast(true);
       
       console.log('📝 Submitting cast:', {
         userAddress: baseAccountUser.address,
@@ -405,15 +416,22 @@ export default function Home() {
       setPaymentError(errorMessage);
       setPaymentSuccessCastFailed(true);
     } finally {
-        setSubmittingCast(false);
+      setIsSubmittingCast(false);
     }
-  };
+  }, [hasSubmittedCast, isSubmittingCast, baseAccountUser?.address, castContent, selectedSide]);
 
-  // Handle payment success
-  const handlePaymentSuccess = async (transactionId?: string) => {
+  // Handle payment success with guard to prevent duplicate processing
+  const handlePaymentSuccess = useCallback(async (transactionId?: string) => {
+    // Guard: Prevent duplicate processing
+    if (hasProcessedPayment) {
+      console.log('⚠️ Payment already processed, skipping duplicate handling');
+      return;
+    }
+    
     console.log('💰 Payment completed successfully');
     console.log('📝 Transaction ID:', transactionId);
     
+    setHasProcessedPayment(true);
     setPaymentStatus('idle');
     setPaymentError(null);
     setPaymentCompleted(true);
@@ -422,7 +440,7 @@ export default function Home() {
     // Auto-submit the cast after successful payment
     console.log('📝 Auto-submitting argument after successful payment...');
     await submitCastAfterPayment(transactionId);
-  };
+  }, [hasProcessedPayment, submitCastAfterPayment]);
 
   // Handle payment error
   const handlePaymentError = (error: string) => {
@@ -437,6 +455,8 @@ export default function Home() {
     // Reset payment success state when user selects a new side
     setPaymentSuccessCastFailed(false);
     setPaymentError(null);
+    setHasProcessedPayment(false);
+    setIsSubmittingCast(false);
   };
 
   // Handle content change
