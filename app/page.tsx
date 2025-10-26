@@ -112,8 +112,14 @@ export default function Home() {
   // Persist auth state in sessionStorage to survive Fast Refresh
   useEffect(() => {
     if (baseAccountUser?.address) {
+      console.log('💾 [PERSIST] Saving to sessionStorage:', baseAccountUser);
       sessionStorage.setItem('authenticatedUser', JSON.stringify(baseAccountUser));
       sessionStorage.setItem('isAuthenticated', 'true');
+    } else if (baseAccountUser === null) {
+      // Clear sessionStorage if auth state is explicitly null
+      console.log('🧹 [PERSIST] Clearing sessionStorage (baseAccountUser is null)');
+      sessionStorage.removeItem('authenticatedUser');
+      sessionStorage.removeItem('isAuthenticated');
     }
   }, [baseAccountUser]);
 
