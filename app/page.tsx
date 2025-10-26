@@ -130,17 +130,12 @@ export default function Home() {
 
     try {
       console.log('🔍 Checking if user has already submitted a cast...');
-      const response = await fetch(`/api/battle/submit-cast`);
+      const response = await fetch(`/api/battle/casts?address=${baseAccountUser.address}`);
       const data = await response.json();
       
       if (data.success && data.casts) {
-        // Filter casts for current battle and user
-        const userCasts = data.casts.filter(
-          (cast: Cast) => 
-            cast.userAddress?.toLowerCase() === baseAccountUser.address.toLowerCase()
-        );
-        
-        if (userCasts.length > 0) {
+        // Check if user has any casts
+        if (data.casts.length > 0) {
           console.log('✅ User has already submitted a cast');
           setHasSubmittedCast(true);
         } else {
