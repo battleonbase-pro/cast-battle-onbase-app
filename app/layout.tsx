@@ -77,14 +77,7 @@ export default function RootLayout({
   // Fallback to hardcoded value if env var is not available (for production)
   const apiKey = process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY || 'iLo6nW8uHzW3B59QVnOvIfUNeIwca99k';
   
-  // Debug API key availability
-  console.log('🔑 Layout API Key Debug:', {
-    hasApiKey: !!apiKey,
-    apiKeyLength: apiKey?.length,
-    apiKeyPreview: apiKey ? `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}` : 'undefined',
-    nodeEnv: process.env.NODE_ENV,
-    allEnvVars: Object.keys(process.env).filter(key => key.includes('ONCHAINKIT') || key.includes('NEXT_PUBLIC'))
-  });
+  // Removed console.log to prevent infinite re-renders on every render
   
   return (
     <html lang="en">

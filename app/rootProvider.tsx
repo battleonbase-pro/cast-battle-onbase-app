@@ -28,18 +28,7 @@ export function RootProvider({ children, apiKey }: RootProviderProps) {
   const isTestnet = process.env.NEXT_PUBLIC_NETWORK === 'testnet' || process.env.NODE_ENV === 'development';
   const chain = isTestnet ? baseSepolia : base;
 
-  console.log('🔧 RootProvider initialization:', {
-    hasApiKey: !!apiKey,
-    apiKeyLength: apiKey?.length,
-    apiKeyPreview: apiKey ? `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}` : 'undefined',
-    chain: chain.name,
-    chainId: chain.id,
-    isTestnet,
-    miniKitEnabled: true,
-    autoConnect: true,
-    nodeEnv: process.env.NODE_ENV,
-    note: 'Using custom wagmi config for Mini App connectors'
-  });
+  // Log once on mount only - removed console.log to prevent infinite re-renders
 
   return (
     <WagmiProvider config={config}>
