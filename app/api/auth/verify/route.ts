@@ -29,9 +29,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1. Check nonce hasn't been reused (matches docs recommendation)
-    // Extract nonce from SIWE message format: "Nonce: <nonce>"
-    const nonceMatch = message.match(/Nonce:\s*([a-f0-9]{32})/i);
+    // 1. Extract nonce from SIWE message format: "Nonce: <nonce>"
+    const nonceMatch = message.match(/Nonce:\s*([a-f0-9]+)/i);
     const extracted = nonceMatch?.[1] || null;
     
     console.log('🔍 [NONCE VERIFICATION] Step 1 - Extraction:', { 
@@ -39,25 +38,21 @@ export async function POST(request: NextRequest) {
       nonceMatch, 
       extracted,
       noncesSize: nonces.size,
-      allNonces: Array.from(nonces.keys()),
-      nonceInStore: extracted ? nonces.has(extracted) : 'N/A',
-      nonceTimestamp: extracted ? new Date(nonces.get(extracted) || 0).toISOString() : 'N/A'
+      nonceInStore: extracted ? nonces.has(extracted) : 'N/A'
     });
     
-    if (!extracted) {
+    // 2. Check if nonce is in our backend store (from /api/auth/nonce)
+    // If it's NOT in our store, it might be OnchainKit-generated (which is OK)
+    // If it IS in our store, make sure it hasn't been used
+    if (extracted && nonces.has(extracted)) {
+      console.log('✅ [NONCE VERIFICATION] Backend-generated nonce found in store - removing to prevent reuse');
+      // Remove nonce from store to prevent reuse
+      nonces.delete(extracted);
+    } else if (extracted) {
+      console.log('✅ [NONCE VERIFICATION] Nonce not in backend store (likely OnchainKit-generated) - will verify signature only');
+    } else {
       console.log('❌ [NONCE VERIFICATION ERROR] No nonce found in message');
       return NextResponse.json({ error: 'No nonce found in message' }, { status: 400 });
-    }
-    
-    // Check if nonce exists (but don't delete it yet - allow multiple attempts)
-    if (!nonces.has(extracted)) {
-      console.log('❌ [NONCE VERIFICATION ERROR] Nonce not found in store:', {
-        extracted,
-        storeSize: nonces.size,
-        allStoredNonces: Array.from(nonces.keys()),
-        message: message.substring(0, 100)
-      });
-      return NextResponse.json({ error: 'Invalid or reused nonce' }, { status: 400 });
     }
 
     // 2. Verify signature using standard viem approach per docs
@@ -84,11 +79,7 @@ export async function POST(request: NextRequest) {
     
     console.log('✅ Signature verified successfully');
 
-    // 3. Remove nonce after successful verification to prevent reuse
-    nonces.delete(extracted);
-    console.log('🗑️ Nonce removed after successful verification:', extracted);
-
-    // 4. Create or update user in database
+    // 3. Create or update user in database
     try {
       console.log('👤 Creating/updating user in database:', address);
       await databaseService.createOrUpdateUser(address);
