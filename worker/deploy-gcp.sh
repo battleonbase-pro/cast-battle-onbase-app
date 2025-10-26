@@ -19,7 +19,7 @@ IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}"
 # Contract addresses from environment - REQUIRED
 if [ -z "${NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS}" ] || [ -z "${NEXT_PUBLIC_USDC_ADDRESS}" ]; then
     echo "❌ Error: Required environment variables not set!"
-    echo "   Please set NEXT_PUBLIC_DEB browned_POOL_CONTRACT_ADDRESS and NEXT_PUBLIC_USDC_ADDRESS in your .env file"
+    echo "   Please set NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS and NEXT_PUBLIC_USDC_ADDRESS in your .env file"
     echo "   These values are required for deployment and cannot have fallbacks"
     exit 1
 fi
