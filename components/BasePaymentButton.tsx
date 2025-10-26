@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useCallback } from 'react';
 import { Transaction, LifecycleStatus, TransactionResponseType } from '@coinbase/onchainkit/transaction';
 import { parseUnits, formatUnits } from 'viem';
 import { useAccount, useConnect, useBalance } from 'wagmi';
@@ -16,7 +16,7 @@ interface BasePaymentButtonProps {
 }
 
 export default function BasePaymentButton({
-  onClick,
+  onClick: _onClick,
   onSuccess,
   disabled = false,
   loading = false,
@@ -27,6 +27,7 @@ export default function BasePaymentButton({
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { data: gasBalance } = useBalance({ address });
+  const hasProcessedSuccessRef = useRef(false);
 
   // USDC contract address on Base Sepolia
   const USDC_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS!;
@@ -129,17 +130,30 @@ export default function BasePaymentButton({
     }
   ], [USDC_CONTRACT_ADDRESS, recipientAddress, amount]);
 
-  const handleTransactionStatus = (lifecycleStatus: LifecycleStatus) => {
-    console.log('🔍 Transaction status:', lifecycleStatus);
+  const handleTransactionStatus = useCallback((lifecycleStatus: LifecycleStatus) => {
+    // Only log non-success statuses to prevent infinite logs
+    if (lifecycleStatus?.statusName !== 'success') {
+      console.log('🔍 Transaction status:', lifecycleStatus);
+      
+      // Reset the success flag when a new transaction starts
+      if (lifecycleStatus?.statusName === 'init') {
+        hasProcessedSuccessRef.current = false;
+      }
+    }
     
-    // Only log status changes, don't call onClick here
-    // The onSuccess handler will handle completion
     if (lifecycleStatus?.statusName === 'error') {
       console.error('❌ Transaction failed:', lifecycleStatus.statusData);
+      // Reset on error so user can retry
+      hasProcessedSuccessRef.current = false;
     }
-  };
+  }, []);
 
-  const handleTransactionSuccess = (response: TransactionResponseType) => {
+  const handleTransactionSuccess = useCallback((response: TransactionResponseType) => {
+    // Guard: Only process success once
+    if (hasProcessedSuccessRef.current) {
+      return;
+    }
+    
     console.log('🎉 Transaction completed successfully:', response);
     
     // Extract transaction hash from the first receipt
@@ -147,11 +161,10 @@ export default function BasePaymentButton({
     
     if (transactionHash) {
       console.log('📝 Transaction hash:', transactionHash);
+      hasProcessedSuccessRef.current = true;
       onSuccess?.(transactionHash); // Pass the transaction hash to the callback
     }
-    
-    // Don't call onClick() here - it's handled by the parent via onSuccess
-  };
+  }, [onSuccess]);
 
   const handleTransactionError = (error: unknown) => {
     console.error('❌ Transaction error:', error);
