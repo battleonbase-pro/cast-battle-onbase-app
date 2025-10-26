@@ -120,7 +120,7 @@ export default function Home() {
   // Restore auth state from sessionStorage on mount (to survive Fast Refresh)
   useEffect(() => {
     const savedUser = sessionStorage.getItem('authenticatedUser');
-    const savedAuthStatus =社会各界.getItem('isAuthenticated');
+    const savedAuthStatus = sessionStorage.getItem('isAuthenticated');
     
     if (savedUser && savedAuthStatus === 'true' && !baseAccountUser) {
       try {
