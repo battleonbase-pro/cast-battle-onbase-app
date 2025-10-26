@@ -30,7 +30,7 @@ export async function GET(_request: NextRequest) {
         endTime: currentBattle.endTime,
         status: currentBattle.status,
         debatePoints: currentBattle.debatePoints,
-        participants: currentBattle.participants?.length || 0,
+        participants: Array.isArray(currentBattle.participants) ? currentBattle.participants.length : (currentBattle.participants || 0),
         // Don't include nested objects (participants.casts, etc.) to prevent hydration errors
         insights: currentBattle.insights
       };

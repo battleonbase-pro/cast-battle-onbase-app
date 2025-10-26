@@ -276,7 +276,7 @@ Issued At: ${new Date(currentTime * 1000).toISOString()}`;
             title: battle.title,
             description: battle.description,
             imageUrl: battle.imageUrl,
-            participants: battle.participants?.length || 0,
+            participants: Array.isArray(battle.participants) ? battle.participants.length : (battle.participants || 0),
             timeRemaining: remaining,
             status: battle.status
           });
