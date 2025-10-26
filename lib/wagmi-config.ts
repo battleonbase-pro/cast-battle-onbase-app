@@ -56,15 +56,22 @@ export const config = (() => {
     // IMPORTANT: Only add external connectors for REAL external browsers (not Mini Apps)
     // This prevents eip6963RequestProvider errors in Mini App environments
     const isClient = typeof window !== 'undefined';
-    const isNotIframe = isClient && window === window.self;
-    const isNotMiniApp = isClient && (
-      !window.location.href.includes('miniapp') &&
-      !window.location.href.includes('base.app') &&
-      !window.location.href.includes('farcaster') &&
-      !window.location.href.includes('warpcast.com')
+    
+    // Check if we're in a Mini App environment by checking the hostname or parent window
+    const isInMiniApp = isClient && (
+      window.location.href.includes('miniapp') ||
+      window.location.hostname.includes('base.dev') ||
+      window.location.hostname.includes('farcaster.xyz') ||
+      // Check if we're in an iframe (Mini Apps run in iframes)
+      (window.top !== window.self && window.parent !== window.self) ||
+      // Check if there's a parent frame pointing to Base or Farcaster
+      (window.parent && window.parent !== window && (
+        (window.parent as any).location?.hostname?.includes('base.dev') ||
+        (window.parent as any).location?.hostname?.includes('farcaster.xyz')
+      ))
     );
     
-    const shouldAddExternalConnectors = isClient && isNotIframe && isNotMiniApp;
+    const shouldAddExternalConnectors = isClient && !isInMiniApp;
     
     if (shouldAddExternalConnectors) {
       // Only add external connectors for real external browsers
@@ -79,7 +86,12 @@ export const config = (() => {
       );
       console.log('✅ Added external wallet connectors for external browser');
     } else {
-      console.log('🚫 Skipped external wallet connectors:', { isClient, isNotIframe, isNotMiniApp });
+      console.log('🚫 Skipped external wallet connectors - detected Mini App environment:', { 
+        isClient, 
+        isInMiniApp,
+        href: isClient ? window.location.href : 'N/A (SSR)',
+        hostname: isClient ? window.location.hostname : 'N/A (SSR)'
+      });
     }
     if (hasValidWalletConnectId) {
       connectors.push(
