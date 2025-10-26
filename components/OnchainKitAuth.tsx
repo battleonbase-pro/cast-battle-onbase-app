@@ -29,8 +29,9 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
   const [hasAuthenticated, setHasAuthenticated] = useState<boolean>(false);
   
   // Use OnchainKit's MiniKit hooks for proper authentication
+  // Skip OnchainKit's internal nonce validation - we verify on backend instead
   const { setMiniAppReady, isMiniAppReady } = useMiniKit();
-  const { signIn } = useAuthenticate();
+  const { signIn } = useAuthenticate(undefined, true); // skipValidation=true
   
   // Use wagmi's useAccount to check wallet connection
   const { isConnected, address } = useAccount();
