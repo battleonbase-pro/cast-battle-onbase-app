@@ -30,6 +30,17 @@ export default function BattleHistory({ battleHistory, isLoading }: BattleHistor
     );
   }
 
+  if (!battleHistory || battleHistory.length === 0) {
+    return (
+      <div className={styles.tabContent}>
+        <div className={styles.emptyState}>
+          <p>No battle history available yet.</p>
+          <p className={styles.emptyStateSubtext}>Check back after battles complete!</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.tabContent}>
       <div className={styles.historyList}>

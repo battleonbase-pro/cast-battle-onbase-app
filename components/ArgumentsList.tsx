@@ -27,10 +27,12 @@ export default function ArgumentsList({ casts, isLoading, onLikeCast }: Argument
     );
   }
 
-  if (casts.length === 0) {
+  if (!casts || casts.length === 0) {
     return (
       <div className={styles.tabContent}>
-        <div className={styles.loading}>No arguments submitted yet.</div>
+        <div className={styles.emptyState}>
+          <p>No arguments submitted yet.</p>
+        </div>
       </div>
     );
   }
