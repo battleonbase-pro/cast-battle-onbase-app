@@ -630,25 +630,25 @@ export default function Home() {
                 onClick={() => setActiveTab('debate')}
                 className={`${styles.tabButton} ${activeTab === 'debate' ? styles.activeTab : ''}`}
               >
-                💬 Debate
+                Debate
               </button>
               <button 
                 onClick={() => setActiveTab('arguments')}
                 className={`${styles.tabButton} ${activeTab === 'arguments' ? styles.activeTab : ''}`}
               >
-                📝 Arguments
+                Arguments
               </button>
               <button 
                 onClick={() => setActiveTab('history')}
                 className={`${styles.tabButton} ${activeTab === 'history' ? styles.activeTab : ''}`}
               >
-                📚 History
+                History
               </button>
               <button 
                 onClick={() => setActiveTab('leaderboard')}
                 className={`${styles.tabButton} ${activeTab === 'leaderboard' ? styles.activeTab : ''}`}
               >
-                🏆 Leaderboard
+                Leaderboard
               </button>
             </div>
 
