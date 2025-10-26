@@ -53,11 +53,34 @@ export const config = (() => {
       method: detectionResult.method
     });
     
-    // IMPORTANT: Don't add external connectors by default in Mini App environments
-    // This prevents eip6963RequestProvider errors
-    // For external browsers, wagmi's auto-connect will handle wallet discovery
-    console.log('⚠️ Skipping external wallet connectors to prevent EIP-6963 errors in Mini Apps');
-    console.log('💡 Wagmi will auto-detect wallets in external browsers via EIP-6963 automatically');
+    // IMPORTANT: Only add external connectors for REAL external browsers (not Mini Apps)
+    // This prevents eip6963RequestProvider errors in Mini App environments
+    const isClient = typeof window !== 'undefined';
+    const isNotIframe = isClient && window === window.self;
+    const isNotMiniApp = isClient && (
+      !window.location.href.includes('miniapp') &&
+      !window.location.href.includes('base.app') &&
+      !window.location.href.includes('farcaster') &&
+      !window.location.href.includes('warpcast.com')
+    );
+    
+    const shouldAddExternalConnectors = isClient && isNotIframe && isNotMiniApp;
+    
+    if (shouldAddExternalConnectors) {
+      // Only add external connectors for real external browsers
+      connectors.push(injected());
+      connectors.push(
+        metaMask({
+          dappMetadata: {
+            name: 'NewsCast Debate',
+            url: currentUrl,
+          },
+        })
+      );
+      console.log('✅ Added external wallet connectors for external browser');
+    } else {
+      console.log('🚫 Skipped external wallet connectors:', { isClient, isNotIframe, isNotMiniApp });
+    }
     if (hasValidWalletConnectId) {
       connectors.push(
         walletConnect({
