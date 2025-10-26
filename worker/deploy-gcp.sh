@@ -5,11 +5,20 @@
 
 set -e
 
+# Load environment variables from parent .env file if exists
+if [ -f ../.env ]; then
+    export $(grep -v '^#' ../.env | xargs)
+fi
+
 # Configuration
-PROJECT_ID=${1:-"your-project-id"}
+PROJECT_ID=${1:-"battle-worker-phraseflow"}
 REGION=${2:-"us-central1"}
 SERVICE_NAME="battle-completion-worker"
 IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}"
+
+# Contract addresses from environment with fallback defaults
+NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS=${NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS:-"0x6D00f9F5C6a57B46bFa26E032D60B525A1DAe271"}
+NEXT_PUBLIC_USDC_ADDRESS=${NEXT_PUBLIC_USDC_ADDRESS:-"0x036CbD53842c5426634e7929541eC2318f3dCF7e"}
 
 echo "🚀 Deploying Battle Completion Worker to Google Cloud"
 echo "Project ID: ${PROJECT_ID}"
@@ -54,7 +63,7 @@ gcloud run deploy ${SERVICE_NAME} \
     --min-instances 1 \
     --max-instances 10 \
     --timeout 3600 \
-    --set-env-vars NODE_ENV=production,NEWS_SOURCE=serper,NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS=0x6D00f9F5C6a57B46bFa26E032D60B525A1DAe271,NEXT_PUBLIC_USDC_ADDRESS=0x036CbD53842c5426634e7929541eC2318f3dCF7e,NEXT_PUBLIC_NETWORK=testnet,BATTLE_DURATION_HOURS=4 \
+    --set-env-vars NODE_ENV=production,NEWS_SOURCE=serper,NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS=${NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS},NEXT_PUBLIC_USDC_ADDRESS=${NEXT_PUBLIC_USDC_ADDRESS},NEXT_PUBLIC_NETWORK=testnet,BATTLE_DURATION_HOURS=4 \
     --set-secrets DATABASE_URL=database-url:latest,GOOGLE_GENERATIVE_AI_API_KEY=google-generative-ai-api-key:latest,SERPER_API_KEY=serper-api-key:latest,WORKER_API_KEY=battle-worker-secrets:latest,DEBATE_POOL_CONTRACT_ADDRESS=debate-pool-contract-address:latest,ORACLE_PRIVATE_KEY=oracle-private-key:latest,BASE_SEPOLIA_RPC=base-sepolia-rpc:latest
 
 # Get service URL

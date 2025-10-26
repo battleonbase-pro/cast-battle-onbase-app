@@ -1,7 +1,14 @@
-#!/bin/bash
+ #!/bin/bash
 
 # Exit on any command failure
 set -e
+
+# Load environment variables from .env file
+if [ -f .env ]; then
+    export $(grep -v '^#' .env | xargs)
+else
+    echo "⚠️  Warning: .env file not found"
+fi
 
 # GCP Configuration
 PROJECT_ID="battle-worker-phraseflow"
@@ -9,11 +16,18 @@ SERVICE_NAME="news-debate-app"
 REGION="us-central1"
 IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}"
 
+# Contract addresses from environment
+NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS=${NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS:-"0x6D00f9F5C6a57B46bFa26E032D60B525A1DAe271"}
+NEXT_PUBLIC_USDC_ADDRESS=${NEXT_PUBLIC_USDC_ADDRESS:-"0x036CbD53842c5426634e7929541eC2318f3dCF7e"}
+NEXT_PUBLIC_ENTRY_POINT_ADDRESS=${NEXT_PUBLIC_ENTRY_POINT_ADDRESS:-"0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789"}
+
 echo "🚀 Deploying Next.js Frontend to Google Cloud Run"
 echo "Project ID: ${PROJECT_ID}"
 echo "Service Name: ${SERVICE_NAME}"
 echo "Region: ${REGION}"
 echo "Image: ${IMAGE_NAME}"
+echo "Contract Address (Debate Pool): ${NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS}"
+echo "USDC Address: ${NEXT_PUBLIC_USDC_ADDRESS}"
 
 # First, test the build locally to ensure it works
 echo "🔍 Testing build locally before Docker build..."
@@ -27,9 +41,9 @@ echo "✅ Local build successful!"
 # Build the Docker image
 echo "📦 Building Docker image..."
 if ! docker buildx build --platform linux/amd64 \
-    --build-arg NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS=0x6D00f9F5C6a57B46bFa26E032D60B525A1DAe271 \
-    --build-arg NEXT_PUBLIC_USDC_ADDRESS=0x036CbD53842c5426634e7929541eC2318f3dCF7e \
-    --build-arg NEXT_PUBLIC_ENTRY_POINT_ADDRESS=0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789 \
+    --build-arg NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS=${NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS} \
+    --build-arg NEXT_PUBLIC_USDC_ADDRESS=${NEXT_PUBLIC_USDC_ADDRESS} \
+    --build-arg NEXT_PUBLIC_ENTRY_POINT_ADDRESS=${NEXT_PUBLIC_ENTRY_POINT_ADDRESS} \
     --build-arg NEXT_PUBLIC_NETWORK=testnet \
     --build-arg NEXT_PUBLIC_PROJECT_NAME=cast-battle-onbase \
     --build-arg NEWS_SOURCE=serper \
@@ -63,7 +77,7 @@ if ! gcloud run deploy ${SERVICE_NAME} \
     --min-instances 0 \
     --max-instances 10 \
     --timeout 3600 \
-    --set-env-vars NODE_ENV=production,NEXT_PUBLIC_PROJECT_NAME=cast-battle-onbase,NEWS_SOURCE=serper,BATTLE_GENERATION_ENABLED=true,BATTLE_DURATION_HOURS=4,BATTLE_MAX_PARTICIPANTS=100,NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS=0x6D00f9F5C6a57B46bFa26E032D60B525A1DAe271,NEXT_PUBLIC_USDC_ADDRESS=0x036CbD53842c5426634e7929541eC2318f3dCF7e,NEXT_PUBLIC_ENTRY_POINT_ADDRESS=0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789,NEXT_PUBLIC_NETWORK=testnet,NEXT_PUBLIC_ONCHAINKIT_API_KEY=iLo6nW8uHzW3B59QVnOvIfUNeIwca99k,NEXT_PUBLIC_API_URL=https://news-debate-app-3lducklitq-uc.a.run.app/api,NEXT_PUBLIC_FRAME_URL=https://news-debate-app-3lducklitq-uc.a.run.app/api/frame \
+    --set-env-vars NODE_ENV=production,NEXT_PUBLIC_PROJECT_NAME=cast-battle-onbase,NEWS_SOURCE=serper,BATTLE_GENERATION_ENABLED=true,BATTLE_DURATION_HOURS=4,BATTLE_MAX_PARTICIPANTS=100,NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS=${NEXT_PUBLIC_DEBATE_POOL_CONTRACT_ADDRESS},NEXT_PUBLIC_USDC_ADDRESS=${NEXT_PUBLIC_USDC_ADDRESS},NEXT_PUBLIC_ENTRY_POINT_ADDRESS=${NEXT_PUBLIC_ENTRY_POINT_ADDRESS},NEXT_PUBLIC_NETWORK=testnet,NEXT_PUBLIC_ONCHAINKIT_API_KEY=iLo6nW8uHzW3B59QVnOvIfUNeIwca99k,NEXT_PUBLIC_API_URL=https://news-debate-app-3lducklitq-uc.a.run.app/api,NEXT_PUBLIC_FRAME_URL=https://news-debate-app-3lducklitq-uc.a.run.app/api/frame \
     --set-secrets DATABASE_URL=database-url:latest,WORKER_BASE_URL=worker-base-url:latest,WORKER_API_KEY=worker-api-key:latest,GOOGLE_GENERATIVE_AI_API_KEY=google-generative-ai-api-key:latest,SERPER_API_KEY=serper-api-key:latest,NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=walletconnect-project-id:latest; then
     echo "❌ Cloud Run deployment failed!"
     exit 1
