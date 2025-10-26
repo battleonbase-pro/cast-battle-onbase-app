@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useMiniKit, useAuthenticate } from '@coinbase/onchainkit/minikit';
 import { ConnectWallet, Wallet } from '@coinbase/onchainkit/wallet';
 import { useAccount } from 'wagmi';
@@ -9,7 +9,7 @@ import styles from './BaseAccountAuth.module.css';
 
 interface OnchainKitAuthProps {
   onAuthSuccess: (user: { address: string; isAuthenticated: boolean; environment: string } | null) => void;
-  onAuthError: (error: string) => void;
+  onAuthError: (_error: string) => void;
 }
 
 interface BattlePreview {
@@ -22,7 +22,7 @@ interface BattlePreview {
   status: string;
 }
 
-export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKitAuthProps) {
+export default function OnchainKitAuth({ onAuthSuccess, onAuthError: _onAuthError }: OnchainKitAuthProps) {
   const [battlePreview, setBattlePreview] = useState<BattlePreview | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
@@ -61,38 +61,40 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
     initializeSDK();
   }, []);
 
-  // Manual authentication handler for login button
-  const handleLogin = async () => {
+  // Auto-authenticate when wallet is connected in Base App
+  // According to docs: "Users are automatically connected to their Base Account in mini apps"
+  const handleAutoAuth = useCallback(async () => {
     if (!isConnected || !address) {
-      onAuthError('Please connect your wallet first');
       return;
     }
 
     try {
-      console.log('🔐 [AUTH] Starting manual authentication...', {
+      console.log('🔐 [AUTH] Starting auto-authentication...', {
         address,
-        isConnected,
         timestamp: new Date().toISOString(),
         contextClientFid: context?.client?.clientFid,
         contextUserFid: context?.user?.fid,
         isMiniAppReady
       });
       
-      console.log('🔐 [AUTH] About to call signIn()...');
       let result;
       try {
         result = await signIn();
         console.log('🔐 [AUTH] signIn() result:', JSON.stringify(result, null, 2));
       } catch (signInError) {
         console.error('❌ [AUTH] signIn() threw an error:', signInError);
-        if (signInError instanceof Error) {
-          console.error('❌ [AUTH] Error details:', {
-            message: signInError.message,
-            stack: signInError.stack,
-            name: signInError.name
-          });
+        // In Base App, auto-auth might not be needed for every action
+        // Just proceed with wallet connection if signIn fails
+        if (isConnected && address) {
+          const authUser = {
+            address: address,
+            isAuthenticated: false, // No SIWF signature
+            environment: 'base'
+          };
+          setHasAuthenticated(true);
+          onAuthSuccess(authUser);
         }
-        throw signInError;
+        return;
       }
       
       if (result) {
@@ -101,29 +103,11 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
           environment: 'base',
           hasSignature: !!result.signature,
           hasMessage: !!result.message,
-          messageLength: result.message?.length,
-          signatureLength: result.signature?.length,
-          authMethod: result.authMethod,
-          signature: result.signature,
-          message: result.message
+          authMethod: result.authMethod
         };
-        console.log('✅ [AUTH] Authentication successful:', JSON.stringify(authInfo, null, 2));
-        
-        // Log the full message and extracted nonce for debugging
-        console.log('📝 [AUTH CLIENT] Full message:', result.message);
-        const nonceMatch = result.message?.match(/Nonce:\s*([^\n\r]+)/i);
-        const extractedNonce = nonceMatch?.[1]?.trim();
-        const nonceInfo = {
-          hasNonce: !!nonceMatch,
-          nonceValue: extractedNonce,
-          nonceLength: extractedNonce?.length,
-          nonceMatchValue: nonceMatch?.[0],
-          messagePreview: result.message?.substring(0, 200)
-        };
-        console.log('🔍 [AUTH CLIENT] Extracted nonce from message:', JSON.stringify(nonceInfo, null, 2));
+        console.log('✅ [AUTH] Auto-authentication successful:', JSON.stringify(authInfo, null, 2));
         
         // Verify signature with backend
-        console.log('🔍 [AUTH] Verifying signature with backend...');
         try {
           const verifyResponse = await fetch('/api/auth/verify', {
             method: 'POST',
@@ -135,42 +119,77 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
             })
           });
 
-          if (!verifyResponse.ok) {
-            const errorData = await verifyResponse.json();
-            throw new Error(errorData.error || 'Signature verification failed');
-          }
+          if (verifyResponse.ok) {
+            console.log('✅ [AUTH] Backend verification successful');
+            
+            const authUser = {
+              address: address,
+              isAuthenticated: true,
+              environment: 'base',
+              signature: result.signature,
+              message: result.message,
+              authMethod: result.authMethod
+            };
 
-          const verificationResult = await verifyResponse.json();
-          console.log('✅ [AUTH] Backend verification successful:', verificationResult);
-          
+            setHasAuthenticated(true);
+            onAuthSuccess(authUser);
+          } else {
+            console.log('⚠️ [AUTH] Backend verification failed, proceeding with wallet connection');
+            // Proceed anyway with wallet-connected user
+            const authUser = {
+              address: address,
+              isAuthenticated: false,
+              environment: 'base'
+            };
+            setHasAuthenticated(true);
+            onAuthSuccess(authUser);
+          }
+        } catch (verifyError) {
+          console.error('❌ [AUTH] Backend verification error, proceeding with wallet connection:', verifyError);
+          // Proceed anyway with wallet-connected user
           const authUser = {
             address: address,
-            isAuthenticated: true,
-            environment: 'base',
-            signature: result.signature,
-            message: result.message,
-            authMethod: result.authMethod
+            isAuthenticated: false,
+            environment: 'base'
           };
-
           setHasAuthenticated(true);
           onAuthSuccess(authUser);
-        } catch (verifyError) {
-          console.error('❌ [AUTH] Backend verification failed:', verifyError);
-          onAuthError(verifyError instanceof Error ? verifyError.message : 'Signature verification failed');
         }
-      } else {
-        console.log('⚠️ [AUTH] Authentication cancelled by user');
       }
     } catch (error) {
-      console.error('❌ [AUTH] Authentication failed:', {
-        error,
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
-        errorStack: error instanceof Error ? error.stack : 'No stack',
-        timestamp: new Date().toISOString()
-      });
-      onAuthError(error instanceof Error ? error.message : 'Authentication failed');
+      console.error('❌ [AUTH] Auto-authentication failed:', error);
+      // In Base App, if auto-auth fails, user is still connected
+      if (isConnected && address) {
+        const authUser = {
+          address: address,
+          isAuthenticated: false,
+          environment: 'base'
+        };
+        setHasAuthenticated(true);
+        onAuthSuccess(authUser);
+      }
     }
-  };
+  }, [isConnected, address, context, isMiniAppReady, signIn, onAuthSuccess]);
+
+  useEffect(() => {
+    // Only auto-authenticate if:
+    // 1. Wallet is connected
+    // 2. Not already authenticated
+    // 3. In Base App Mini App environment (not external browser)
+    const shouldAutoAuth = isConnected && address && !hasAuthenticated && context?.client?.clientFid;
+    
+    if (shouldAutoAuth) {
+      console.log('🔐 [AUTH] Auto-authenticating in Base App mini app...', {
+        address,
+        isConnected,
+        contextClientFid: context?.client?.clientFid,
+        isMiniAppReady
+      });
+      
+      // Auto-authenticate in Base App
+      handleAutoAuth();
+    }
+  }, [isConnected, address, hasAuthenticated, context, handleAutoAuth, isMiniAppReady]);
 
   // Fetch current battle preview
   useEffect(() => {
@@ -307,34 +326,26 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
                 <ConnectWallet />
               </Wallet>
             </div>
-          ) : !hasAuthenticated ? (
-            <div className={styles.loginSection}>
-              <div className={styles.connectedInfo}>
-                <div className={styles.connectedIcon}>🔗</div>
-                <div className={styles.connectedText}>
-                  <div className={styles.connectedTitle}>Wallet Connected</div>
-                  <div className={styles.connectedAddress}>
-                    {address?.substring(0, 6)}...{address?.substring(address?.length - 4)}
-                  </div>
-                </div>
-              </div>
-              <button 
-                className={styles.loginButton}
-                onClick={handleLogin}
-              >
-                Sign In to Continue
-              </button>
-            </div>
-          ) : (
+          ) : hasAuthenticated ? (
             <div className={styles.connectedInfo}>
               <div className={styles.connectedIcon}>✅</div>
               <div className={styles.connectedText}>
-                <div className={styles.connectedTitle}>Authenticated</div>
+                <div className={styles.connectedTitle}>Connected</div>
                 <div className={styles.connectedAddress}>
                   {address?.substring(0, 6)}...{address?.substring(address?.length - 4)}
                 </div>
                 <div className={styles.connectedStatus}>
                   Ready to participate!
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className={styles.connectedInfo}>
+              <div className={styles.connectedIcon}>⏳</div>
+              <div className={styles.connectedText}>
+                <div className={styles.connectedTitle}>Connecting...</div>
+                <div className={styles.connectedStatus}>
+                  Setting up your wallet
                 </div>
               </div>
             </div>
