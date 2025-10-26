@@ -122,18 +122,26 @@ export default function Home() {
     const savedUser = sessionStorage.getItem('authenticatedUser');
     const savedAuthStatus = sessionStorage.getItem('isAuthenticated');
     
-    if (savedUser && savedAuthStatus === 'true' && !baseAccountUser) {
+    console.log('🔄 [RESTORE] Checking sessionStorage:', { savedUser: !!savedUser, savedAuthStatus, currentBaseAccountUser: baseAccountUser });
+    
+    if (savedUser && savedAuthStatus === 'true') {
       try {
         const user = JSON.parse(savedUser);
         console.log('🔄 Restoring auth state from sessionStorage:', user);
-        setBaseAccountUser(user);
-        setIsAuthenticated(true);
-        fetchUserPoints(user.address);
+        
+        // Only restore if we don't have a user yet
+        if (!baseAccountUser) {
+          setBaseAccountUser(user);
+          setIsAuthenticated(true);
+          fetchUserPoints(user.address);
+        }
       } catch (error) {
         console.error('Failed to restore auth state:', error);
       }
     }
-  }, [baseAccountUser, fetchUserPoints]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run push once on mount
+原子
 
   // Fetch user points - memoized to prevent re-creation
   const fetchUserPoints = useCallback(async (address: string) => {
