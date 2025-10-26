@@ -90,7 +90,6 @@ export default function Home() {
   const [_isProcessing, setIsProcessing] = useState(false);
   const [hasProcessedPayment, setHasProcessedPayment] = useState(false);
   const [isSubmittingCast, setIsSubmittingCast] = useState(false);
-  const hasRestoredRef = useRef(false); // Track if we've restored from sessionStorage
 
   // Wagmi hooks for external browser payment transactions
   const { isConnected, address } = useWagmiAccount();
@@ -110,54 +109,20 @@ export default function Home() {
     initializeFarcasterSDK();
   }, []);
 
-  // Persist auth state in sessionStorage to survive Fast Refresh
+  // Derive baseAccountUser from wagmi address when in external environment
   useEffect(() => {
-    if (baseAccountUser?.address) {
-      console.log('💾 [PERSIST] Saving to sessionStorage:', baseAccountUser);
-      try {
-        sessionStorage.setItem('authenticatedUser', JSON.stringify(baseAccountUser));
-        sessionStorage.setItem('isAuthenticated', 'true');
-        console.log('✅ [PERSIST] Successfully saved to sessionStorage');
-      } catch (error) {
-        console.error('❌ [PERSIST] Failed to save to sessionStorage:', error);
-      }
-    } else if (baseAccountUser === null && hasRestoredRef.current) {
-      // Only clear if we've already restored (to prevent clearing on initial mount)
-      console.log('🧹 [PERSIST] Clearing sessionStorage (baseAccountUser is null and already restored)');
-      sessionStorage.removeItem('authenticatedUser');
-      sessionStorage.removeItem('isAuthenticated');
+    if (address && !baseAccountUser) {
+      console.log('🔗 [WAGMI] Deriving user from wagmi address:', address);
+      const user = {
+        address: address,
+        isAuthenticated: true,
+        environment: 'external' as const
+      };
+      setBaseAccountUser(user);
+      setIsAuthenticated(true);
+      fetchUserPoints(address);
     }
-  }, [baseAccountUser]);
-
-  // Restore auth state from sessionStorage on mount (to survive Fast Refresh)
-  useEffect(() => {
-    // Prevent double-restore
-    if (hasRestoredRef.current) {
-      console.log('🔄 [RESTORE] Already restored, skipping');
-      return;
-    }
-    
-    const savedUser = sessionStorage.getItem('authenticatedUser');
-    const savedAuthStatus = sessionStorage.getItem('isAuthenticated');
-    
-    console.log('🔄 [RESTORE] Checking sessionStorage:', { savedUser: !!savedUser, savedAuthStatus, currentBaseAccountUser: baseAccountUser });
-    
-    if (savedUser && savedAuthStatus === 'true') {
-      try {
-        const user = JSON.parse(savedUser);
-        console.log('🔄 Restoring auth state from sessionStorage:', user);
-        
-        // Always restore from sessionStorage to survive Fast Refresh
-        setBaseAccountUser(user);
-        setIsAuthenticated(true);
-        fetchUserPoints(user.address);
-        hasRestoredRef.current = true;
-      } catch (error) {
-        console.error('Failed to restore auth state:', error);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty deps - only run once on mount
+  }, [address, baseAccountUser, fetchUserPoints]);
 
   // Fetch user points - memoized to prevent re-creation
   const fetchUserPoints = useCallback(async (address: string) => {
