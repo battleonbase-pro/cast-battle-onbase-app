@@ -30,8 +30,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. Extract nonce from SIWE message format: "Nonce: <nonce>"
-    const nonceMatch = message.match(/Nonce:\s*([a-f0-9]+)/i);
-    const extracted = nonceMatch?.[1] || null;
+    // OnchainKit may use different nonce formats, so we match any characters after "Nonce:"
+    const nonceMatch = message.match(/Nonce:\s*([^\n\r]+)/i);
+    const extracted = nonceMatch?.[1]?.trim() || null;
     
     console.log('🔍 [NONCE VERIFICATION] Step 1 - Extraction:', { 
       message: message.substring(0, 150) + '...', 
