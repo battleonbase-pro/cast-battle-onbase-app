@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { sdk } from '@farcaster/miniapp-sdk';
 import { useMiniKit } from '@coinbase/onchainkit/minikit';
 import { useEnvironmentDetection } from '../hooks/useEnvironmentDetection';
@@ -90,6 +90,7 @@ export default function Home() {
   const [_isProcessing, setIsProcessing] = useState(false);
   const [hasProcessedPayment, setHasProcessedPayment] = useState(false);
   const [isSubmittingCast, setIsSubmittingCast] = useState(false);
+  const hasRestoredRef = useRef(false); // Track if we've restored from sessionStorage
 
   // Wagmi hooks for external browser payment transactions
   const { isConnected, address } = useWagmiAccount();
@@ -125,6 +126,12 @@ export default function Home() {
 
   // Restore auth state from sessionStorage on mount (to survive Fast Refresh)
   useEffect(() => {
+    // Prevent double-restore
+    if (hasRestoredRef.current) {
+      console.log('🔄 [RESTORE] Already restored, skipping');
+      return;
+    }
+    
     const savedUser = sessionStorage.getItem('authenticatedUser');
     const savedAuthStatus = sessionStorage.getItem('isAuthenticated');
     
@@ -139,6 +146,7 @@ export default function Home() {
         setBaseAccountUser(user);
         setIsAuthenticated(true);
         fetchUserPoints(user.address);
+        hasRestoredRef.current = true;
       } catch (error) {
         console.error('Failed to restore auth state:', error);
       }
