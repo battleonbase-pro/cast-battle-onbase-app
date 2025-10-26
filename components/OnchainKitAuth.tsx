@@ -29,7 +29,7 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
   const [hasAuthenticated, setHasAuthenticated] = useState<boolean>(false);
   
   // Use OnchainKit's MiniKit hooks for proper authentication
-  const { setMiniAppReady, isMiniAppReady, context } = useMiniKit();
+  const { setMiniAppReady, isMiniAppReady } = useMiniKit();
   const { signIn } = useAuthenticate();
   
   // Use wagmi's useAccount to check wallet connection
@@ -87,17 +87,42 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
           authMethod: result.authMethod
         });
         
-        const authUser = {
-          address: address,
-          isAuthenticated: true,
-          environment: 'base',
-          signature: result.signature,
-          message: result.message,
-          authMethod: result.authMethod
-        };
+        // Verify signature with backend
+        console.log('🔍 [AUTH] Verifying signature with backend...');
+        try {
+          const verifyResponse = await fetch('/api/auth/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              address: address,
+              message: result.message,
+              signature: result.signature
+            })
+          });
 
-        setHasAuthenticated(true);
-        onAuthSuccess(authUser);
+          if (!verifyResponse.ok) {
+            const errorData = await verifyResponse.json();
+            throw new Error(errorData.error || 'Signature verification failed');
+          }
+
+          const verificationResult = await verifyResponse.json();
+          console.log('✅ [AUTH] Backend verification successful:', verificationResult);
+          
+          const authUser = {
+            address: address,
+            isAuthenticated: true,
+            environment: 'base',
+            signature: result.signature,
+            message: result.message,
+            authMethod: result.authMethod
+          };
+
+          setHasAuthenticated(true);
+          onAuthSuccess(authUser);
+        } catch (verifyError) {
+          console.error('❌ [AUTH] Backend verification failed:', verifyError);
+          onAuthError(verifyError instanceof Error ? verifyError.message : 'Signature verification failed');
+        }
       } else {
         console.log('⚠️ [AUTH] Authentication cancelled by user');
       }
