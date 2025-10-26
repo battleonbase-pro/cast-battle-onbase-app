@@ -5,7 +5,9 @@ set -e
 
 # Load environment variables from .env file
 if [ -f .env ]; then
-    export $(grep -v '^#' .env | xargs)
+    set -a
+    source .env
+    set +a
 else
     echo "⚠️  Warning: .env file not found"
 fi
