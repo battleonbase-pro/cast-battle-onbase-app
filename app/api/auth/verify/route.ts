@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createPublicClient, http } from 'viem';
 import { base, baseSepolia } from 'viem/chains';
 import databaseService from '@/lib/services/database';
-import { nonces } from '../nonce/route';
+import { nonces, usedNonces } from '../nonce/route';
 
 // Select chain: Base or Base Sepolia (testnet)
 const isTestnet = process.env.NEXT_PUBLIC_NETWORK === 'testnet' || process.env.NODE_ENV === 'development';
@@ -41,12 +41,19 @@ export async function POST(request: NextRequest) {
       nonceInStore: extracted ? nonces.has(extracted) : 'N/A'
     });
     
-    // 2. Check if nonce is in our backend store (from /api/auth/nonce)
-    // If it's NOT in our store, it might be OnchainKit-generated (which is OK)
-    // If it IS in our store, make sure it hasn't been used
+    // 2. Check if nonce has already been used (prevent replay attacks)
+    if (extracted && usedNonces.has(extracted)) {
+      console.log('❌ [NONCE VERIFICATION ERROR] Nonce already used - possible replay attack:', {
+        extracted,
+        attemptedAt: new Date().toISOString()
+      });
+      return NextResponse.json({ error: 'Nonce already used' }, { status: 400 });
+    }
+    
+    // 3. Handle nonce based on source
     if (extracted && nonces.has(extracted)) {
       console.log('✅ [NONCE VERIFICATION] Backend-generated nonce found in store - removing to prevent reuse');
-      // Remove nonce from store to prevent reuse
+      // Remove nonce from backend store to prevent reuse
       nonces.delete(extracted);
     } else if (extracted) {
       console.log('✅ [NONCE VERIFICATION] Nonce not in backend store (likely OnchainKit-generated) - will verify signature only');
@@ -78,8 +85,14 @@ export async function POST(request: NextRequest) {
     }
     
     console.log('✅ Signature verified successfully');
+    
+    // Mark nonce as used to prevent replay attacks
+    if (extracted) {
+      usedNonces.add(extracted);
+      console.log('✅ [NONCE VERIFICATION] Nonce marked as used:', extracted);
+    }
 
-    // 3. Create or update user in database
+    // 4. Create or update user in database
     try {
       console.log('👤 Creating/updating user in database:', address);
       await databaseService.createOrUpdateUser(address);

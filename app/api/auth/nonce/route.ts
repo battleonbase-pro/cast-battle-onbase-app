@@ -1,17 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 
-// Use a global nonces store that persists across requests
+// Use global stores that persist across requests
 // In production, use Redis or a database
 declare global {
   var __nonces: Map<string, number> | undefined;
+  var __usedNonces: Set<string> | undefined;
 }
 
 if (!global.__nonces) {
   global.__nonces = new Map<string, number>();
 }
 
+if (!global.__usedNonces) {
+  global.__usedNonces = new Set<string>();
+}
+
 const nonces = global.__nonces;
+const usedNonces = global.__usedNonces;
 
 // Clean up nonces older than 5 minutes
 const cleanupOldNonces = () => {
@@ -61,5 +67,5 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Export the nonces set so it can be shared with the verify endpoint
-export { nonces };
+// Export the nonces stores so they can be shared with the verify endpoint
+export { nonces, usedNonces };
