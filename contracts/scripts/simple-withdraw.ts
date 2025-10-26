@@ -1,9 +1,16 @@
 import { ethers } from "hardhat";
 
 async function main() {
-  // Get contract address from environment variable with fallback
-  const CONTRACT_ADDRESS = process.env.DEBATE_POOL_CONTRACT_ADDRESS || "0x6D00f9F5C6a57B46bFa26E032D60B525A1DAe271";
-  const USDC_ADDRESS = process.env.USDC_ADDRESS || "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+  // Get contract address from environment variable - REQUIRED
+  const CONTRACT_ADDRESS = process.env.DEBATE_POOL_CONTRACT_ADDRESS;
+  const USDC_ADDRESS = process.env.USDC_ADDRESS;
+  
+  if (!CONTRACT_ADDRESS || !USDC_ADDRESS) {
+    console.error("❌ Error: Environment variables not set!");
+    console.error("   Please set DEBATE_POOL_CONTRACT_ADDRESS and USDC_ADDRESS in your .env file");
+    console.error("   Copy contracts/env.example to contracts/.env and configure it");
+    process.exit(1);
+  }
   
   try {
     console.log("💰 Withdrawing All USDC from Contract");
