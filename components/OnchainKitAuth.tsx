@@ -29,7 +29,7 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
   const [hasAuthenticated, setHasAuthenticated] = useState<boolean>(false);
   
   // Use OnchainKit's MiniKit hooks for proper authentication
-  const { setMiniAppReady, isMiniAppReady } = useMiniKit();
+  const { setMiniAppReady, isMiniAppReady, context } = useMiniKit();
   const { signIn } = useAuthenticate();
   
   // Use wagmi's useAccount to check wallet connection
@@ -70,11 +70,28 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError }: OnchainKi
       console.log('🔐 [AUTH] Starting manual authentication...', {
         address,
         isConnected,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        contextClientFid: context?.client?.clientFid,
+        contextUserFid: context?.user?.fid,
+        isMiniAppReady
       });
       
-      const result = await signIn();
-      console.log('🔐 [AUTH] signIn() result:', JSON.stringify(result, null, 2));
+      console.log('🔐 [AUTH] About to call signIn()...');
+      let result;
+      try {
+        result = await signIn();
+        console.log('🔐 [AUTH] signIn() result:', JSON.stringify(result, null, 2));
+      } catch (signInError) {
+        console.error('❌ [AUTH] signIn() threw an error:', signInError);
+        if (signInError instanceof Error) {
+          console.error('❌ [AUTH] Error details:', {
+            message: signInError.message,
+            stack: signInError.stack,
+            name: signInError.name
+          });
+        }
+        throw signInError;
+      }
       
       if (result) {
         const authInfo = {
