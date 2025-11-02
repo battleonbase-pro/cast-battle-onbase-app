@@ -1,8 +1,9 @@
 "use client";
-import { useState } from 'react';
-import { sdk } from '@farcaster/miniapp-sdk';
-import { parseUnits } from 'viem';
-import styles from './FarcasterPaymentButton.module.css';
+import { useEffect, useMemo, useRef, useCallback } from 'react';
+import { Transaction, LifecycleStatus, TransactionResponseType } from '@coinbase/onchainkit/transaction';
+import { parseUnits, formatUnits } from 'viem';
+import { useAccount, useConnect, useBalance } from 'wagmi';
+import styles from './BasePaymentButton.module.css';
 
 interface FarcasterPaymentButtonProps {
   onClick: () => void;
@@ -15,139 +16,180 @@ interface FarcasterPaymentButtonProps {
 }
 
 export default function FarcasterPaymentButton({
-  onClick,
+  onClick: _onClick,
   onSuccess,
   disabled = false,
   loading = false,
-  children,
+  children: _children,
   amount,
   recipientAddress
 }: FarcasterPaymentButtonProps) {
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
+  const { data: gasBalance } = useBalance({ address });
+  const hasProcessedSuccessRef = useRef(false);
 
   // USDC contract address on Base Sepolia
   const USDC_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS!;
 
-  const handleFarcasterPayment = async () => {
-    try {
-      setIsProcessing(true);
-      setError(null);
+  // USDC ABI for ERC20 transfer
+  const usdcAbi = useMemo(() => [
+    {
+      type: 'function',
+      name: 'transfer',
+      inputs: [
+        { name: 'to', type: 'address' },
+        { name: 'amount', type: 'uint256' }
+      ],
+      outputs: [{ name: '', type: 'bool' }],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'approve',
+      inputs: [
+        { name: 'spender', type: 'address' },
+        { name: 'amount', type: 'uint256' }
+      ],
+      outputs: [{ name: '', type: 'bool' }],
+      stateMutability: 'nonpayable',
+    }
+  ] as const, []);
 
-      // Check if we're in a Farcaster Mini App
-      const inMiniApp = await sdk.isInMiniApp();
-      if (!inMiniApp) {
-        throw new Error('Not in Farcaster Mini App environment');
-      }
+  // Prepare USDC transfer call to debate pool
+  // Direct transfer: User sends 1 USDC to the debate pool address
+  const calls = useMemo(() => [
+    {
+      address: USDC_CONTRACT_ADDRESS as `0x${string}`,
+      abi: usdcAbi,
+      functionName: 'transfer',
+      args: [recipientAddress as `0x${string}`, parseUnits(amount, 6)]
+    }
+  ], [USDC_CONTRACT_ADDRESS, recipientAddress, amount, usdcAbi]);
 
-      // Get Farcaster's native Ethereum provider
-      console.log('🔍 SDK wallet object:', sdk.wallet);
-      console.log('🔍 Available wallet methods:', Object.keys(sdk.wallet || {}));
-      
-      let ethProvider;
-      try {
-        // Try the primary method
-        ethProvider = await sdk.wallet.getEthereumProvider();
-        console.log('🔍 Ethereum provider (getEthereumProvider):', ethProvider);
-      } catch (error) {
-        console.log('⚠️ getEthereumProvider failed, trying ethProvider property:', error);
-        try {
-          // Try accessing ethProvider as a property (not a function)
-          ethProvider = sdk.wallet.ethProvider;
-          console.log('🔍 Ethereum provider (ethProvider property):', ethProvider);
-        } catch (fallbackError) {
-          console.log('❌ Both methods failed:', fallbackError);
-          throw new Error('Failed to get Farcaster Ethereum provider from both methods');
-        }
-      }
-      
-      console.log('🔍 Provider type:', typeof ethProvider);
-      
-      if (!ethProvider) {
-        throw new Error('Failed to get Farcaster Ethereum provider');
-      }
-      
-      if (typeof ethProvider.request !== 'function') {
-        throw new Error('Ethereum provider does not have request method');
-      }
+  const handleTransactionStatus = useCallback((lifecycleStatus: LifecycleStatus) => {
+    // Reset the success flag when a new transaction starts
+    if (lifecycleStatus?.statusName === 'init') {
+      hasProcessedSuccessRef.current = false;
+      return; // Don't log 'init' status to prevent infinite logs
+    }
+    
+    // Only log important statuses
+    if (lifecycleStatus?.statusName === 'buildingTransaction') {
+      console.log('🔧 [Farcaster] Building transaction...');
+    } else if (lifecycleStatus?.statusName === 'transactionPending') {
+      console.log('⏳ [Farcaster] Transaction pending...');
+    } else if (lifecycleStatus?.statusName === 'error') {
+      console.error('❌ [Farcaster] Transaction failed:', lifecycleStatus.statusData);
+      hasProcessedSuccessRef.current = false;
+    }
+  }, []);
 
-      // Prepare USDC transfer transaction
-      const usdcAmount = parseUnits(amount, 6); // USDC has 6 decimals
-      const transferData = `0xa9059cbb${recipientAddress.slice(2).padStart(64, '0')}${usdcAmount.toString(16).padStart(64, '0')}`;
+  const handleTransactionSuccess = useCallback((response: TransactionResponseType) => {
+    // Guard: Only process success once
+    if (hasProcessedSuccessRef.current) {
+      return;
+    }
+    
+    console.log('🎉 [Farcaster] Transaction completed successfully:', response);
+    
+    // Extract transaction hash from the first receipt
+    const transactionHash = response.transactionReceipts[0]?.transactionHash;
+    
+    if (transactionHash) {
+      console.log('📝 [Farcaster] Transaction hash:', transactionHash);
+      hasProcessedSuccessRef.current = true;
+      onSuccess?.(transactionHash); // Pass the transaction hash to the callback
+    }
+  }, [onSuccess]);
 
-      const transactionParams = {
-        to: USDC_CONTRACT_ADDRESS,
-        data: transferData,
-        value: '0x0',
-        gas: '0x7530', // 30000 gas limit for ERC20 transfer
-      };
-
-      console.log('🚀 Initiating Farcaster payment transaction:', transactionParams);
-
-      // Send transaction through Farcaster wallet
-      const txHash = await ethProvider.request({
-        method: 'eth_sendTransaction',
-        params: [transactionParams],
+  const handleTransactionError = (error: unknown) => {
+    console.error('❌ [Farcaster] Transaction error:', error);
+    if (error instanceof Error) {
+      console.error('❌ [Farcaster] Transaction error details:', {
+        errorMessage: error.message,
+        errorStack: error.stack,
+        errorType: error.name,
+        errorCode: (error as { code?: string }).code,
+        fullError: JSON.stringify(error, null, 2)
       });
-
-      console.log('✅ Farcaster payment transaction sent:', txHash);
-
-      // Wait for transaction confirmation
-      let receipt = null;
-      let attempts = 0;
-      const maxAttempts = 30; // 30 seconds timeout
-
-      while (!receipt && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        receipt = await ethProvider.request({
-          method: 'eth_getTransactionReceipt',
-          params: [txHash],
-        });
-        attempts++;
-      }
-
-      if (receipt && receipt.status === '0x1') {
-        console.log('✅ Farcaster payment transaction confirmed:', receipt);
-        // Call onSuccess with transaction hash
-        if (onSuccess) {
-          onSuccess(txHash);
-        }
-        onClick(); // Call the original onClick handler
-      } else {
-        throw new Error('Transaction failed or timed out');
-      }
-    } catch (error) {
-      console.error('❌ Farcaster payment failed:', error);
-      setError(error instanceof Error ? error.message : 'Payment failed');
-    } finally {
-      setIsProcessing(false);
     }
   };
 
+  // Auto-connect to Farcaster Mini App connector if not connected
+  useEffect(() => {
+    if (!isConnected && connectors.length > 0) {
+      const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp');
+      if (farcasterConnector) {
+        console.log('🔗 [Farcaster] Auto-connecting to Farcaster Mini App...');
+        connect({ connector: farcasterConnector }).catch((error) => {
+          console.error('❌ [Farcaster] Auto-connection failed:', error);
+        });
+      }
+    }
+  }, [isConnected, connectors, connect]);
+
+  // Debug logging - log once on mount only
+  useEffect(() => {
+    console.log('🔧 [Farcaster] FarcasterPaymentButton mounted');
+  }, []); // Empty deps - log only once
+
+  // Separate effect for gas balance warning - only when balance changes
+  useEffect(() => {
+    if (gasBalance && gasBalance.value < parseUnits('0.0001', 18)) {
+      console.warn('⚠️ [Farcaster] Low gas balance:', formatUnits(gasBalance.value, 18), 'ETH');
+    }
+  }, [gasBalance]);
+
+  // If wallet is not connected, show connect message
+  if (!isConnected || !address) {
+    console.log('⚠️ [Farcaster] Wallet not connected or no address available');
+    
+    const handleConnectWallet = async () => {
+      try {
+        console.log('🔗 [Farcaster] Attempting to connect wallet...');
+        
+        // Find Farcaster Mini App connector
+        const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp');
+        
+        if (farcasterConnector) {
+          console.log('🔗 [Farcaster] Connecting with Farcaster Mini App connector');
+          await connect({ connector: farcasterConnector });
+        } else {
+          console.log('⚠️ [Farcaster] Farcaster Mini App connector not found');
+          // Fallback: refresh page to trigger connection flow
+          window.location.reload();
+        }
+      } catch (error) {
+        console.error('❌ [Farcaster] Wallet connection failed:', error);
+        // Fallback: refresh page to trigger connection flow
+        window.location.reload();
+      }
+    };
+    
+    return (
+      <div className={styles.paymentButtonContainer}>
+        <button
+          disabled={false}
+          className={styles.transactionButton}
+          onClick={handleConnectWallet}
+        >
+          Connect Farcaster Wallet to Pay
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.paymentButtonContainer}>
-      <button
-        onClick={handleFarcasterPayment}
-        disabled={disabled || loading || isProcessing}
-        className={styles.paymentButton}
-      >
-        {loading || isProcessing ? 'Processing Payment...' : children}
-      </button>
-      
-      {error && (
-        <div className={styles.errorContainer}>
-          <div className={styles.errorMessage}>
-            <span className={styles.errorIcon}>⚠️</span>
-            <span className={styles.errorText}>{error}</span>
-          </div>
-          <button 
-            onClick={() => setError(null)} 
-            className={styles.dismissButton}
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
+      <Transaction
+        calls={calls} 
+        chainId={84532} // Base Sepolia chain ID
+        onStatus={handleTransactionStatus}
+        onSuccess={handleTransactionSuccess}
+        onError={handleTransactionError}
+        disabled={disabled || loading}
+      />
     </div>
   );
 }
