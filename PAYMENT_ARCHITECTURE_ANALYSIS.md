@@ -322,15 +322,11 @@ Auto-submit cast
 
 ## 8. Error Handling
 
-### Farcaster Payment:
-- Catches errors in `handleFarcasterPayment()`
-- Shows error message in UI
-- Sets `isProcessing = false`
-
-### Base Payment (OnchainKit):
+### All Payment Types (OnchainKit):
 - `onError` callback for transaction errors
 - `onStatus` tracks error lifecycle state
 - Detailed error logging with stack traces
+- Automatic error recovery handling
 
 ---
 
@@ -355,15 +351,17 @@ Auto-submit cast
 
 ### Advantages:
 ✅ **Unified API:** Same interface (`onSuccess`, `amount`, `recipientAddress`)  
-✅ **Environment-aware:** Automatically routes to correct implementation  
+✅ **Unified Implementation:** All environments use OnchainKit Transaction component  
+✅ **Environment-aware:** Automatically routes to correct connector  
 ✅ **Error handling:** Comprehensive error handling in all environments  
-✅ **Gas management:** Automatic in Base/External, manual in Farcaster  
+✅ **Gas management:** Automatic gas estimation across all environments  
+✅ **Auto-connection:** Base and Farcaster Mini Apps auto-connect wallets  
 ✅ **Transaction verification:** Backend verifies all payments on-chain  
 
 ### Considerations:
-⚠️ **Farcaster:** Manual gas estimation (hardcoded 30000)  
-⚠️ **Farcaster:** Polling-based confirmation (not event-driven)  
-⚠️ **Base/External:** Depends on OnchainKit (larger bundle size)  
+⚠️ **All:** Depends on OnchainKit (larger bundle size)  
+⚠️ **All:** Requires wagmi setup  
+⚠️ **External:** Requires manual wallet connection  
 ⚠️ **All:** Requires wallet connection before payment  
 
 ---
@@ -373,8 +371,8 @@ Auto-submit cast
 | Component | File | Purpose |
 |-----------|------|---------|
 | Payment Router | `components/UnifiedPaymentButton.tsx` | Routes to correct payment component |
-| Base/External Payment | `components/BasePaymentButton.tsx` | OnchainKit-based payment |
-| Farcaster Payment | `components/FarcasterPaymentButton.tsx` | Farcaster SDK-based payment |
+| Base/External Payment | `components/BasePaymentButton.tsx` | OnchainKit-based payment for Base/External |
+| Farcaster Payment | `components/FarcasterPaymentButton.tsx` | OnchainKit-based payment for Farcaster |
 | Environment Detection | `hooks/useEnvironmentDetection.ts` | Detects current environment |
 | Wagmi Config | `lib/wagmi-config.ts` | Wallet connectors configuration |
 | Transaction Verification | `app/api/battle/submit-cast/route.ts` | Backend payment verification |
@@ -408,10 +406,15 @@ Auto-submit cast
 
 ## Conclusion
 
-The payment system uses **environment-aware routing** to provide the best experience for each platform:
-- **Farcaster:** Direct SDK integration with manual transaction building
-- **Base Mini App:** OnchainKit with automatic wallet connection
-- **External Browser:** OnchainKit with multi-wallet support
+The payment system uses **environment-aware routing** with a **unified OnchainKit implementation**:
+- **Farcaster Mini App:** OnchainKit Transaction with Farcaster Mini App connector (auto-connect)
+- **Base Mini App:** OnchainKit Transaction with Base Account connector (auto-connect)
+- **External Browser:** OnchainKit Transaction with multi-wallet support (manual connect)
 
-All environments converge on the same backend verification and cast submission flow, ensuring consistent behavior across platforms.
+All environments:
+- Use the same OnchainKit `Transaction` component
+- Have automatic gas estimation and error handling
+- Support lifecycle status tracking
+- Converge on the same backend verification and cast submission flow
+- Provide consistent user experience across platforms
 
