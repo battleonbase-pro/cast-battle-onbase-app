@@ -93,49 +93,53 @@ switch (environmentInfo.environment) {
 **Component:** `components/FarcasterPaymentButton.tsx`
 
 **How it works:**
-1. **Uses Farcaster SDK** (`@farcaster/miniapp-sdk`)
-2. **Gets Ethereum Provider:**
-   ```typescript
-   ethProvider = await sdk.wallet.getEthereumProvider();
-   // OR fallback:
-   ethProvider = sdk.wallet.ethProvider;
+1. **Uses OnchainKit Transaction Component** (same as Base Mini App)
+   ```tsx
+   <Transaction
+     calls={calls}
+     chainId={84532}  // Base Sepolia
+     onStatus={handleTransactionStatus}
+     onSuccess={handleTransactionSuccess}
+     onError={handleTransactionError}
+   />
    ```
 
-3. **Manual Transaction Building:**
-   - Constructs USDC transfer data manually (`0xa9059cbb...`)
-   - Uses `parseUnits(amount, 6)` for USDC decimals
-   - Creates transaction params:
-     ```typescript
-     {
-       to: USDC_CONTRACT_ADDRESS,
-       data: transferData,  // ERC20 transfer encoded
-       value: '0x0',
-       gas: '0x7530'  // 30000 gas limit
-     }
-     ```
+2. **Uses Wagmi Hooks:**
+   - `useAccount()` - Get connected address
+   - `useConnect()` - Connect to Farcaster Mini App connector
+   - `useBalance()` - Check gas balance
 
-4. **Sends Transaction:**
+3. **Auto-Connection:**
+   - Automatically connects to `farcasterMiniApp` connector on mount
+   - Uses `miniAppConnector()` from wagmi-config
+   - If not connected, shows "Connect Farcaster Wallet to Pay" button
+
+4. **Transaction Configuration:**
    ```typescript
-   txHash = await ethProvider.request({
-     method: 'eth_sendTransaction',
-     params: [transactionParams]
-   });
+   const calls = [{
+     address: USDC_CONTRACT_ADDRESS,
+     abi: usdcAbi,
+     functionName: 'transfer',
+     args: [recipientAddress, parseUnits(amount, 6)]
+   }];
    ```
 
-5. **Polling for Confirmation:**
-   - Polls `eth_getTransactionReceipt` every 1 second
-   - Max 30 attempts (30 second timeout)
-   - Calls `onSuccess(txHash)` when confirmed
+5. **Lifecycle Handling:**
+   - `onStatus`: Tracks transaction lifecycle (init, building, pending, error)
+   - `onSuccess`: Receives `TransactionResponseType` with receipts
+   - `onError`: Handles transaction failures
 
 **Pros:**
-- Direct control over transaction
-- Works specifically for Farcaster environment
-- No external dependencies
+- Automatic gas estimation (no hardcoded limits)
+- Built-in error handling
+- Lifecycle status tracking
+- Event-driven callbacks (no polling)
+- Consistent API with Base Mini App and External Browser
+- Works with Farcaster Mini App connector
 
 **Cons:**
-- Manual gas estimation (hardcoded 30000)
-- Manual transaction encoding
-- Polling-based confirmation (not event-driven)
+- Depends on OnchainKit (larger bundle)
+- Requires wagmi setup
 
 ---
 
@@ -242,17 +246,19 @@ const connectors = [
 ```
 User clicks "Pay & Submit"
   ↓
-handleFarcasterPayment()
+OnchainKit Transaction component
   ↓
-Get Ethereum Provider from SDK
+Auto-connect to Farcaster Mini App connector (if not connected)
   ↓
-Build ERC20 transfer data (manual encoding)
+Build transaction via wagmi (automatic)
   ↓
-Send via eth_sendTransaction
+Estimate gas (automatic)
   ↓
-Poll eth_getTransactionReceipt (every 1s, max 30s)
+Send transaction (wagmi handles)
   ↓
-onSuccess(txHash) called
+Track lifecycle status
+  ↓
+onSuccess(TransactionResponseType) called
   ↓
 Auto-submit cast
 ```
