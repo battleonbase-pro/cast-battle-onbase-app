@@ -20,7 +20,7 @@ export default function FarcasterPaymentButton({
   onSuccess,
   disabled = false,
   loading = false,
-  children: _children,
+  children,
   amount,
   recipientAddress
 }: FarcasterPaymentButtonProps) {
