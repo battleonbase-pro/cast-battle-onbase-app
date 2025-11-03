@@ -279,21 +279,25 @@ export default function Home() {
     try {
       console.log('🔐 Manual logout triggered');
       
+      // Clear user state FIRST to prevent auto-re-authentication
+      setUser(null);
+      
       // Disconnect wagmi wallet if connected
       if (isConnected) {
         console.log('🔌 Disconnecting wallet...');
-        disconnect();
+        await disconnect();
+        // Wait a bit for disconnect to complete
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
       
-      // Clear all state
-      setUser(null);
+      // Clear all other state
       setCurrentBattle(null);
       setTimeRemaining(null);
       clearFormState(); // Clear form state in context
       setHasSubmittedCast(false);
       setPaymentStatus('idle');
       setPaymentError(null);
-        setUserPoints(0);
+      setUserPoints(0);
       setLeaderboard([]);
       setBattleHistory([]);
       setSentimentData(null);
@@ -430,7 +434,7 @@ export default function Home() {
     } finally {
       setIsSubmittingCast(false);
     }
-  }, [hasSubmittedCast, isSubmittingCast, baseAccountUser?.address, castContent, selectedSide, fetchUserPoints]);
+  }, [hasSubmittedCast, isSubmittingCast, baseAccountUser?.address, castContent, selectedSide, fetchUserPoints, clearFormState]);
 
   // Handle payment success with guard to prevent duplicate processing
   const handlePaymentSuccess = useCallback(async (transactionId?: string) => {

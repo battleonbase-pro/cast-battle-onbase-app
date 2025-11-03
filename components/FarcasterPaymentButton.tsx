@@ -74,6 +74,16 @@ export default function FarcasterPaymentButton({
       return; // Don't log 'init' status to prevent infinite logs
     }
     
+    // Prevent processing success status multiple times
+    if (lifecycleStatus?.statusName === 'success') {
+      // Don't log or process 'success' here - it's handled by handleTransactionSuccess
+      // Logging it causes infinite loops
+      if (hasProcessedSuccessRef.current) {
+        return; // Already processed, ignore
+      }
+      return; // Let handleTransactionSuccess handle it
+    }
+    
     // Only log important statuses (not 'success' to prevent infinite loops)
     if (lifecycleStatus?.statusName === 'buildingTransaction') {
       console.log('🔧 [Farcaster] Building transaction...');
@@ -82,10 +92,6 @@ export default function FarcasterPaymentButton({
     } else if (lifecycleStatus?.statusName === 'error') {
       console.error('❌ [Farcaster] Transaction failed:', lifecycleStatus.statusData);
       hasProcessedSuccessRef.current = false;
-    } else if (lifecycleStatus?.statusName === 'success') {
-      // Don't log 'success' here - it's handled by handleTransactionSuccess
-      // Logging it causes infinite loops
-      return;
     }
   }, []);
 
