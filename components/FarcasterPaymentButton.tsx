@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useCallback } from 'react';
-import { Transaction, LifecycleStatus, TransactionResponseType } from '@coinbase/onchainkit/transaction';
+import { Transaction, TransactionButton, LifecycleStatus, TransactionResponseType } from '@coinbase/onchainkit/transaction';
 import { parseUnits, formatUnits } from 'viem';
 import { useAccount, useConnect, useBalance } from 'wagmi';
 import styles from './BasePaymentButton.module.css';
@@ -207,6 +207,28 @@ export default function FarcasterPaymentButton({
 
   return (
     <div className={styles.paymentButtonContainer}>
+      {/* Transaction details preview - shows payment info before confirmation */}
+      <div style={{ 
+        padding: '12px', 
+        marginBottom: '12px', 
+        background: '#f5f5f5', 
+        borderRadius: '8px',
+        fontSize: '14px',
+        color: '#333'
+      }}>
+        <div style={{ fontWeight: '600', marginBottom: '8px' }}>Payment Details:</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+          <span>Amount:</span>
+          <span style={{ fontWeight: '500' }}>{amount} USDC</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#666' }}>
+          <span>Recipient:</span>
+          <span style={{ fontFamily: 'monospace' }}>
+            {recipientAddress.slice(0, 6)}...{recipientAddress.slice(-4)}
+          </span>
+        </div>
+      </div>
+      
       <Transaction
         calls={calls} 
         chainId={84532} // Base Sepolia chain ID
@@ -214,7 +236,11 @@ export default function FarcasterPaymentButton({
         onSuccess={handleTransactionSuccess}
         onError={handleTransactionError}
         disabled={disabled || loading}
-      />
+      >
+        <TransactionButton>
+          {children || `Pay ${amount} USDC & Submit`}
+        </TransactionButton>
+      </Transaction>
     </div>
   );
 }
