@@ -119,7 +119,8 @@ export default function FarcasterPaymentButton({
         errorStack: error.stack,
         errorType: error.name,
         errorCode: (error as { code?: string }).code,
-        fullError: JSON.stringify(error, null, 2)
+        fullError: JSON.stringify(error, (key, value) =>
+          typeof value === 'bigint' ? value.toString() : value, 2)
       });
     }
   };
