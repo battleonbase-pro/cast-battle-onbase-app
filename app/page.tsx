@@ -183,6 +183,11 @@ export default function Home() {
         // Optionally trigger battle creation or show a message
       }
       
+      // Fetch user points early if user is authenticated
+      if (baseAccountUser?.address) {
+        fetchUserPoints(baseAccountUser.address);
+      }
+      
       // Fetch leaderboard
       const leaderboardResponse = await fetch('/api/user/leaderboard');
       const leaderboardData = await leaderboardResponse.json();
@@ -203,7 +208,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, []); // Empty deps - loadInitialData doesn't depend on props
+  }, [baseAccountUser?.address, fetchUserPoints]); // Added dependencies
 
   // Handle authentication success
   const handleAuthSuccess = useCallback(async (user: { address: string; environment: string; isAuthenticated: boolean } | null) => {
@@ -223,7 +228,7 @@ export default function Home() {
     // Set authentication state via context
     setUser(user);
     
-    // Fetch user points
+    // Fetch user points immediately (don't wait)
     fetchUserPoints(user.address);
     
     // Connect to wagmi for payment transactions in external browsers
@@ -513,6 +518,7 @@ export default function Home() {
 
     try {
       setIsProcessing(true);
+      setPaymentStatus('processing'); // Set processing state
       
       // Check if payment is required
       const paymentCheck = await checkPaymentRequired();
@@ -528,6 +534,7 @@ export default function Home() {
           } catch (error) {
       console.error('Error submitting cast:', error);
       setPaymentError('Failed to submit cast. Please try again.');
+      setPaymentStatus('idle');
     } finally {
       setIsProcessing(false);
     }

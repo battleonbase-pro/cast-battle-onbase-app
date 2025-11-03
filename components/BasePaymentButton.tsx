@@ -159,11 +159,17 @@ export default function BasePaymentButton({
     };
     
     return (
-      <div className={styles.paymentButtonContainer}>
+      <div className={styles.paymentButtonContainer} style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
         <button
           disabled={false}
           className={styles.transactionButton}
           onClick={handleConnectWallet}
+          style={{ 
+            color: 'white',
+            textAlign: 'center',
+            width: '100%',
+            maxWidth: '400px'
+          }}
         >
           Connect Wallet to Pay
         </button>

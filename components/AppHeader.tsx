@@ -33,7 +33,7 @@ export default function AppHeader({ userAddress, userPoints, onSignOut }: AppHea
                 </div>
               </span>
               <span className={styles.userPoints}>
-                {userPoints} pts
+                {userPoints !== undefined ? `${userPoints} pts` : 'Loading...'}
               </span>
             </div>
             <button 

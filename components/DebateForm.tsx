@@ -73,6 +73,23 @@ export default function DebateForm({
     );
   }
 
+  // Show loading state during payment processing
+  if (paymentStatus === 'processing' || (paymentStatus !== 'idle' && !hasSubmittedCast && !paymentError)) {
+    return (
+      <div className={styles.submitForm}>
+        <div className={styles.alreadySubmitted}>
+          <div className={styles.submittedIcon} style={{ fontSize: '48px', animation: 'spin 1s linear infinite' }}>⏳</div>
+          <div className={styles.submittedContent}>
+            <h3 className={styles.submittedTitle}>Processing Payment...</h3>
+            <p className={styles.submittedMessage}>
+              Please wait while we process your payment and submit your argument.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (hasSubmittedCast) {
     return (
       <div className={styles.submitForm}>
@@ -193,6 +210,7 @@ export default function DebateForm({
               onClick={() => {
                 // Direct payment trigger - the x402 protocol will handle payment requirement check
                 console.log('💰 Payment button clicked - triggering payment directly');
+                // Note: paymentStatus is set to 'processing' in handleSubmitCast or via onPaymentStart if available
               }}
               onSuccess={onPaymentSuccess}
               disabled={castContent.trim().length < 10 || castContent.trim().length > 140 || paymentSuccessCastFailed}

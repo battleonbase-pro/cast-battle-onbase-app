@@ -5,6 +5,7 @@ import { ConnectWallet, Wallet } from '@coinbase/onchainkit/wallet';
 import { useAccount } from 'wagmi';
 import { sdk } from '@farcaster/miniapp-sdk';
 import Image from 'next/image';
+import { useAuth } from '@/contexts/AuthContext';
 import styles from './BaseAccountAuth.module.css';
 
 interface OnchainKitAuthProps {
@@ -36,6 +37,9 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError: _onAuthErro
   
   // Use wagmi's useAccount to check wallet connection
   const { isConnected, address } = useAccount();
+  
+  // Check if user is authenticated to prevent showing "Connecting..." after logout
+  const { isAuthenticated } = useAuth();
 
   // Signal frame readiness as per MiniKit best practices
   useEffect(() => {
@@ -326,7 +330,7 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError: _onAuthErro
                 <ConnectWallet />
               </Wallet>
             </div>
-          ) : hasAuthenticated ? (
+          ) : hasAuthenticated && isAuthenticated ? (
             <div className={styles.connectedInfo}>
               <div className={styles.connectedIcon}>✅</div>
               <div className={styles.connectedText}>
@@ -339,17 +343,7 @@ export default function OnchainKitAuth({ onAuthSuccess, onAuthError: _onAuthErro
                 </div>
               </div>
             </div>
-          ) : (
-            <div className={styles.connectedInfo}>
-              <div className={styles.connectedIcon}>⏳</div>
-              <div className={styles.connectedText}>
-                <div className={styles.connectedTitle}>Connecting...</div>
-                <div className={styles.connectedStatus}>
-                  Setting up your wallet
-                </div>
-              </div>
-            </div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
