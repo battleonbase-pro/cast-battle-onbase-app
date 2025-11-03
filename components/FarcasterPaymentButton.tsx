@@ -68,6 +68,13 @@ export default function FarcasterPaymentButton({
   ], [USDC_CONTRACT_ADDRESS, recipientAddress, amount, usdcAbi]);
 
   const handleTransactionStatus = useCallback((lifecycleStatus: LifecycleStatus) => {
+    // Log all statuses for debugging
+    console.log('📊 [Farcaster] Transaction status:', {
+      statusName: lifecycleStatus?.statusName,
+      statusData: lifecycleStatus?.statusData,
+      fullStatus: JSON.stringify(lifecycleStatus, null, 2)
+    });
+    
     // Reset the success flag when a new transaction starts
     if (lifecycleStatus?.statusName === 'init') {
       hasProcessedSuccessRef.current = false;
@@ -120,18 +127,36 @@ export default function FarcasterPaymentButton({
   useEffect(() => {
     if (!isConnected && connectors.length > 0) {
       const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp');
+      console.log('🔍 [Farcaster] Connectors available:', connectors.map(c => ({ id: c.id, name: c.name })));
+      console.log('🔍 [Farcaster] Farcaster connector found:', !!farcasterConnector);
+      
       if (farcasterConnector) {
-        console.log('🔗 [Farcaster] Auto-connecting to Farcaster Mini App...');
-        connect({ connector: farcasterConnector }).catch((error) => {
-          console.error('❌ [Farcaster] Auto-connection failed:', error);
-        });
+        console.log('🔗 [Farcaster] Auto-connecting to Farcaster Mini App connector:', farcasterConnector.id);
+        connect({ connector: farcasterConnector })
+          .then(() => {
+            console.log('✅ [Farcaster] Auto-connection successful');
+          })
+          .catch((error) => {
+            console.error('❌ [Farcaster] Auto-connection failed:', error);
+          });
+      } else {
+        console.warn('⚠️ [Farcaster] Farcaster Mini App connector not found in connectors list');
       }
+    } else if (isConnected) {
+      console.log('✅ [Farcaster] Wallet already connected:', address);
     }
-  }, [isConnected, connectors, connect]);
+  }, [isConnected, connectors, connect, address]);
 
   // Debug logging - log once on mount only
   useEffect(() => {
     console.log('🔧 [Farcaster] FarcasterPaymentButton mounted');
+    console.log('🔍 [Farcaster] Wallet connection state:', {
+      isConnected,
+      address,
+      connectorsCount: connectors.length,
+      connectorIds: connectors.map(c => c.id)
+    });
+    console.log('🔍 [Farcaster] Transaction calls:', JSON.stringify(calls, null, 2));
   }, []); // Empty deps - log only once
 
   // Separate effect for gas balance warning - only when balance changes
