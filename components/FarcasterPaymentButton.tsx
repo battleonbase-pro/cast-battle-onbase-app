@@ -68,11 +68,12 @@ export default function FarcasterPaymentButton({
   ], [USDC_CONTRACT_ADDRESS, recipientAddress, amount, usdcAbi]);
 
   const handleTransactionStatus = useCallback((lifecycleStatus: LifecycleStatus) => {
-    // Log all statuses for debugging
+    // Log all statuses for debugging (with BigInt replacer)
     console.log('📊 [Farcaster] Transaction status:', {
       statusName: lifecycleStatus?.statusName,
       statusData: lifecycleStatus?.statusData,
-      fullStatus: JSON.stringify(lifecycleStatus, null, 2)
+      fullStatus: JSON.stringify(lifecycleStatus, (key, value) =>
+        typeof value === 'bigint' ? value.toString() : value, 2)
     });
     
     // Reset the success flag when a new transaction starts
@@ -156,7 +157,9 @@ export default function FarcasterPaymentButton({
       connectorsCount: connectors.length,
       connectorIds: connectors.map(c => c.id)
     });
-    console.log('🔍 [Farcaster] Transaction calls:', JSON.stringify(calls, null, 2));
+    // Serialize calls with BigInt replacer
+    console.log('🔍 [Farcaster] Transaction calls:', JSON.stringify(calls, (key, value) =>
+      typeof value === 'bigint' ? value.toString() : value, 2));
   }, []); // Empty deps - log only once
 
   // Separate effect for gas balance warning - only when balance changes
