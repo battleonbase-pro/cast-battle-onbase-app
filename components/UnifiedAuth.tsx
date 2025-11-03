@@ -67,23 +67,26 @@ export default function UnifiedAuth({ onAuthSuccess, onAuthError, environmentInf
 
   return (
     <div>
-      {/* Debug Environment Status */}
-      <div style={{ 
-        background: '#f0f0f0', 
-        padding: '8px 16px', 
-        margin: '0', 
-        fontSize: '12px', 
-        color: '#666',
-        borderBottom: '1px solid #ddd',
-        textAlign: 'center'
-      }}>
-        🔍 Debug: Environment = {environmentInfo.environment} | 
-        ClientFID = {environmentInfo.clientFid || 'undefined'} | 
-        UserFID = {environmentInfo.userFid || 'undefined'} | 
-        {environmentInfo.isMiniApp && (
-          <> Mini App = Yes | Farcaster = {environmentInfo.isFarcaster ? 'Yes' : 'No'} | Base App = {environmentInfo.isBaseApp ? 'Yes' : 'No'}</>
-        )}
-      </div>
+      {/* Debug Environment Status - DISABLED */}
+      {/* Uncomment below to show debug info in development */}
+      {process.env.NODE_ENV === 'development' && false && (
+        <div style={{ 
+          background: '#f0f0f0', 
+          padding: '8px 16px', 
+          margin: '0', 
+          fontSize: '12px', 
+          color: '#666',
+          borderBottom: '1px solid #ddd',
+          textAlign: 'center'
+        }}>
+          🔍 Debug: Environment = {environmentInfo.environment} | 
+          ClientFID = {environmentInfo.clientFid || 'undefined'} | 
+          UserFID = {environmentInfo.userFid || 'undefined'} | 
+          {environmentInfo.isMiniApp && (
+            <> Mini App = Yes | Farcaster = {environmentInfo.isFarcaster ? 'Yes' : 'No'} | Base App = {environmentInfo.isBaseApp ? 'Yes' : 'No'}</>
+          )}
+        </div>
+      )}
       
       {renderAuthComponent()}
     </div>
