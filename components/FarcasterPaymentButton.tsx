@@ -68,21 +68,13 @@ export default function FarcasterPaymentButton({
   ], [USDC_CONTRACT_ADDRESS, recipientAddress, amount, usdcAbi]);
 
   const handleTransactionStatus = useCallback((lifecycleStatus: LifecycleStatus) => {
-    // Log all statuses for debugging (with BigInt replacer)
-    console.log('📊 [Farcaster] Transaction status:', {
-      statusName: lifecycleStatus?.statusName,
-      statusData: lifecycleStatus?.statusData,
-      fullStatus: JSON.stringify(lifecycleStatus, (key, value) =>
-        typeof value === 'bigint' ? value.toString() : value, 2)
-    });
-    
     // Reset the success flag when a new transaction starts
     if (lifecycleStatus?.statusName === 'init') {
       hasProcessedSuccessRef.current = false;
       return; // Don't log 'init' status to prevent infinite logs
     }
     
-    // Only log important statuses
+    // Only log important statuses (not 'success' to prevent infinite loops)
     if (lifecycleStatus?.statusName === 'buildingTransaction') {
       console.log('🔧 [Farcaster] Building transaction...');
     } else if (lifecycleStatus?.statusName === 'transactionPending') {
@@ -90,6 +82,10 @@ export default function FarcasterPaymentButton({
     } else if (lifecycleStatus?.statusName === 'error') {
       console.error('❌ [Farcaster] Transaction failed:', lifecycleStatus.statusData);
       hasProcessedSuccessRef.current = false;
+    } else if (lifecycleStatus?.statusName === 'success') {
+      // Don't log 'success' here - it's handled by handleTransactionSuccess
+      // Logging it causes infinite loops
+      return;
     }
   }, []);
 

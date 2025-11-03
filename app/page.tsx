@@ -399,7 +399,7 @@ export default function Home() {
               
       if (data.success) {
         console.log('✅ Cast submitted successfully:', data);
-        setHasSubmittedCast(true);
+                setHasSubmittedCast(true);
         clearFormState(); // Clear form state in context
         setPaymentStatus('idle');
         setPaymentError(null);
@@ -469,7 +469,10 @@ export default function Home() {
     setTransactionHash(transactionId || null);
     
     // Auto-submit the cast after successful payment
+    // Add a small delay to allow backend to index the transaction
     console.log('📝 Auto-submitting argument after successful payment...');
+    console.log('⏳ Waiting 2 seconds for transaction to be indexed on backend...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
     await submitCastAfterPayment(transactionId);
   }, [hasProcessedPayment, baseAccountUser, castContent, selectedSide, isAuthenticated, submitCastAfterPayment]);
 
