@@ -7,7 +7,16 @@ set -e
 
 # Load environment variables from parent .env file if exists
 if [ -f ../.env ]; then
-    export $(grep -v '^#' ../.env | xargs)
+    set -a
+    # Use a safer method to source .env file
+    while IFS= read -r line || [ -n "$line" ]; do
+        # Skip empty lines and comments
+        [[ "$line" =~ ^[[:space:]]*# ]] && continue
+        [[ -z "$line" ]] && continue
+        # Export the variable
+        export "$line" 2>/dev/null || true
+    done < ../.env
+    set +a
 fi
 
 # Configuration
