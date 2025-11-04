@@ -110,6 +110,81 @@ export default function Home() {
     initializeFarcasterSDK();
   }, []);
 
+  // Connect to SSE stream for real-time sentiment updates
+  useEffect(() => {
+    if (!currentBattle) return;
+
+    console.log('📡 Connecting to SSE stream for sentiment updates...');
+    const eventSource = new EventSource('/api/battle/state-stream');
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('📡 SSE event received:', data.type, data);
+
+        if (data.type === 'SENTIMENT_UPDATE' && data.data?.sentiment) {
+          const sentiment = data.data.sentiment;
+          console.log('📊 Sentiment update received:', sentiment);
+          
+          // Update current sentiment
+          setSentimentData({
+            support: sentiment.support,
+            oppose: sentiment.oppose,
+            supportPercent: sentiment.supportPercent,
+            opposePercent: sentiment.opposePercent
+          });
+
+          // Add to history
+          setSentimentHistory(prev => {
+            const newEntry = {
+              timestamp: Date.now(),
+              support: sentiment.support,
+              oppose: sentiment.oppose,
+              supportPercent: sentiment.supportPercent,
+              opposePercent: sentiment.opposePercent
+            };
+            // Keep last 50 entries for the chart
+            return [...prev, newEntry].slice(-50);
+          });
+        }
+
+        if (data.type === 'CAST_SUBMITTED' && data.data?.cast) {
+          // Refresh casts list when a new cast is submitted
+          fetch('/api/battle/casts')
+            .then(res => res.json())
+            .then(data => {
+              if (data.success) {
+                setCasts(data.casts);
+              }
+            })
+            .catch(err => console.error('Failed to refresh casts:', err));
+        }
+      } catch (error) {
+        console.error('Error parsing SSE event:', error);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('SSE connection error:', error);
+      eventSource.close();
+      
+      // Attempt to reconnect after 3 seconds
+      setTimeout(() => {
+        console.log('🔄 Attempting to reconnect SSE...');
+        // The useEffect will run again and create a new connection
+      }, 3000);
+    };
+
+    eventSource.onopen = () => {
+      console.log('✅ SSE connection established');
+    };
+
+    return () => {
+      console.log('📡 Closing SSE connection');
+      eventSource.close();
+    };
+  }, [currentBattle]);
+
   // Fetch user points - memoized to prevent re-creation
   const fetchUserPoints = useCallback(async (address: string) => {
     try {
@@ -172,6 +247,38 @@ export default function Home() {
         }
         
         // Note: User cast status check moved to checkUserCastStatus() to prevent bypass
+        
+        // Load initial sentiment data
+        try {
+          const castsResponse = await fetch('/api/battle/casts');
+          const castsData = await castsResponse.json();
+          if (castsData.success && castsData.casts) {
+            const casts = castsData.casts;
+            const support = casts.filter((c: Cast) => c.side === 'SUPPORT').length;
+            const oppose = casts.filter((c: Cast) => c.side === 'OPPOSE').length;
+            const total = support + oppose;
+            
+            if (total > 0) {
+              setSentimentData({
+                support,
+                oppose,
+                supportPercent: Math.round((support / total) * 100),
+                opposePercent: Math.round((oppose / total) * 100)
+              });
+              
+              // Add initial entry to history
+              setSentimentHistory([{
+                timestamp: Date.now(),
+                support,
+                oppose,
+                supportPercent: Math.round((support / total) * 100),
+                opposePercent: Math.round((oppose / total) * 100)
+              }]);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load initial sentiment data:', error);
+        }
       } else if (battleData.fallback) {
         // Handle database quota issues gracefully
         console.log('⚠️ Database quota exceeded, showing maintenance message');
