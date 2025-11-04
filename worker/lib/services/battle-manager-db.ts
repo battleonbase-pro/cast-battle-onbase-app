@@ -5,6 +5,7 @@
 
 import { DatabaseService } from './database';
 import { createDebateOracle } from './debate-oracle';
+import { ethers } from 'ethers';
 
 export interface BattleConfig {
   battleDurationHours: number;
@@ -219,26 +220,19 @@ export class BattleManagerDB {
       const actualStartTime = new Date();
       const endTime = new Date(actualStartTime.getTime() + (this.config.battleDurationHours * 60 * 60 * 1000));
 
-      let debateId: number | undefined;
+      // Note: Debates are now created only in the backend (database)
+      // No on-chain debate creation needed - MinimalDebatePool doesn't have createDebate()
+      // The contract only handles USDC storage and winner distribution
+      // debateId can be set later if needed, or we can use battle ID hash as debateId
+      console.log('📝 Creating battle in database (on-chain debate creation not needed)');
 
-      // Create on-chain debate if service is available
-      if (this.onChainDebateService && this.onChainDebateService.isReady()) {
-        try {
-          console.log('🔗 Creating on-chain debate...');
-          debateId = await this.onChainDebateService.createDebate(
-            topic.title,
-            "1", // 1 USDC entry fee
-            this.config.maxParticipants,
-            this.config.battleDurationHours
-          );
-          console.log(`✅ On-chain debate created with ID: ${debateId}`);
-        } catch (error) {
-          console.error('❌ Failed to create on-chain debate:', error);
-          console.log('⚠️  Creating battle without on-chain integration');
-        }
-      } else {
-        console.log('⚠️  OnChainDebateService not available, creating battle without on-chain integration');
-      }
+      // Generate a deterministic debateId from battle data for consistency
+      // This ensures each battle has a unique debateId for on-chain distribution
+      // We'll use a hash of battle title + timestamp to create a numeric ID
+      const battleIdHash = ethers.keccak256(
+        ethers.toUtf8Bytes(topic.title + actualStartTime.toISOString())
+      );
+      const debateId = parseInt(battleIdHash.slice(0, 10), 16) % 1000000; // 6-digit ID
 
       const battle = await this.db.createBattle({
         title: topic.title,
@@ -257,7 +251,7 @@ export class BattleManagerDB {
         balanceScore: 0, // topic.qualityAnalysis?.balanceScore,
         complexity: 'medium', // topic.complexity,
         controversyLevel: 'medium', // topic.controversyLevel,
-        debateId: debateId, // Link to on-chain debate
+        debateId: debateId, // Deterministic debate ID for on-chain distribution
       });
 
       console.log(`New battle created: ${battle.id}`);
@@ -369,8 +363,26 @@ export class BattleManagerDB {
         if (this.oracle) {
           try {
             console.log(`🔗 Processing on-chain payout for battle ${battleId}`);
-            await this.oracle.processBattleCompletion(battleId);
-            console.log(`✅ On-chain payout processed successfully`);
+            
+            // Get winner's address from database
+            const winnerUser = await this.db.getUserById(winner.userId);
+            if (!winnerUser?.address) {
+              console.log(`⚠️ Winner address not found, skipping on-chain payout`);
+            } else {
+              // Get participant count for prize calculation
+              const participantCount = battle.participants?.length || 0;
+              
+              if (participantCount === 0) {
+                console.log(`⚠️ No participants found, skipping on-chain payout`);
+              } else {
+                await this.oracle.processBattleCompletion(
+                  battleId,
+                  winnerUser.address,
+                  participantCount
+                );
+                console.log(`✅ On-chain payout processed successfully`);
+              }
+            }
           } catch (error) {
             console.error(`❌ Failed to process on-chain payout:`, error);
             // Don't fail the entire process if oracle fails

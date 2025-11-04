@@ -33,18 +33,13 @@ export class OnChainDebateService {
         }
       }
       
-      // Create contract directly with ABI instead of using factory to avoid ENS resolution
+      // Create contract directly with ABI for MinimalDebatePool
+      // Note: MinimalDebatePool doesn't have createDebate() - debates are created in backend only
       const contractABI = [
-        "function createDebate(string memory topic, uint256 entryFee, uint256 maxParticipants, uint256 durationSeconds) external returns (uint256)",
-        "function getDebate(uint256 debateId) external view returns (tuple(uint256 id, string topic, uint256 entryFee, uint256 maxParticipants, uint256 startTime, uint256 endTime, address[] participants, address winner, bool isActive, bool isCompleted))",
-        "function getUserDebates(address user) external view returns (uint256[])",
-        "function getUserPoints(address user) external view returns (uint256)",
-        "function isParticipant(uint256 debateId, address user) external view returns (bool)",
-        "function declareWinner(tuple(uint256 debateId, address winner, uint256 timestamp, bytes signature) result) external",
-        "event DebateCreated(uint256 indexed debateId, string topic, uint256 entryFee, uint256 maxParticipants, uint256 startTime, uint256 endTime)",
-        "event ParticipantJoined(uint256 indexed debateId, address participant)",
-        "event WinnerDeclared(uint256 indexed debateId, address winner, uint256 prizeAmount)",
-        "event PointsAwarded(address indexed user, uint256 points, string reason)"
+        "function getContractBalance() external view returns (uint256)",
+        "function isDebateCompleted(uint256 debateId) external view returns (bool)",
+        "function getPlatformFees(uint256 debateId) external view returns (uint256)",
+        "event WinnerDistributed(uint256 indexed debateId, address indexed winner, uint256 winnerPrize, uint256 platformFee)"
       ];
       
       this.contract = new ethers.Contract(DEBATE_POOL_CONTRACT_ADDRESS, contractABI, this.wallet);
@@ -59,116 +54,30 @@ export class OnChainDebateService {
   }
 
   /**
-   * Create a new debate on-chain
-   * @param topic Debate topic
-   * @param entryFee Entry fee in USDC (e.g., "1" for 1 USDC)
-   * @param maxParticipants Maximum number of participants
-   * @param durationHours Duration in hours
-   * @returns The debate ID
+   * Get contract USDC balance
+   * @returns Contract balance in USDC (with 6 decimals)
    */
-  async createDebate(
-    topic: string,
-    entryFee: string = "1", // Default to 1 USDC
-    maxParticipants: number = 100,
-    durationHours: number = 4
-  ): Promise<number> {
+  async getContractBalance(): Promise<string> {
     try {
-      console.log(`📝 Creating on-chain debate: "${topic}"`);
-      console.log(`   Entry Fee: ${entryFee} USDC`);
-      console.log(`   Max Participants: ${maxParticipants}`);
-      console.log(`   Duration: ${durationHours} hours`);
-
-      const entryFeeWei = ethers.parseUnits(entryFee, 6); // USDC has 6 decimals
-      const durationSeconds = Math.floor(durationHours * 3600); // Ensure integer seconds
-
-      const tx = await this.contract.createDebate(
-        topic,
-        entryFeeWei,
-        maxParticipants,
-        durationSeconds
-      );
-
-      console.log(`⏳ Transaction sent: ${tx.hash}`);
-      const receipt = await tx.wait();
-      console.log(`✅ Transaction confirmed in block: ${receipt?.blockNumber}`);
-
-      // Extract debate ID from event
-      let debateId = 0;
-      console.log(`🔍 Parsing ${receipt?.logs?.length || 0} transaction logs...`);
-      
-      for (const log of receipt?.logs || []) {
-        console.log(`🔍 Log: ${log.address} topics: ${log.topics?.length || 0}`);
-        
-        // Try to parse with contract interface first
-        let parsed = null;
-        try {
-          parsed = this.contract.interface.parseLog(log);
-          console.log(`🔍 Parsed log: ${parsed?.name}, args:`, parsed?.args);
-          
-          if (parsed?.name === "DebateCreated") {
-            debateId = Number(parsed.args.debateId);
-            console.log(`✅ Found DebateCreated event with ID: ${debateId}`);
-            break;
-          }
-        } catch (error) {
-          console.log(`⚠️ Could not parse log with contract interface:`, error.message);
-        }
-        
-        // Fallback: Extract debate ID directly from topics
-        // The debate ID is typically in the second topic (index 1)
-        if (debateId === 0 && log.topics && log.topics.length >= 2) {
-          const debateIdHex = log.topics[1];
-          debateId = parseInt(debateIdHex, 16);
-          console.log(`✅ Extracted debate ID from topic: ${debateId} (from ${debateIdHex})`);
-          break;
-        }
-      }
-
-      if (debateId === 0) {
-        console.log(`❌ No DebateCreated event found in transaction logs`);
-        console.log(`📋 Available logs:`, receipt?.logs?.map(log => ({
-          address: log.address,
-          topics: log.topics,
-          data: log.data
-        })));
-        throw new Error('Failed to extract debate ID from transaction');
-      }
-
-      console.log(`🎉 On-chain debate created with ID: ${debateId}`);
-      console.log(`🔗 Transaction hash: ${tx.hash}`);
-      console.log(`⛽ Gas used: ${receipt?.gasUsed.toString()}`);
-
-      return debateId;
-
+      const balance = await this.contract.getContractBalance();
+      return ethers.formatUnits(balance, 6); // USDC has 6 decimals
     } catch (error) {
-      console.error(`❌ Failed to create on-chain debate:`, error);
+      console.error(`❌ Failed to get contract balance:`, error);
       throw error;
     }
   }
 
   /**
-   * Get debate details from on-chain
+   * Check if a debate is completed on-chain
    * @param debateId The debate ID
-   * @returns Debate details
+   * @returns True if debate is completed
    */
-  async getDebate(debateId: number) {
+  async isDebateCompleted(debateId: number): Promise<boolean> {
     try {
-      const debate = await this.contract.getDebate(debateId);
-      return {
-        id: Number(debate.id),
-        topic: debate.topic,
-        entryFee: ethers.formatUnits(debate.entryFee, 6),
-        maxParticipants: Number(debate.maxParticipants),
-        startTime: new Date(Number(debate.startTime) * 1000),
-        endTime: new Date(Number(debate.endTime) * 1000),
-        participants: debate.participants,
-        winner: debate.winner,
-        isActive: debate.isActive,
-        isCompleted: debate.isCompleted
-      };
+      return await this.contract.isDebateCompleted(debateId);
     } catch (error) {
-      console.error(`❌ Failed to get debate ${debateId}:`, error);
-      throw error;
+      console.error(`❌ Failed to check debate completion for ${debateId}:`, error);
+      return false;
     }
   }
 

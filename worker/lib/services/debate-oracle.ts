@@ -39,28 +39,40 @@ export class DebateOracle {
   }
 
   /**
-   * Sign a winner result using EIP-712
+   * Sign winner distribution using EIP-712 for MinimalDebatePool
+   * @param debateId Debate ID
+   * @param winner Winner address
+   * @param winnerPrize Prize amount in USDC (with 6 decimals)
+   * @returns EIP-712 signature
    */
-  async signWinnerResult(debateId: number, winnerAddress: string): Promise<string> {
+  async signWinnerDistribution(
+    debateId: number,
+    winner: string,
+    winnerPrize: bigint
+  ): Promise<string> {
+    // Get chain ID from provider
+    const network = await this.provider.getNetwork();
+    const chainId = Number(network.chainId);
+
     const domain = {
-      name: 'DebatePool',
+      name: 'MinimalDebatePool',
       version: '1',
-      chainId: 84532, // Base Sepolia
+      chainId: chainId,
       verifyingContract: this.contractAddress
     };
 
     const types = {
-      WinnerResult: [
+      WinnerDistribution: [
         { name: 'debateId', type: 'uint256' },
         { name: 'winner', type: 'address' },
-        { name: 'timestamp', type: 'uint256' }
+        { name: 'winnerPrize', type: 'uint256' }
       ]
     };
 
     const value = {
-      debateId: debateId,
-      winner: winnerAddress,
-      timestamp: Math.floor(Date.now() / 1000)
+      debateId: BigInt(debateId),
+      winner: winner,
+      winnerPrize: winnerPrize
     };
 
     const signature = await this.wallet.signTypedData(domain, types, value);
@@ -68,51 +80,66 @@ export class DebateOracle {
   }
 
   /**
-   * Declare winner on the smart contract
+   * Distribute winner prize on the MinimalDebatePool contract
+   * @param debateId Debate ID
+   * @param winner Winner address
+   * @param winnerPrize Prize amount in USDC (with 6 decimals, e.g., 800000 for 0.8 USDC)
+   * @returns Transaction hash
    */
-  async declareWinner(debateId: number, winnerAddress: string): Promise<string> {
+  async distributeWinner(
+    debateId: number,
+    winner: string,
+    winnerPrize: bigint
+  ): Promise<string> {
     try {
-      console.log(`🏆 Declaring winner for debate ${debateId}: ${winnerAddress}`);
+      console.log(`🏆 Distributing winner prize for debate ${debateId}:`);
+      console.log(`   Winner: ${winner}`);
+      console.log(`   Prize: ${ethers.formatUnits(winnerPrize, 6)} USDC`);
 
-      // Sign the winner result
-      const signature = await this.signWinnerResult(debateId, winnerAddress);
+      // Sign the winner distribution
+      const signature = await this.signWinnerDistribution(debateId, winner, winnerPrize);
 
-      // Prepare the result object
-      const result = {
-        debateId: debateId,
-        winner: winnerAddress,
-        timestamp: Math.floor(Date.now() / 1000),
-        signature: signature
-      };
-
-      // Call the smart contract
-      const tx = await this.contract.declareWinner(result);
+      // Call the MinimalDebatePool contract
+      const tx = await this.contract.distributeWinner(
+        debateId,
+        winner,
+        winnerPrize,
+        signature
+      );
+      
+      console.log(`⏳ Transaction sent: ${tx.hash}`);
       const receipt = await tx.wait();
 
-      console.log(`✅ Winner declared successfully!`);
+      console.log(`✅ Winner prize distributed successfully!`);
       console.log(`   Transaction Hash: ${receipt.hash}`);
       console.log(`   Gas Used: ${receipt.gasUsed}`);
 
       return receipt.hash;
     } catch (error) {
-      console.error(`❌ Failed to declare winner:`, error);
+      console.error(`❌ Failed to distribute winner prize:`, error);
       throw error;
     }
   }
 
   /**
-   * Process battle completion and declare winner
+   * Process battle completion and distribute winner prize
+   * @param battleId Battle ID
+   * @param winnerAddress Winner's wallet address
+   * @param participantCount Number of participants (for calculating total collected)
    */
-  async processBattleCompletion(battleId: string): Promise<void> {
+  async processBattleCompletion(
+    battleId: string,
+    winnerAddress: string,
+    participantCount: number
+  ): Promise<void> {
     try {
       console.log(`🔄 Processing battle completion for battle ${battleId}`);
+      console.log(`   Winner: ${winnerAddress}`);
+      console.log(`   Participants: ${participantCount}`);
 
       // Get battle details from database
       const battle = await prisma.battle.findUnique({
-        where: { id: battleId },
-        include: {
-          participants: true
-        }
+        where: { id: battleId }
       });
 
       if (!battle) {
@@ -124,42 +151,71 @@ export class DebateOracle {
       }
 
       // Check if battle has a linked debate ID
+      // With MinimalDebatePool, debateId should always be set when battle is created
       if (!battle.debateId) {
-        throw new Error(`Battle ${battleId} is not linked to an on-chain debate`);
+        throw new Error(
+          `Battle ${battleId} must have debateId set in database. ` +
+          `Cannot distribute winner without on-chain debate ID. ` +
+          `Please ensure battles are created with a debateId.`
+        );
       }
+      const debateId = battle.debateId;
 
-      // Find the winner (first participant for now - simplified)
-      const winnerParticipant = battle.participants[0];
-      if (!winnerParticipant) {
-        console.log(`⚠️ No participants found for battle ${battleId}, skipping on-chain processing`);
-        return; // Skip on-chain processing, not an error
-      }
+      // Calculate total collected: each participant paid 1 USDC
+      const ENTRY_FEE_USDC = 1; // 1 USDC per participant
+      const totalCollected = participantCount * ENTRY_FEE_USDC;
+      
+      // Calculate winner prize: 80% of total collected
+      const winnerPrizePercentage = 0.8; // 80%
+      const winnerPrizeUSDC = totalCollected * winnerPrizePercentage;
+      
+      // Convert to USDC with 6 decimals
+      const winnerPrize = ethers.parseUnits(winnerPrizeUSDC.toFixed(6), 6);
 
-      // Get winner's wallet address
-      const winnerUser = await prisma.user.findUnique({
-        where: { id: winnerParticipant.userId }
-      });
+      console.log(`💰 Prize calculation:`);
+      console.log(`   Total collected: ${totalCollected} USDC`);
+      console.log(`   Winner prize (80%): ${winnerPrizeUSDC} USDC`);
+      console.log(`   Platform fee (20%): ${totalCollected - winnerPrizeUSDC} USDC`);
+      console.log(`🔗 Using debate ID: ${debateId}`);
 
-      if (!winnerUser?.address) {
-        throw new Error(`Winner user address not found`);
-      }
-
-      console.log(`🎯 Winner identified: ${winnerUser.address}`);
-      console.log(`🔗 Using debate ID: ${battle.debateId}`);
-
-      // Declare winner on smart contract using the correct debate ID
-      const txHash = await this.declareWinner(battle.debateId, winnerUser.address);
-
-      // Update battle with transaction hash
-      await prisma.battle.update({
-        where: { id: battleId },
-        data: {
-          // Add a field to store the transaction hash if needed
-          // transactionHash: txHash
+      // Pre-flight check: Verify debate is not already completed
+      try {
+        const isCompleted = await this.isDebateCompleted(debateId);
+        if (isCompleted) {
+          console.log(`⚠️ Debate ${debateId} already completed on-chain, skipping distribution`);
+          console.log(`   Battle ${battleId} winner distribution was already processed`);
+          return; // Skip - no gas wasted
         }
-      });
+      } catch (error) {
+        console.error(`⚠️ Failed to check debate completion status:`, error);
+        // Continue anyway - contract will revert if already completed
+      }
+
+      // Pre-flight check: Verify contract has sufficient balance
+      try {
+        const contractBalance = await this.getContractBalance();
+        const requiredBalance = parseFloat(ethers.formatUnits(winnerPrize, 6));
+        const availableBalance = parseFloat(contractBalance);
+        
+        if (availableBalance < requiredBalance) {
+          throw new Error(
+            `Insufficient contract balance. ` +
+            `Required: ${requiredBalance} USDC, ` +
+            `Available: ${availableBalance} USDC`
+          );
+        }
+        
+        console.log(`💰 Contract balance check: ${availableBalance} USDC available (sufficient)`);
+      } catch (error) {
+        console.error(`⚠️ Failed to check contract balance:`, error);
+        // Continue anyway - contract will revert if insufficient
+      }
+
+      // Distribute winner prize on MinimalDebatePool contract
+      const txHash = await this.distributeWinner(debateId, winnerAddress, winnerPrize);
 
       console.log(`✅ Battle ${battleId} processed successfully`);
+      console.log(`   Transaction: ${txHash}`);
     } catch (error) {
       console.error(`❌ Failed to process battle ${battleId}:`, error);
       throw error;
@@ -180,38 +236,29 @@ export class DebateOracle {
   }
 
   /**
-   * Get active debates from contract
+   * Check if a debate is completed on-chain
+   * @param debateId Debate ID
+   * @returns True if debate is completed
    */
-  async getActiveDebates(): Promise<number[]> {
+  async isDebateCompleted(debateId: number): Promise<boolean> {
     try {
-      const activeDebates = await this.contract.getActiveDebates();
-      return activeDebates.map((id: bigint) => Number(id));
+      return await this.contract.isDebateCompleted(debateId);
     } catch (error) {
-      console.error('Failed to get active debates:', error);
-      throw error;
+      console.error(`Failed to check debate completion status for ${debateId}:`, error);
+      return false;
     }
   }
 
   /**
-   * Get debate details from contract
+   * Get platform fees for a specific debate
+   * @param debateId Debate ID
+   * @returns Platform fees in USDC (with 6 decimals)
    */
-  async getDebateDetails(debateId: number): Promise<any> {
+  async getPlatformFees(debateId: number): Promise<bigint> {
     try {
-      const debate = await this.contract.getDebate(debateId);
-      return {
-        id: Number(debate.id),
-        topic: debate.topic,
-        entryFee: ethers.formatUnits(debate.entryFee, 6),
-        maxParticipants: Number(debate.maxParticipants),
-        startTime: new Date(Number(debate.startTime) * 1000),
-        endTime: new Date(Number(debate.endTime) * 1000),
-        participants: debate.participants,
-        winner: debate.winner,
-        isActive: debate.isActive,
-        isCompleted: debate.isCompleted
-      };
+      return await this.contract.getPlatformFees(debateId);
     } catch (error) {
-      console.error(`Failed to get debate ${debateId}:`, error);
+      console.error(`Failed to get platform fees for ${debateId}:`, error);
       throw error;
     }
   }
@@ -233,12 +280,13 @@ export function createDebateOracle(): DebateOracle {
     throw new Error('DEBATE_POOL_CONTRACT_ADDRESS environment variable is required');
   }
 
-  // Contract ABI (minimal for oracle operations)
+  // Contract ABI for MinimalDebatePool
   const contractABI = [
-    "function declareWinner(tuple(uint256 debateId, address winner, uint256 timestamp, bytes signature) result) external",
+    "function distributeWinner(uint256 debateId, address winner, uint256 winnerPrize, bytes memory signature) external",
     "function getContractBalance() external view returns (uint256)",
-    "function getActiveDebates() external view returns (uint256[])",
-    "function getDebate(uint256 debateId) external view returns (tuple(uint256 id, string topic, uint256 entryFee, uint256 maxParticipants, uint256 startTime, uint256 endTime, address[] participants, address winner, bool isActive, bool isCompleted))"
+    "function isDebateCompleted(uint256 debateId) external view returns (bool)",
+    "function getPlatformFees(uint256 debateId) external view returns (uint256)",
+    "event WinnerDistributed(uint256 indexed debateId, address indexed winner, uint256 winnerPrize, uint256 platformFee)"
   ];
 
   return new DebateOracle(rpcUrl, privateKey, contractAddress, contractABI);

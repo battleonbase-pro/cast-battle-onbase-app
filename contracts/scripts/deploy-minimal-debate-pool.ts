@@ -4,7 +4,11 @@ async function main() {
   console.log("🚀 Deploying MinimalDebatePool to Base Sepolia...");
 
   // Get the deployer account
-  const [deployer] = await ethers.getSigners();
+  const signers = await ethers.getSigners();
+  if (signers.length === 0) {
+    throw new Error("❌ No signers available. Please check your PRIVATE_KEY in .env file");
+  }
+  const deployer = signers[0];
   console.log("📝 Deploying with account:", deployer.address);
 
   // Check balance
