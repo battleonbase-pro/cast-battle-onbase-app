@@ -8,7 +8,8 @@ interface BattleHistory {
   category: string;
   endTime: string;
   participants: number;
-  winner?: string;
+  winner?: string; // 'SUPPORT' or 'OPPOSE'
+  winnerAddress?: string; // Winner's address for masking
   insights?: string;
 }
 
@@ -62,7 +63,17 @@ export default function BattleHistory({ battleHistory, isLoading }: BattleHistor
               <div className={styles.historyWinner}>
                 <div className={styles.winnerLabel}>🏆 Winner:</div>
                 <div className={styles.winnerInfo}>
-                  {battle.winner === 'SUPPORT' ? '✅ Support' : '❌ Oppose'}
+                  {(() => {
+                    const maskAddress = (address: string) => {
+                      if (!address || address.length < 10) return address;
+                      return `${address.slice(0, 6)}...${address.slice(-4)}`;
+                    };
+                    
+                    const sideDisplay = battle.winner === 'SUPPORT' ? '✅ Support' : '❌ Oppose';
+                    const addressDisplay = battle.winnerAddress ? maskAddress(battle.winnerAddress) : '';
+                    
+                    return addressDisplay ? `${addressDisplay} - ${sideDisplay}` : sideDisplay;
+                  })()}
                 </div>
               </div>
             )}

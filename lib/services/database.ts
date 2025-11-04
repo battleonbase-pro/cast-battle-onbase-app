@@ -177,6 +177,13 @@ export class DatabaseService {
                 user: true,
               },
             },
+            casts: {
+              select: {
+                id: true,
+                userId: true,
+                side: true,
+              },
+            },
           },
         },
       },
