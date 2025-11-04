@@ -5,4 +5,5 @@ import type * as interfaces from "./interfaces";
 export type { interfaces };
 export type { DebatePool } from "./DebatePool";
 export type { EmergencyUSDCWithdrawer } from "./EmergencyUSDCWithdrawer";
+export type { MinimalDebatePool } from "./MinimalDebatePool";
 export type { MockERC20 } from "./MockERC20";

@@ -4,4 +4,5 @@
 export * as interfaces from "./interfaces";
 export { DebatePool__factory } from "./DebatePool__factory";
 export { EmergencyUSDCWithdrawer__factory } from "./EmergencyUSDCWithdrawer__factory";
+export { MinimalDebatePool__factory } from "./MinimalDebatePool__factory";
 export { MockERC20__factory } from "./MockERC20__factory";

@@ -42,5 +42,7 @@ export type { IDebatePool } from "./contracts/interfaces/IDebatePool";
 export { IDebatePool__factory } from "./factories/contracts/interfaces/IDebatePool__factory";
 export type { IDebatePoolV2 } from "./contracts/interfaces/IDebatePoolV2";
 export { IDebatePoolV2__factory } from "./factories/contracts/interfaces/IDebatePoolV2__factory";
+export type { MinimalDebatePool } from "./contracts/MinimalDebatePool";
+export { MinimalDebatePool__factory } from "./factories/contracts/MinimalDebatePool__factory";
 export type { MockERC20 } from "./contracts/MockERC20";
 export { MockERC20__factory } from "./factories/contracts/MockERC20__factory";

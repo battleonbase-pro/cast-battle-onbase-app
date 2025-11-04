@@ -86,6 +86,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.IDebatePoolV2__factory>;
     getContractFactory(
+      name: "MinimalDebatePool",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.MinimalDebatePool__factory>;
+    getContractFactory(
       name: "MockERC20",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.MockERC20__factory>;
@@ -181,6 +185,11 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer
     ): Promise<Contracts.IDebatePoolV2>;
     getContractAt(
+      name: "MinimalDebatePool",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.MinimalDebatePool>;
+    getContractAt(
       name: "MockERC20",
       address: string | ethers.Addressable,
       signer?: ethers.Signer
@@ -259,6 +268,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.IDebatePoolV2>;
     deployContract(
+      name: "MinimalDebatePool",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.MinimalDebatePool>;
+    deployContract(
       name: "MockERC20",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.MockERC20>;
@@ -353,6 +366,11 @@ declare module "hardhat/types/runtime" {
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.IDebatePoolV2>;
+    deployContract(
+      name: "MinimalDebatePool",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.MinimalDebatePool>;
     deployContract(
       name: "MockERC20",
       args: any[],
