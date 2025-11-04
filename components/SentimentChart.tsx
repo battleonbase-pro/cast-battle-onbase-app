@@ -44,24 +44,71 @@ interface SentimentChartProps {
 }
 
 export default function SentimentChart({ sentimentData, sentimentHistory }: SentimentChartProps) {
+  // Ensure we have at least 2 data points for the chart to render lines
+  // If only one point exists, duplicate it to create a visible line
+  let chartHistory = sentimentHistory;
+  
+  // If we have current sentiment data but no history, create a baseline and current point
+  if (sentimentHistory.length === 0 && sentimentData) {
+    // Start from 50/50 baseline to show movement
+    const baselinePoint = {
+      timestamp: Date.now() - 1000,
+      support: 0,
+      oppose: 0,
+      supportPercent: 50,
+      opposePercent: 50
+    };
+    const currentPoint = {
+      timestamp: Date.now(),
+      support: sentimentData.support,
+      oppose: sentimentData.oppose,
+      supportPercent: sentimentData.supportPercent,
+      opposePercent: sentimentData.opposePercent
+    };
+    chartHistory = [baselinePoint, currentPoint];
+  } else if (sentimentHistory.length === 1) {
+    // Add a baseline point before the single data point
+    const baselinePoint = {
+      timestamp: sentimentHistory[0].timestamp - 1000,
+      support: 0,
+      oppose: 0,
+      supportPercent: 50,
+      opposePercent: 50
+    };
+    chartHistory = [baselinePoint, sentimentHistory[0]];
+  } else if (sentimentHistory.length === 0 && !sentimentData) {
+    // No data at all - will show empty state
+    chartHistory = [];
+  }
+
   const chartData = {
-    labels: sentimentHistory.map((_, index) => ''),
+    labels: chartHistory.map((_, index) => {
+      if (chartHistory.length === 2 && index === 0) return 'Start';
+      if (index === chartHistory.length - 1) return 'Now';
+      return '';
+    }),
     datasets: [
       {
         label: 'Support',
-        data: sentimentHistory.map(data => data.supportPercent),
+        data: chartHistory.map(data => data.supportPercent),
         borderColor: '#10b981',
         backgroundColor: 'rgba(16, 185, 129, 0.1)',
         fill: true,
         tension: 0.4,
+        borderWidth: 2,
+        pointRadius: chartHistory.length <= 2 ? 4 : 0,
+        pointHoverRadius: 6,
       },
       {
         label: 'Oppose',
-        data: sentimentHistory.map(data => data.opposePercent),
+        data: chartHistory.map(data => data.opposePercent),
         borderColor: '#ef4444',
         backgroundColor: 'rgba(239, 68, 68, 0.1)',
         fill: true,
         tension: 0.4,
+        borderWidth: 2,
+        pointRadius: chartHistory.length <= 2 ? 4 : 0,
+        pointHoverRadius: 6,
       },
     ],
   };
@@ -78,16 +125,28 @@ export default function SentimentChart({ sentimentData, sentimentHistory }: Sent
       y: {
         beginAtZero: true,
         max: 100,
+        min: 0,
         ticks: {
           callback: function(value: any) {
             return value + '%';
           },
+          stepSize: 10,
+        },
+      },
+      x: {
+        display: chartHistory.length > 2, // Only show x-axis labels if we have multiple data points
+        grid: {
+          display: false,
         },
       },
     },
     elements: {
       point: {
-        radius: 0,
+        radius: chartHistory.length <= 2 ? 4 : 0, // Show points if only 2 data points
+        hoverRadius: 6,
+      },
+      line: {
+        borderWidth: 2,
       },
     },
   };
@@ -107,8 +166,14 @@ export default function SentimentChart({ sentimentData, sentimentHistory }: Sent
           </div>
         )}
       </div>
-      <div className={styles.chartContainer}>
-        <Line data={chartData} options={chartOptions} />
+      <div className={styles.chartContainer} style={{ minHeight: '200px', position: 'relative' }}>
+        {chartHistory.length > 0 ? (
+          <Line data={chartData} options={chartOptions} />
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', color: '#666' }}>
+            No sentiment data yet
+          </div>
+        )}
       </div>
     </div>
   );
