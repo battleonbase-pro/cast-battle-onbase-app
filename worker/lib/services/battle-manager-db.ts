@@ -28,9 +28,18 @@ export class BattleManagerDB {
     // Initialize oracle if contract is deployed
     try {
       this.oracle = createDebateOracle();
-      console.log('🔗 Debate Oracle initialized');
-    } catch (error) {
-      console.log('⚠️  Debate Oracle not initialized (contract not deployed yet):', error.message);
+      console.log('✅ Debate Oracle initialized successfully');
+      console.log(`   Contract Address: ${process.env.DEBATE_POOL_CONTRACT_ADDRESS?.trim() || 'N/A'}`);
+      // Note: wallet address is private, would need getter if needed
+    } catch (error: any) {
+      console.error('❌ Debate Oracle initialization FAILED:');
+      console.error(`   Error: ${error.message}`);
+      console.error(`   This will prevent automatic payouts from working!`);
+      console.error(`   Please check:`);
+      console.error(`   1. ORACLE_PRIVATE_KEY is set correctly (should be 66-char hex string)`);
+      console.error(`   2. DEBATE_POOL_CONTRACT_ADDRESS is set correctly`);
+      console.error(`   3. BASE_SEPOLIA_RPC is set correctly`);
+      console.error(`   4. Private key has no trailing newlines (this is a common issue)`);
       this.oracle = null;
     }
 
@@ -367,28 +376,64 @@ export class BattleManagerDB {
             // Get winner's address from database
             const winnerUser = await this.db.getUserById(winner.userId);
             if (!winnerUser?.address) {
-              console.log(`⚠️ Winner address not found, skipping on-chain payout`);
+              console.error(`❌ Winner address not found for user ${winner.userId}, cannot process payout`);
+              // Store payout failure in database for manual retry
+              await this.db.storePayoutFailure(battleId, 'MISSING_WINNER_ADDRESS', `Winner user ${winner.userId} has no wallet address`);
             } else {
               // Get participant count for prize calculation
               const participantCount = battle.participants?.length || 0;
               
               if (participantCount === 0) {
-                console.log(`⚠️ No participants found, skipping on-chain payout`);
+                console.error(`❌ No participants found for battle ${battleId}, cannot calculate prize`);
+                await this.db.storePayoutFailure(battleId, 'NO_PARTICIPANTS', 'Battle has no participants');
               } else {
-                await this.oracle.processBattleCompletion(
-                  battleId,
-                  winnerUser.address,
-                  participantCount
-                );
-                console.log(`✅ On-chain payout processed successfully`);
+                // Attempt payout with retry logic
+                let payoutSuccess = false;
+                let lastError: any = null;
+                
+                for (let attempt = 1; attempt <= 3; attempt++) {
+                  try {
+                    console.log(`🔄 Payout attempt ${attempt}/3 for battle ${battleId}`);
+                    await this.oracle.processBattleCompletion(
+                      battleId,
+                      winnerUser.address,
+                      participantCount
+                    );
+                    console.log(`✅ On-chain payout processed successfully (attempt ${attempt})`);
+                    payoutSuccess = true;
+                    break;
+                  } catch (error: any) {
+                    lastError = error;
+                    console.error(`❌ Payout attempt ${attempt}/3 failed:`, error.message);
+                    if (attempt < 3) {
+                      // Wait before retry (exponential backoff)
+                      const waitTime = Math.pow(2, attempt) * 1000; // 2s, 4s
+                      console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+                      await new Promise(resolve => setTimeout(resolve, waitTime));
+                    }
+                  }
+                }
+                
+                if (!payoutSuccess) {
+                  console.error(`❌ All payout attempts failed for battle ${battleId}`);
+                  await this.db.storePayoutFailure(
+                    battleId, 
+                    'PAYOUT_FAILED', 
+                    `Failed after 3 attempts: ${lastError?.message || 'Unknown error'}`
+                  );
+                  // Still log the error for monitoring
+                  console.error(`❌ Final payout failure:`, lastError);
+                }
               }
             }
-          } catch (error) {
-            console.error(`❌ Failed to process on-chain payout:`, error);
-            // Don't fail the entire process if oracle fails
+          } catch (error: any) {
+            console.error(`❌ Critical error processing payout for battle ${battleId}:`, error);
+            await this.db.storePayoutFailure(battleId, 'CRITICAL_ERROR', error.message || 'Unknown critical error');
+            // Don't fail the entire process if oracle fails, but log it properly
           }
         } else {
-          console.log(`⚠️  Oracle not available, skipping on-chain payout`);
+          console.error(`❌ Oracle not available, cannot process payout for battle ${battleId}`);
+          await this.db.storePayoutFailure(battleId, 'ORACLE_NOT_INITIALIZED', 'Oracle service failed to initialize (check ORACLE_PRIVATE_KEY and DEBATE_POOL_CONTRACT_ADDRESS)');
         }
         
         // Award 100 points to the winner

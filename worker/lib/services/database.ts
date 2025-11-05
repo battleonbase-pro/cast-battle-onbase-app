@@ -648,6 +648,38 @@ export class DatabaseService {
       },
     });
   }
+
+  // Store payout failure for tracking and retry
+  async storePayoutFailure(battleId: string, errorCode: string, errorMessage: string) {
+    try {
+      // Store in battle insights or create a note
+      // For now, we'll log it and can add database tracking later if needed
+      console.error(`📝 PAYOUT FAILURE RECORDED:`);
+      console.error(`   Battle ID: ${battleId}`);
+      console.error(`   Error Code: ${errorCode}`);
+      console.error(`   Error Message: ${errorMessage}`);
+      console.error(`   Timestamp: ${new Date().toISOString()}`);
+      
+      // Store in battle insights field for now (can be queried later)
+      const existingBattle = await prisma.battle.findUnique({
+        where: { id: battleId },
+        select: { insights: true },
+      });
+      
+      const failureNote = `\n\n--- PAYOUT FAILURE ---\nCode: ${errorCode}\nMessage: ${errorMessage}\nTimestamp: ${new Date().toISOString()}\n`;
+      const updatedInsights = (existingBattle?.insights || '') + failureNote;
+      
+      await prisma.battle.update({
+        where: { id: battleId },
+        data: { insights: updatedInsights },
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to store payout failure:', error);
+      return false;
+    }
+  }
 }
 
 const databaseService = new DatabaseService();

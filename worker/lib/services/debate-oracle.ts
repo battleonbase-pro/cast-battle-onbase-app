@@ -269,15 +269,25 @@ export class DebateOracle {
  */
 export function createDebateOracle(): DebateOracle {
   const rpcUrl = process.env.BASE_SEPOLIA_RPC || 'https://sepolia.base.org';
-  const privateKey = process.env.ORACLE_PRIVATE_KEY;
-  const contractAddress = process.env.DEBATE_POOL_CONTRACT_ADDRESS;
+  const privateKeyRaw = process.env.ORACLE_PRIVATE_KEY;
+  const contractAddressRaw = process.env.DEBATE_POOL_CONTRACT_ADDRESS;
 
-  if (!privateKey) {
+  if (!privateKeyRaw) {
     throw new Error('ORACLE_PRIVATE_KEY environment variable is required');
   }
 
-  if (!contractAddress) {
+  if (!contractAddressRaw) {
     throw new Error('DEBATE_POOL_CONTRACT_ADDRESS environment variable is required');
+  }
+
+  // CRITICAL FIX: Trim whitespace/newlines from secret values
+  // GCP Secret Manager often includes trailing newlines
+  const privateKey = privateKeyRaw.trim();
+  const contractAddress = contractAddressRaw.trim();
+
+  // Validate private key format
+  if (!privateKey.startsWith('0x') || privateKey.length !== 66) {
+    throw new Error(`Invalid ORACLE_PRIVATE_KEY format. Expected 66-character hex string starting with 0x, got: ${privateKey.length} characters`);
   }
 
   // Contract ABI for MinimalDebatePool

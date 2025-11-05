@@ -7,12 +7,22 @@ export class OnChainDebateService {
 
   constructor() {
     // Get environment variables inside constructor to ensure they're loaded
-    const DEBATE_POOL_CONTRACT_ADDRESS = process.env.DEBATE_POOL_CONTRACT_ADDRESS || '0x3980d9dBd39447AE1cA8F2Dc453F4E00Eb452c46';
-    const ORACLE_PRIVATE_KEY = process.env.ORACLE_PRIVATE_KEY || '';
+    const DEBATE_POOL_CONTRACT_ADDRESS_RAW = process.env.DEBATE_POOL_CONTRACT_ADDRESS || '0x3980d9dBd39447AE1cA8F2Dc453F4E00Eb452c46';
+    const ORACLE_PRIVATE_KEY_RAW = process.env.ORACLE_PRIVATE_KEY || '';
     const RPC_URL = process.env.BASE_SEPOLIA_RPC || 'https://sepolia.base.org';
+
+    // CRITICAL FIX: Trim whitespace/newlines from secret values
+    // GCP Secret Manager often includes trailing newlines
+    const ORACLE_PRIVATE_KEY = ORACLE_PRIVATE_KEY_RAW.trim();
+    const DEBATE_POOL_CONTRACT_ADDRESS = DEBATE_POOL_CONTRACT_ADDRESS_RAW.trim();
 
     if (!ORACLE_PRIVATE_KEY || !DEBATE_POOL_CONTRACT_ADDRESS) {
       throw new Error('Oracle private key or contract address not configured');
+    }
+
+    // Validate private key format
+    if (!ORACLE_PRIVATE_KEY.startsWith('0x') || ORACLE_PRIVATE_KEY.length !== 66) {
+      throw new Error(`Invalid ORACLE_PRIVATE_KEY format. Expected 66-character hex string starting with 0x, got: ${ORACLE_PRIVATE_KEY.length} characters`);
     }
 
     try {

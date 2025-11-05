@@ -10,7 +10,7 @@
     "start:prod": "node dist/battle-completion-worker.js",
     "deploy": "./scripts/deploy.sh",
     "deploy:build": "gcloud builds submit --tag gcr.io/battle-worker-phraseflow/battle-completion-worker .",
-    "deploy:run": "gcloud run deploy battle-completion-worker --image gcr.io/battle-worker-phraseflow/battle-completion-worker --platform managed --region us-central1 --allow-unauthenticated --port 3001 --memory 512Mi --cpu 1 --min-instances 1 --max-instances 10 --timeout 3600 --set-env-vars NODE_ENV=production,NEWS_SOURCE=serper --set-secrets DATABASE_URL=database-url:latest,GOOGLE_GENERATIVE_AI_API_KEY=google-ai-api-key:latest,SERPER_API_KEY=serper-api-key:latest,WORKER_API_KEY=battle-worker-secrets:latest",
+    "deploy:run": "gcloud run deploy battle-completion-worker --image gcr.io/battle-worker-phraseflow/battle-completion-worker --platform managed --region us-central1 --allow-unauthenticated --port 3001 --memory 512Mi --cpu 1 --min-instances 1 --max-instances 10 --timeout 3600 --set-env-vars NODE_ENV=production,NEWS_SOURCE=serper --set-secrets DATABASE_URL=database-url:latest,GOOGLE_GENERATIVE_AI_API_KEY=google-generative-ai-api-key:latest,SERPER_API_KEY=serper-api-key:latest,WORKER_API_KEY=battle-worker-secrets:latest,DEBATE_POOL_CONTRACT_ADDRESS=debate-pool-contract-address:latest,ORACLE_PRIVATE_KEY=oracle-private-key:latest,BASE_SEPOLIA_RPC=base-sepolia-rpc:latest",
     "deploy:full": "npm run deploy:build && npm run deploy:run",
     "logs": "gcloud logging read \"resource.type=cloud_run_revision AND resource.labels.service_name=battle-completion-worker\" --limit=20 --format=\"table(timestamp,severity,textPayload)\"",
     "test:health": "curl -s https://battle-completion-worker-733567590021.us-central1.run.app/health | jq .",
